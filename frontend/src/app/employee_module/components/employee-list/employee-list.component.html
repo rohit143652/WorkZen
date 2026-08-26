@@ -1,0 +1,97 @@
+<div class="page-header">
+  <div>
+    <h1>Employees</h1>
+    <p class="muted">Manage employee records and their login access.</p>
+  </div>
+  <a routerLink="/employees/new" *appHasPermission="'EMPLOYEE_CREATE'" class="btn btn-primary">+ Add Employee</a>
+</div>
+
+<div class="card filters">
+  <input
+    type="text"
+    placeholder="Search by name, code or email..."
+    [(ngModel)]="search"
+    (keyup.enter)="onFilterChange()" />
+  <select [(ngModel)]="statusFilter" (change)="onFilterChange()">
+    <option value="">All statuses</option>
+    <option value="ACTIVE">Active</option>
+    <option value="INACTIVE">Inactive</option>
+  </select>
+  <select [(ngModel)]="loginFilter" (change)="onFilterChange()">
+    <option value="">All login states</option>
+    <option value="true">Login enabled</option>
+    <option value="false">Login disabled</option>
+  </select>
+  <button type="button" class="btn btn-secondary" (click)="onFilterChange()">Search</button>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div class="skeleton-rows">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div>
+      }
+    </div>
+  } @else if (error()) {
+    <div class="error-state">Unable to load employees. Please try again.</div>
+  } @else if (employees().length === 0) {
+    <div class="empty-state">No employees found.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th>
+            <th>Login</th><th>Role</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of employees(); track e.id) {
+            <tr>
+              <td>{{ e.employeeCode }}</td>
+              <td>{{ e.firstName }} {{ e.lastName }}</td>
+              <td>{{ e.email }}</td>
+              <td>{{ e.department }}</td>
+              <td>{{ e.designation }}</td>
+              <td>
+                @if (e.loginEnabled) {
+                  <app-status-badge label="🟢 Login Enabled" kind="success"></app-status-badge>
+                } @else {
+                  <app-status-badge label="⚪ Login Disabled" kind="muted"></app-status-badge>
+                }
+              </td>
+              <td>{{ e.roles?.join(', ') || '-' }}</td>
+              <td>
+                @if (e.status === 'ACTIVE') {
+                  <app-status-badge label="Active" kind="success"></app-status-badge>
+                } @else {
+                  <app-status-badge label="Inactive" kind="muted"></app-status-badge>
+                }
+              </td>
+              <td>
+                <div class="actions">
+                <a [routerLink]="['/employees', e.id]" class="btn btn-secondary btn-sm">View</a>
+                <a [routerLink]="['/employees', e.id, 'edit']" *appHasPermission="'EMPLOYEE_UPDATE'" class="btn btn-secondary btn-sm">Edit</a>
+                @if (e.loginEnabled) {
+                  <button type="button" *appHasPermission="'EMPLOYEE_DISABLE_LOGIN'" class="btn btn-danger btn-sm" (click)="toggleLogin(e)">Disable Login</button>
+                }
+                @if (e.status === 'ACTIVE') {
+                  <button type="button" *appHasPermission="'EMPLOYEE_DEACTIVATE'" class="btn btn-danger btn-sm" (click)="toggleActive(e)">Deactivate</button>
+                } @else {
+                  <button type="button" *appHasPermission="'EMPLOYEE_ACTIVATE'" class="btn btn-secondary btn-sm" (click)="toggleActive(e)">Activate</button>
+                }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() === 0" (click)="goToPage(page() - 1)">Previous</button>
+      <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() + 1 >= totalPages()" (click)="goToPage(page() + 1)">Next</button>
+    </div>
+  }
+</div>

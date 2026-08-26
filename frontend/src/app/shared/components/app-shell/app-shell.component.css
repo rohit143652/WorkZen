@@ -1,0 +1,288 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--background-color);
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease;
+  flex-shrink: 0;
+  /* Pinned to the viewport so it never scrolls away with page content - only .content below
+     scrolls. align-self: flex-start keeps it from stretching to match a taller flex sibling
+     in a way that would break sticky positioning. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  align-self: flex-start;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1.15rem 1.25rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.5rem;
+}
+
+.brand-name {
+  flex: 1;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: #fff;
+  padding: 3px;
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-sm);
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.87rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #fff; text-decoration: none; }
+.nav-item.active { background: var(--sidebar-bg-active); color: #fff; font-weight: 600; }
+
+.nav-group { display: flex; flex-direction: column; }
+
+.nav-group-header {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  padding-right: 0.65rem;
+}
+
+.nav-group-label { flex: 1; }
+
+.nav-chevron {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.nav-chevron.open { transform: rotate(90deg); }
+
+.nav-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-left: 0.5rem;
+  margin: 0.15rem 0 0.4rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-subitem {
+  padding-left: 1.2rem;
+  font-size: 0.83rem;
+  font-weight: 400;
+}
+
+.nav-icon {
+  width: 18px;
+  flex-shrink: 0;
+  font-size: 1rem;
+  text-align: center;
+  line-height: 1;
+}
+
+.collapse-btn {
+  /* Hidden on desktop by default - the menu always shows fully there, no toggle needed. Only
+     shown again inside the mobile/tablet media query below, where it acts as a "close menu"
+     button positioned at the top of the drawer (paired with the topbar hamburger to open it). */
+  display: none;
+  margin-left: auto;
+  padding: 0.4rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: #cbd5e1;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+  transition: background-color 0.12s ease;
+}
+.collapse-btn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  height: var(--topbar-height);
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+.app-title {
+  font-weight: 700;
+  color: var(--text-color);
+  font-size: 1.05rem;
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.12s ease;
+}
+
+.profile:hover { background: var(--surface-alt-color); }
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-name {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-color);
+  line-height: 1.25;
+}
+
+.profile-name small {
+  font-weight: 500;
+  color: var(--muted-color);
+  font-size: 0.72rem;
+}
+
+.profile-caret {
+  font-size: 0.7rem;
+  color: var(--muted-color);
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 115%;
+  right: 0;
+  min-width: 170px;
+  padding: 0.4rem;
+  z-index: 50;
+  box-shadow: var(--shadow-lg);
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--danger-color);
+  font-weight: 600;
+}
+
+.dropdown-item:hover { background: var(--danger-bg); }
+
+.content {
+  flex: 1;
+  padding: 1.75rem;
+  overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .sidebar { position: fixed; z-index: 40; height: 100vh; box-shadow: var(--shadow-lg); }
+  .sidebar-collapsed .sidebar { width: 0; padding: 0; overflow: hidden; }
+  .collapse-btn { display: flex; }
+  .mobile-toggle { display: block; }
+  .profile-name { display: none; }
+  .content { padding: 1.1rem; }
+}

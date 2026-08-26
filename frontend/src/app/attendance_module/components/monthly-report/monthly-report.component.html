@@ -1,0 +1,162 @@
+<div class="page-header">
+  <div>
+    <h1>Monthly Attendance Report</h1>
+    <p class="muted">Present, Half Day, On Leave, Paid/Unpaid Leave, and Payable Days for every active employee. For Gross/Deductions/Net Pay, see <a routerLink="/payroll/runs">Payroll Processing</a> instead.</p>
+  </div>
+</div>
+
+<p class="muted" style="margin-bottom: 1rem;">
+  Paid leave policy (default allocation, carry-forward) and per-employee extra leave grants are managed in <a routerLink="/paid-leave/settings">Paid Leave Settings</a> and each employee's profile.
+</p>
+
+<div class="card form-card" style="margin-bottom: 1rem;">
+  <div class="form-grid">
+    <div class="form-field">
+      <label>Month</label>
+      <select [(ngModel)]="month">
+        @for (m of months; track m.value) {
+          <option [value]="m.value">{{ m.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="form-field">
+      <label>Year</label>
+      <select [(ngModel)]="year">
+        @for (y of years; track y) {
+          <option [value]="y">{{ y }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="form-field">
+    <label>Site</label>
+    <div style="position: relative; max-width: 320px;" #siteFilterWrapper>
+      <button type="button" class="btn btn-secondary" style="width: 100%; justify-content: space-between;" (click)="toggleSiteDropdown()">
+        <span>{{ siteFilterLabel() }}</span>
+        <i class="bi" [ngClass]="siteDropdownOpen() ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+      </button>
+
+      @if (siteDropdownOpen()) {
+        <div class="card" style="position: absolute; top: 105%; left: 0; right: 0; z-index: 40; padding: 0.4rem; max-height: 260px; overflow-y: auto; box-shadow: var(--shadow-lg);">
+          <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm);">
+            <input type="checkbox" [checked]="allSites()" (change)="toggleAllSites()" style="width: auto;" />
+            All Sites
+          </label>
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 0.3rem 0;" />
+          @for (site of sites(); track site.id) {
+            <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.6rem; font-weight: 400; cursor: pointer; border-radius: var(--radius-sm);">
+              <input type="checkbox" [checked]="isSiteSelected(site.id)" (change)="toggleSite(site.id)" style="width: auto;" />
+              {{ site.siteName }}
+            </label>
+          }
+        </div>
+      }
+    </div>
+    <p class="muted" style="margin-top: 0.3rem;">Select one or more sites to narrow the report, or leave "All Sites" checked for everyone.</p>
+  </div>
+
+  <div class="form-actions" style="justify-content: flex-start;">
+    <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="generatePreview()">
+      @if (loading()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-eye"></i> }
+      {{ loading() ? 'Generating...' : 'Preview Report' }}
+    </button>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="card table-card" style="padding: 1rem;">
+    @for (i of [1,2,3,4]; track i) { <div class="skeleton" style="height: 36px; margin-bottom: 8px;"></div> }
+  </div>
+} @else {
+  @if (report(); as r) {
+  <div class="card table-card">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem 0;">
+      <div>
+        <strong>{{ r.monthLabel }}</strong>
+        <span class="muted"> &middot; {{ r.rows.length }} employee(s)</span>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="downloading() !== null" (click)="download('xlsx')">
+          @if (downloading() === 'xlsx') { <span class="btn-spinner"></span> } @else { <i class="bi bi-file-earmark-excel"></i> }
+          {{ downloading() === 'xlsx' ? 'Preparing...' : 'Download Excel' }}
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="downloading() !== null" (click)="download('pdf')">
+          @if (downloading() === 'pdf') { <span class="btn-spinner"></span> } @else { <i class="bi bi-file-earmark-pdf"></i> }
+          {{ downloading() === 'pdf' ? 'Preparing...' : 'Download PDF' }}
+        </button>
+      </div>
+    </div>
+
+    @if (r.rows.length === 0) {
+      <div class="empty-state">No active employees found for this tenant.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th><th>Department</th><th>Designation</th><th>Current Site</th>
+              <th>Present</th><th>Half Day</th><th>On Leave</th>
+              @if (paidLeaveEnabled()) {
+                <th>Paid Leave</th><th>Unpaid Leave</th><th>Leave Balance</th>
+              }
+              <th>Absent</th><th>Payable Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of r.rows; track row.employeeCode) {
+              <tr>
+                <td>{{ row.employeeCode }} &middot; {{ row.employeeName }}</td>
+                <td>{{ row.department }}</td>
+                <td>{{ row.designation }}</td>
+                <td>{{ row.currentSite }}</td>
+                <td>{{ row.presentDays }}</td>
+                <td>{{ row.halfDays }}</td>
+                <td>{{ row.onLeaveDays }}</td>
+                @if (paidLeaveEnabled()) {
+                  <td>
+                    @if (editingRowCode() === row.employeeCode) {
+                      <div style="display: flex; align-items: center; gap: 0.35rem;">
+                        <input type="number" min="0" [max]="row.onLeaveDays" [(ngModel)]="editPaidLeaveValue"
+                               style="width: 60px; padding: 0.3rem 0.4rem; border: 1px solid var(--border-color); border-radius: 6px;" />
+                        <button type="button" class="btn btn-primary btn-sm" [disabled]="savingRowCode() === row.employeeCode" (click)="saveEditPaidLeave(row)">
+                          <i class="bi bi-check-lg"></i>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditPaidLeave()">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </div>
+                    } @else {
+                      <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <span>{{ row.paidLeaveDays }}</span>
+                        @if (row.manualLeaveOverride) {
+                          <i class="bi bi-pencil-fill" style="font-size: 0.7rem; color: var(--info-color);" title="Manually adjusted"></i>
+                        }
+                        <button type="button" class="btn-ghost btn btn-sm" style="padding: 0.15rem 0.3rem;"
+                                [disabled]="row.onLeaveDays === 0"
+                                (click)="startEditPaidLeave(row)"
+                                [title]="row.onLeaveDays === 0 ? 'No On Leave days marked for ' + row.employeeName + ' this month - nothing to adjust' : 'Edit paid leave for this month'">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        @if (row.manualLeaveOverride) {
+                          <button type="button" class="btn-ghost btn btn-sm" style="padding: 0.15rem 0.3rem;" (click)="resetRowToAuto(row)" title="Reset to auto-calculated">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </td>
+                  <td>{{ row.unpaidLeaveDays }}</td>
+                  <td>{{ row.leaveBalanceClosing }}</td>
+                }
+                <td>{{ row.absentDays }}</td>
+                <td><strong>{{ row.payableDays }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+  }
+}

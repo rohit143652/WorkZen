@@ -1,0 +1,47 @@
+<div class="page-header">
+  <div>
+    <h1>Sites</h1>
+    <p class="muted">Physical work locations and their manpower allocation.</p>
+  </div>
+  <a routerLink="/sites/new" *appHasPermission="'SITE_CREATE'" class="btn btn-primary">+ Add Site</a>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;"><div class="skeleton" style="height: 40px;"></div></div>
+  } @else if (sites().length === 0) {
+    <div class="empty-state">No sites yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Code</th><th>Name</th><th>Allocation</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (s of sites(); track s.id) {
+            <tr>
+              <td>{{ s.siteCode }}</td>
+              <td>{{ s.siteName }}</td>
+              <td><app-status-badge [label]="allocationLabel(s)" [kind]="allocationKind(s)"></app-status-badge></td>
+              <td>
+                @if (s.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+              </td>
+              <td>
+                <div class="actions">
+                @if (s.status === 'ACTIVE') {
+                  <a [routerLink]="['/employee-assignments']" [queryParams]="{siteId: s.id}" *appHasPermission="'EMPLOYEE_ASSIGN'" class="btn btn-secondary btn-sm">Assign</a>
+                }
+                <a [routerLink]="['/sites', s.id, 'edit']" *appHasPermission="'SITE_UPDATE'" class="btn btn-secondary btn-sm">Edit</a>
+                @if (s.status === 'ACTIVE') {
+                  <button type="button" *appHasPermission="'SITE_UPDATE'" class="btn btn-danger btn-sm" (click)="toggleStatus(s)">Deactivate</button>
+                } @else {
+                  <button type="button" *appHasPermission="'SITE_UPDATE'" class="btn btn-secondary btn-sm" (click)="toggleStatus(s)">Activate</button>
+                }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

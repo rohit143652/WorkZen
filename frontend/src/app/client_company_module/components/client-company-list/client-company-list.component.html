@@ -1,0 +1,57 @@
+<div class="page-header">
+  <div>
+    <h1>Client Companies</h1>
+    <p class="muted">Manage the tenant companies using this platform.</p>
+  </div>
+  <a routerLink="/clients/new" *appHasPermission="'CLIENT_COMPANY_CREATE'" class="btn btn-primary">+ Add Client Company</a>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (error()) {
+    <div class="error-state">Unable to load client companies.</div>
+  } @else if (companies().length === 0) {
+    <div class="empty-state">No client companies yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Company</th><th>Contact</th><th>Employees</th><th>Sites</th><th>Login</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (c of companies(); track c.id) {
+            <tr>
+              <td>{{ c.companyCode }}</td>
+              <td><a [routerLink]="['/clients', c.id]">{{ c.companyName }}</a></td>
+              <td>{{ c.contactPersonName || '-' }}</td>
+              <td>{{ c.totalEmployees }}</td>
+              <td>{{ c.totalSites }}</td>
+              <td>
+                @if (c.hasClientAdminLogin) { <app-status-badge label="Enabled" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="None" kind="muted"></app-status-badge> }
+              </td>
+              <td>
+                @if (c.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+              </td>
+              <td>
+                <div class="actions">
+                <a [routerLink]="['/clients', c.id]" class="btn btn-secondary btn-sm">View</a>
+                <a [routerLink]="['/clients', c.id, 'edit']" *appHasPermission="'CLIENT_COMPANY_UPDATE'" class="btn btn-secondary btn-sm">Edit</a>
+                @if (c.status === 'ACTIVE') {
+                  <button type="button" *appHasPermission="'CLIENT_COMPANY_DEACTIVATE'" class="btn btn-danger btn-sm" (click)="toggleStatus(c)">Deactivate</button>
+                } @else {
+                  <button type="button" *appHasPermission="'CLIENT_COMPANY_ACTIVATE'" class="btn btn-secondary btn-sm" (click)="toggleStatus(c)">Activate</button>
+                }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

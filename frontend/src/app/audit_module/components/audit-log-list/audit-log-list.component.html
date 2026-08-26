@@ -1,0 +1,21 @@
+<div class="page">
+  <h1>Audit Logs</h1>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else {
+    <table>
+      <thead><tr><th>Action</th><th>User ID</th><th>IP</th><th>Description</th><th>When</th></tr></thead>
+      <tbody>
+        @for (log of logs(); track log.id) {
+          <tr>
+            <td>{{ log.action }}</td>
+            <td>{{ log.userId ?? '-' }}</td>
+            <td>{{ log.ipAddress }}</td>
+            <td>{{ log.description }}</td>
+            <td>{{ log.createdAt }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

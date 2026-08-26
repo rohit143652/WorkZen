@@ -1,0 +1,222 @@
+<div class="card detail-card" style="margin-top: 1rem;">
+  <div class="section-title">Employee Advances</div>
+
+  @if (loading()) {
+    <div class="skeleton" style="height: 100px;"></div>
+  } @else {
+    <dl>
+      <dt>Total Outstanding</dt><dd><strong>₹{{ totalOutstanding() }}</strong></dd>
+    </dl>
+
+    <div class="actions" style="margin-top: 0.5rem;">
+      @if (!showGrantForm()) {
+        <button type="button" *appHasPermission="'ADVANCE_GRANT'" class="btn btn-secondary btn-sm" (click)="openGrantForm()">
+          Give Advance
+        </button>
+      }
+    </div>
+
+    @if (showGrantForm()) {
+      <form [formGroup]="grantForm" (ngSubmit)="submitGrant()" class="login-access-section enabled" style="margin-top: 0.75rem;" novalidate>
+        <p class="muted" style="margin-top: 0; font-size: 0.85rem;">"Advance Amount" is how much money is being given to the employee - not to be confused with "Monthly Recovery", the amount deducted from salary each month.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Advance Date</label>
+            <input type="date" formControlName="advanceDate" />
+          </div>
+          <div class="form-field">
+            <label>Advance Amount (₹) &mdash; money given to the employee</label>
+            <input type="number" min="0.01" step="0.01" formControlName="amount" />
+          </div>
+          <div class="form-field">
+            <label>Payment Mode</label>
+            <select formControlName="paymentMode">
+              <option value="CASH">Cash</option>
+              <option value="BANK_TRANSFER">Bank Transfer</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-row" style="margin: 1rem 0 0.5rem;">
+          <label class="toggle-switch"><input type="checkbox" formControlName="isLoan" /><span class="toggle-slider"></span></label>
+          <span class="toggle-label">Recover as a loan (monthly installments)</span>
+        </div>
+
+        @if (grantForm.controls.isLoan.value) {
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Monthly Recovery (₹) &mdash; deducted from salary each month</label>
+              <input type="number" min="0" step="0.01" formControlName="monthlyRecoveryAmount" />
+            </div>
+            <div class="form-field">
+              <label>Recovery Start Month</label>
+              <select formControlName="recoveryStartMonth">
+                @for (m of months; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Recovery Start Year</label>
+              <select formControlName="recoveryStartYear">
+                @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+              </select>
+            </div>
+          </div>
+          <p class="muted" style="margin-top: -0.5rem; font-size: 0.8rem;">Defaults to the advance date's own month - payroll for that month onward will start deducting the monthly recovery amount.</p>
+        } @else {
+          <p class="muted" style="font-size: 0.8rem;">Not a loan - the full advance amount will be cut from this month's payroll (or as much as safely possible without going below the minimum take-home). Any amount that couldn't be recovered stays outstanding and is automatically recovered from next month's payroll.</p>
+        }
+
+        <div class="form-field">
+          <label>Reason</label>
+          <input type="text" formControlName="reason" placeholder="e.g. Personal Advance, Medical Emergency" />
+        </div>
+        <div class="form-field">
+          <label>Remarks (optional)</label>
+          <input type="text" formControlName="remarks" placeholder="Any additional notes" />
+        </div>
+        <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
+          <button type="button" class="btn btn-secondary" (click)="cancelGrantForm()">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="granting()">
+            @if (granting()) { <span class="btn-spinner"></span> }
+            {{ granting() ? 'Saving...' : 'Give Advance' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (advances().length > 0) {
+      <div class="section-title" style="margin-top: 1.25rem;">Advance History</div>
+      <div class="table-scroll">
+        <table class="table-compact">
+          <thead><tr><th>Date</th><th>Advance Amount</th><th>Monthly Recovery</th><th>Recovery Starts</th><th>Cut from Payroll</th><th>Installments</th><th>Recovered</th><th>Outstanding</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (a of advances(); track a.id) {
+              <tr>
+                <td>{{ a.advanceDate }}</td>
+                <td>₹{{ a.amount }}</td>
+                <td>
+                  @if (editingRecoveryId() === a.id) {
+                    <div style="display: flex; align-items: center; gap: 0.3rem;">
+                      <input type="number" min="0" [(ngModel)]="editRecoveryAmount" [ngModelOptions]="{standalone: true}"
+                             style="width: 80px; padding: 0.25rem; border: 1px solid var(--border-color); border-radius: 6px;" />
+                      <button type="button" class="btn btn-primary btn-sm" [disabled]="savingId() === a.id" (click)="saveRecoveryAmount(a)"><i class="bi bi-check-lg"></i></button>
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditRecovery()"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                  } @else {
+                    <div style="display: flex; align-items: center; gap: 0.3rem;">
+                      <span>₹{{ a.monthlyRecoveryAmount }}</span>
+                      @if (a.status === 'ACTIVE') {
+                        <button type="button" *appHasPermission="'ADVANCE_UPDATE'" class="btn-ghost btn btn-sm" style="padding: 0.15rem 0.3rem;" (click)="startEditRecovery(a)" title="Change monthly recovery">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      }
+                    </div>
+                  }
+                </td>
+                <td class="muted">{{ months[a.recoveryStartMonth - 1].label }} {{ a.recoveryStartYear }}</td>
+                <td>
+                  @if (a.status === 'ACTIVE') {
+                    <input type="checkbox" [checked]="a.recoverViaPayroll" style="width: 16px; height: 16px; cursor: pointer;"
+                           (change)="toggleRecoverViaPayroll(a, $any($event.target).checked)"
+                           [title]="a.recoverViaPayroll ? 'Payroll will recover this advance - uncheck to skip it this run' : 'Payroll will SKIP this advance until re-checked'" />
+                  } @else {
+                    <span class="muted">-</span>
+                  }
+                </td>
+                <td>
+                  {{ a.installmentsPaid }} paid
+                  @if (pendingInstallments(a) > 0) {
+                    <span class="muted">, ~{{ pendingInstallments(a) }} pending</span>
+                  }
+                </td>
+                <td>₹{{ a.recoveredAmount }}</td>
+                <td><strong>₹{{ a.outstandingAmount }}</strong></td>
+                <td class="muted">{{ a.reason || '-' }}</td>
+                <td>
+                  @if (a.status === 'ACTIVE') { <app-status-badge label="Active" kind="info"></app-status-badge> }
+                  @else if (a.status === 'SETTLED') { <app-status-badge label="Settled" kind="success"></app-status-badge> }
+                  @else { <app-status-badge label="Cancelled" kind="muted"></app-status-badge> }
+                </td>
+                <td>
+                  <div class="actions">
+                  @if (a.status === 'ACTIVE') {
+                    <button type="button" *appHasPermission="'ADVANCE_UPDATE'" class="btn btn-secondary btn-sm" (click)="openPartialSettleForm(a)">Settle Partial</button>
+                    <button type="button" *appHasPermission="'ADVANCE_UPDATE'" class="btn btn-secondary btn-sm" (click)="settle(a)">Settle Full</button>
+                  }
+                  <button type="button" class="btn-ghost btn btn-sm" (click)="openRecoveryHistory(a)" title="View recovery history">
+                    <i class="bi bi-clock-history"></i> History
+                  </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>
+
+@if (settlingAdvance(); as a) {
+  <div class="modal-overlay" (click)="cancelPartialSettleForm()">
+    <div class="modal-box card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Settle Partial &mdash; {{ a.employeeName }}</h3>
+        <button type="button" class="modal-close" (click)="cancelPartialSettleForm()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <p class="muted" style="margin-top: -0.5rem; font-size: 0.85rem;">Outstanding on this advance: <strong>₹{{ a.outstandingAmount }}</strong></p>
+      <div class="form-field">
+        <label>Settlement Amount (₹, max {{ a.outstandingAmount }})</label>
+        <input type="number" min="0.01" [max]="a.outstandingAmount" step="0.01" [(ngModel)]="partialSettlementAmount" [ngModelOptions]="{standalone: true}" />
+      </div>
+      <div class="form-field">
+        <label>Remark (optional)</label>
+        <input type="text" [(ngModel)]="partialSettlementRemark" [ngModelOptions]="{standalone: true}" placeholder="e.g. Paid in cash" />
+      </div>
+      <div class="form-actions" style="border: none; padding-top: 0.5rem;">
+        <button type="button" class="btn btn-secondary" (click)="cancelPartialSettleForm()">Cancel</button>
+        <button type="button" class="btn btn-primary" [disabled]="settlingPartial()" (click)="submitPartialSettlement()">
+          @if (settlingPartial()) { <span class="btn-spinner"></span>Saving... } @else { Record Settlement }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (historyAdvance(); as a) {
+  <div class="modal-overlay" (click)="closeRecoveryHistory()">
+    <div class="modal-box modal-wide card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Recovery History &mdash; {{ a.employeeName }}</h3>
+        <button type="button" class="modal-close" (click)="closeRecoveryHistory()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <p class="muted" style="margin-top: -0.5rem; font-size: 0.85rem;">
+        Advance ₹{{ a.amount }} &middot; Recovered ₹{{ a.recoveredAmount }} &middot; Outstanding ₹{{ a.outstandingAmount }}
+      </p>
+      @if (historyLoading()) {
+        <div class="skeleton" style="height: 100px;"></div>
+      } @else if (recoveryHistory().length === 0) {
+        <p class="muted" style="margin: 0;">No recovery recorded yet for this advance.</p>
+      } @else {
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date &amp; Time</th><th>Month</th><th>Amount</th><th>Source</th><th>Payroll Run</th><th>Recorded By</th></tr></thead>
+            <tbody>
+              @for (h of recoveryHistory(); track h.id) {
+                <tr>
+                  <td>{{ h.createdAt | date:'medium' }}</td>
+                  <td>{{ h.month }}/{{ h.year }}</td>
+                  <td>₹{{ h.recoveredAmount }}</td>
+                  <td>{{ h.source === 'PAYROLL' ? 'Payroll' : 'Manual Settlement' }}</td>
+                  <td>{{ h.payrollRunId ?? '-' }}</td>
+                  <td class="muted">{{ h.createdBy }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+}

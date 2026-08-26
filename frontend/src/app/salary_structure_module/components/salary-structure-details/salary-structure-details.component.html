@@ -1,0 +1,83 @@
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 300px;"></div></div>
+} @else {
+  @if (structure(); as s) {
+  <div class="page-header">
+    <div>
+      <h1>{{ s.structureName }}</h1>
+      <p class="muted">{{ s.structureCode }} &middot; {{ s.salaryType }}</p>
+    </div>
+    <div class="actions">
+      <a routerLink="/salary-structures" class="btn btn-secondary">Back to List</a>
+      <a [routerLink]="['/salary-structures', s.id, 'edit']" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-primary">Edit</a>
+    </div>
+  </div>
+
+  <div class="details-grid">
+    <div class="card detail-card">
+      <div class="section-title">Structure Details</div>
+      <dl>
+        <dt>Structure Code</dt><dd>{{ s.structureCode }}</dd>
+        <dt>Structure Name</dt><dd>{{ s.structureName }}</dd>
+        <dt>Salary Type</dt><dd>{{ s.salaryType }}</dd>
+        @if (s.salaryType === 'DAILY') {
+          <dt>Daily Rate</dt><dd>&#8377;{{ s.dailyRate }}</dd>
+        }
+        @if (s.salaryType === 'HOURLY') {
+          <dt>Hourly Rate</dt><dd>&#8377;{{ s.hourlyRate }}</dd>
+        }
+        <dt>Description</dt><dd>{{ s.description || '-' }}</dd>
+        <dt>Effective From</dt><dd>{{ s.effectiveFrom }}</dd>
+        <dt>Effective To</dt><dd>{{ s.effectiveTo || 'Ongoing' }}</dd>
+        <dt>Status</dt>
+        <dd>
+          @if (s.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+          @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+        </dd>
+        <dt>Employees Using This</dt><dd>{{ s.employeeCount }}</dd>
+      </dl>
+    </div>
+
+    <div class="card detail-card">
+      <div class="section-title">Salary Components</div>
+      @if (s.components.length === 0) {
+        <p class="muted">No components on this structure.</p>
+      } @else {
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Component</th><th>Type</th><th>Calculation</th><th>Amount</th></tr></thead>
+            <tbody>
+              @for (c of s.components; track c.id) {
+                <tr>
+                  <td>{{ c.componentName }}</td>
+                  <td>{{ c.componentType }}</td>
+                  <td>
+                    @if (c.calculationType === 'PERCENTAGE_OF_BASIC' || c.calculationType === 'PERCENTAGE_OF_GROSS') {
+                      {{ c.percentage }}% {{ c.calculationType === 'PERCENTAGE_OF_BASIC' ? 'of Basic' : 'of Gross' }}
+                    } @else {
+                      {{ c.calculationType }}
+                    }
+                  </td>
+                  <td>&#8377;{{ c.resolvedAmount }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="temp-password-box" style="background: var(--info-bg); border-color: var(--secondary-color); margin-top: 1rem;">
+        <div class="muted" style="font-size: 0.85rem;">
+          Sum of the earning components above
+        </div>
+        <div style="margin-top: 0.4rem; font-size: 1.1rem;">
+          Gross Earnings: <strong>&#8377;{{ s.grossEarnings }}</strong>
+        </div>
+        <p class="muted" style="font-size: 0.8rem; margin-top: 0.5rem; margin-bottom: 0;">
+          This is what the employee earns before any deduction. PF, ESI, Professional Tax, and Net Pay are calculated per month by Payroll, not here - see <a routerLink="/payroll/settings">Payroll Settings</a> and Payroll Processing.
+        </p>
+      </div>
+    </div>
+  </div>
+  }
+}

@@ -1,0 +1,27 @@
+.details-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .details-grid { grid-template-columns: 1fr; }
+}
+.detail-card { padding: 1.5rem; }
+dl { display: grid; grid-template-columns: 130px 1fr; row-gap: 0.6rem; margin: 0 0 0.5rem; }
+dt { color: var(--muted-color); font-size: 0.8rem; }
+dd { margin: 0; font-weight: 600; font-size: 0.88rem; }
+.temp-password-box {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--warning-bg);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+}
+.temp-password-box code {
+  display: block;
+  margin: 0.4rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

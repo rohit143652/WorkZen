@@ -1,0 +1,87 @@
+<div class="page-header">
+  <div>
+    <h1>Attendance History</h1>
+    <p class="muted">Pick an employee and a date range to view their attendance.</p>
+  </div>
+</div>
+
+<div class="card filters" style="align-items: flex-end;">
+  <div class="form-field" style="margin: 0; min-width: 240px;">
+    <label>Employee</label>
+    <select [(ngModel)]="selectedEmployeeId">
+      <option [ngValue]="null">Select an employee</option>
+      @for (e of employees(); track e.id) { <option [ngValue]="e.id">{{ e.employeeCode }} &middot; {{ e.firstName }} {{ e.lastName }}</option> }
+    </select>
+  </div>
+  <div class="form-field" style="margin: 0;">
+    <label>From</label>
+    <input type="date" [(ngModel)]="fromDate" [max]="today" />
+  </div>
+  <div class="form-field" style="margin: 0;">
+    <label>To</label>
+    <input type="date" [(ngModel)]="toDate" [max]="today" />
+  </div>
+  <button type="button" class="btn btn-primary" (click)="search()">Search</button>
+</div>
+
+@if (searched()) {
+  <div class="card table-card">
+    @if (loading()) {
+      <div style="padding: 1rem;">
+        @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+      </div>
+    } @else if (records().length === 0) {
+      <div class="empty-state">No attendance records in this date range.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Site</th><th>Status</th><th>Remarks</th><th>Marked By</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (r of records(); track r.id) {
+              <tr>
+                <td>{{ r.attendanceDate }}</td>
+                <td>{{ r.siteName }}</td>
+                <td>
+                  @if (editingId() !== r.id) {
+                    <app-status-badge [label]="statusLabel(r.status)" [kind]="badgeKind(r.status)"></app-status-badge>
+                  } @else {
+                    <select [(ngModel)]="editStatus">
+                      @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+                    </select>
+                  }
+                </td>
+                <td>
+                  @if (editingId() !== r.id) {
+                    {{ r.remarks || '-' }}
+                  } @else {
+                    <input type="text" [(ngModel)]="editRemarks" style="padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; width: 140px;" />
+                  }
+                </td>
+                <td>
+                  {{ r.markedByUsername || '-' }}
+                  @if (r.updatedByUsername) {
+                    <div class="muted" style="font-size: 0.75rem;">edited by {{ r.updatedByUsername }}</div>
+                  }
+                </td>
+                <td>
+                  <div class="actions">
+                  @if (editingId() === r.id) {
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEdit()">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="savingId() === r.id" (click)="saveEdit(r)">
+                      {{ savingId() === r.id ? 'Saving...' : 'Save' }}
+                    </button>
+                  } @else if (r.editable) {
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="startEdit(r)">Edit</button>
+                  }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}

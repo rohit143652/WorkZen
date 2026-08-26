@@ -1,0 +1,16 @@
+@if (dialog.active(); as request) {
+  <div class="overlay" (click)="dialog.respond(false)">
+    <div class="dialog card" (click)="$event.stopPropagation()">
+      <h3>{{ request.title }}</h3>
+      <p>{{ request.message }}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" (click)="dialog.respond(false)">
+          {{ request.cancelLabel || 'Cancel' }}
+        </button>
+        <button type="button" [class]="request.danger ? 'btn btn-danger' : 'btn btn-primary'" (click)="dialog.respond(true)">
+          {{ request.confirmLabel || 'Confirm' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

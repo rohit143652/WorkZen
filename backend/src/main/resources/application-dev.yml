@@ -1,0 +1,21 @@
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+  # No datasource override here anymore - the base application.yml's ${DB_URL}/${DB_USERNAME}/
+  # ${DB_PASSWORD} (all read from real environment variables, no hardcoded credential) apply to
+  # every profile including dev. Set them in your shell/.env before running - see README.
+
+# No JWT secret override here anymore - it must come from a real JWT_SECRET environment
+# variable (see base application.yml + README), even for local development. Generate your own
+# with: openssl rand -base64 64
+
+app:
+  cookie:
+    secure: false
+    same-site: Lax
+
+logging:
+  level:
+    com.example.application: DEBUG

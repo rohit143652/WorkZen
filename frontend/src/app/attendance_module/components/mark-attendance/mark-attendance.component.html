@@ -1,0 +1,89 @@
+<div class="page-header">
+  <div>
+    <h1>Mark Attendance</h1>
+    <p class="muted">Mark today's or a previous date's attendance for actively-assigned employees. Once saved, a marked day cannot be changed except by a Client Admin.</p>
+  </div>
+</div>
+
+<div class="card filters">
+  <div class="form-field" style="margin: 0;">
+    <label>Date</label>
+    <input type="date" [(ngModel)]="selectedDate" [max]="today" (ngModelChange)="onFilterChange()" />
+  </div>
+  <div class="form-field" style="margin: 0; min-width: 220px;">
+    <label>Site</label>
+    <select [(ngModel)]="selectedSiteId" (ngModelChange)="onFilterChange()">
+      <option [ngValue]="null">All sites</option>
+      @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.siteName }}</option> }
+    </select>
+  </div>
+
+  @if (unmarkedCount > 0) {
+    <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: flex-end;">
+      <button type="button" class="btn btn-secondary btn-sm" (click)="markAllPresent()">Mark all unmarked as Present</button>
+      @if (pendingCount > 0) {
+        <button type="button" class="btn btn-secondary btn-sm" (click)="clearSelections()">Clear selections</button>
+      }
+    </div>
+  }
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3,4]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="empty-state">No actively-assigned employees found for this filter.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Employee</th><th>Site</th><th>Status</th><th>Remarks</th><th>Marked By</th></tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.employeeId) {
+            <tr>
+              <td>{{ row.employeeCode }} &middot; {{ row.employeeName }}</td>
+              <td>{{ row.siteName }}</td>
+              <td>
+                @if (row.existingRecord) {
+                  <app-status-badge [label]="statusLabel(row.existingRecord.status)" [kind]="badgeKind(row.existingRecord.status)"></app-status-badge>
+                } @else {
+                  <select [ngModel]="selections.get(row.employeeId) ?? ''" (ngModelChange)="setStatus(row.employeeId, $event)">
+                    <option value="">Not marked</option>
+                    @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+                  </select>
+                }
+              </td>
+              <td>
+                @if (row.existingRecord) {
+                  {{ row.existingRecord.remarks || '-' }}
+                } @else {
+                  <input
+                    type="text"
+                    placeholder="Optional"
+                    [ngModel]="remarksByEmployee.get(row.employeeId) ?? ''"
+                    (ngModelChange)="remarksByEmployee.set(row.employeeId, $event)"
+                    style="padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; width: 140px;" />
+                }
+              </td>
+              <td class="muted" style="font-size: 0.78rem;">
+                {{ row.existingRecord ? (row.existingRecord.markedByUsername || '-') : '-' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (unmarkedCount > 0) {
+      <div class="form-actions">
+        <span class="muted">{{ pendingCount }} of {{ unmarkedCount }} unmarked employee(s) have a status selected</span>
+        <button type="button" class="btn btn-primary" [disabled]="pendingCount === 0 || savingAll()" (click)="saveAll()">
+          {{ savingAll() ? 'Saving...' : 'Save All (' + pendingCount + ')' }}
+        </button>
+      </div>
+    }
+  }
+</div>

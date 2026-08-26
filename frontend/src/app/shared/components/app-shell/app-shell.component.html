@@ -1,0 +1,82 @@
+<div class="shell" [class.sidebar-collapsed]="!sidebarOpen()">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"><img src="assets/logo.png" alt="WORKZEN" class="brand-logo-img" /></span>
+      @if (sidebarOpen()) {
+        <span class="brand-name">WORKZEN</span>
+      }
+      <button type="button" class="collapse-btn" (click)="toggleSidebar()" [attr.aria-label]="sidebarOpen() ? 'Close menu' : 'Open menu'">
+        <i class="bi" [ngClass]="sidebarOpen() ? 'bi-x-lg' : 'bi-list'"></i>
+      </button>
+    </div>
+
+    <nav class="nav">
+      @if (isVisible(dashboardItem)) {
+        <a [routerLink]="dashboardItem.path" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
+          <i class="bi nav-icon" [ngClass]="'bi-' + dashboardItem.icon"></i>
+          @if (sidebarOpen()) { <span>{{ dashboardItem.label }}</span> }
+        </a>
+      }
+
+      @for (group of visibleGroups; track group.label) {
+        <div class="nav-group">
+          <button type="button" class="nav-item nav-group-header" (click)="toggleGroup(group.label)">
+            <i class="bi nav-icon" [ngClass]="'bi-' + group.icon"></i>
+            @if (sidebarOpen()) {
+              <span class="nav-group-label">{{ group.label }}</span>
+              <i class="bi bi-chevron-right nav-chevron" [class.open]="isExpanded(group.label)"></i>
+            }
+          </button>
+
+          @if (isExpanded(group.label) && sidebarOpen()) {
+            <div class="nav-submenu">
+              @for (child of group.children; track child.path) {
+                <a [routerLink]="child.path" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item nav-subitem">
+                  <i class="bi nav-icon" [ngClass]="'bi-' + child.icon"></i>
+                  <span>{{ child.label }}</span>
+                </a>
+              }
+            </div>
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="mobile-toggle" (click)="toggleSidebar()" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="app-title">WORKZEN</div>
+
+      <div class="topbar-right">
+        <div class="profile" (click)="toggleProfileMenu()">
+          <span class="avatar">{{ initials() }}</span>
+          @if (authState.currentUser(); as user) {
+            <span class="profile-name">
+              {{ user.username }}
+              <small>{{ user.roles[0] }}</small>
+            </span>
+          }
+          <i class="bi bi-chevron-down profile-caret"></i>
+
+          @if (profileMenuOpen()) {
+            <div class="profile-dropdown card" (click)="$event.stopPropagation()">
+              <button type="button" class="dropdown-item" (click)="logout()">
+                <i class="bi bi-box-arrow-right"></i> Logout
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+
+<app-toast-container></app-toast-container>
+<app-confirm-dialog></app-confirm-dialog>

@@ -1,0 +1,187 @@
+<div class="page-header">
+  <div>
+    <h1>Payroll Run</h1>
+    <p class="muted"><a routerLink="/payroll/runs">&larr; Back to Payroll Processing</a></p>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="card form-card"><div class="skeleton" style="height: 200px;"></div></div>
+} @else {
+  @if (run(); as r) {
+  <div class="card detail-card">
+    <div style="display:flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div class="section-title" style="margin-top:0;">{{ r.monthLabel }}</div>
+        <dl>
+          <dt>Status</dt>
+          <dd>
+            @switch (r.status) {
+              @case ('DRAFT') { <app-status-badge label="Draft" kind="muted"></app-status-badge> }
+              @case ('CALCULATED') { <app-status-badge label="Calculated" kind="info"></app-status-badge> }
+              @case ('APPROVED') { <app-status-badge label="Approved" kind="success"></app-status-badge> }
+              @case ('PAID') { <app-status-badge label="Paid" kind="success"></app-status-badge> }
+              @default { <app-status-badge label="Cancelled" kind="danger"></app-status-badge> }
+            }
+          </dd>
+          <dt>Created</dt><dd>{{ r.createdAt | date:'medium' }} @if (r.createdBy) { by {{ r.createdBy }} }</dd>
+          @if (r.calculatedAt) { <dt>Calculated</dt><dd>{{ r.calculatedAt | date:'medium' }} @if (r.calculatedBy) { by {{ r.calculatedBy }} }</dd> }
+          @if (r.approvedAt) { <dt>Approved</dt><dd>{{ r.approvedAt | date:'medium' }} @if (r.approvedBy) { by {{ r.approvedBy }} }</dd> }
+          @if (r.paidAt) { <dt>Paid</dt><dd>{{ r.paidAt | date:'medium' }} @if (r.paidBy) { by {{ r.paidBy }} }</dd> }
+          @if (r.reopenedAt) { <dt>Reopened</dt><dd>{{ r.reopenedAt | date:'medium' }} @if (r.reopenedBy) { by {{ r.reopenedBy }} } @if (r.reopenReason) { &mdash; "{{ r.reopenReason }}" }</dd> }
+          @if (r.cancelledAt) { <dt>Cancelled</dt><dd>{{ r.cancelledAt | date:'medium' }} @if (r.cancelledBy) { by {{ r.cancelledBy }} } @if (r.cancellationReason) { &mdash; "{{ r.cancellationReason }}" }</dd> }
+        </dl>
+      </div>
+
+      <div class="actions">
+        @if (recalculable()) {
+          <button type="button" *appHasPermission="'PAYROLL_RUN_CALCULATE'" class="btn btn-primary" [disabled]="actionInProgress()" (click)="calculate()">
+            @if (actionInProgress()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-calculator"></i> }
+            {{ actionInProgress() ? 'Calculating...' : (r.status === 'DRAFT' ? 'Calculate' : 'Recalculate') }}
+          </button>
+        }
+        @if (r.status === 'CALCULATED') {
+          <button type="button" *appHasPermission="'PAYROLL_RUN_APPROVE'" class="btn btn-secondary" [disabled]="actionInProgress()" (click)="approve()">
+            @if (actionInProgress()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-check2-circle"></i> }
+            {{ actionInProgress() ? 'Approving...' : 'Approve' }}
+          </button>
+        }
+        @if (r.status === 'APPROVED') {
+          <button type="button" *appHasPermission="'PAYROLL_RUN_PAY'" class="btn btn-secondary" [disabled]="actionInProgress()" (click)="markPaid()">
+            @if (actionInProgress()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-cash-coin"></i> }
+            {{ actionInProgress() ? 'Saving...' : 'Mark Paid' }}
+          </button>
+          <button type="button" *appHasPermission="'PAYROLL_RUN_REOPEN'" class="btn btn-secondary" [disabled]="actionInProgress()" (click)="openReopenForm()">
+            <i class="bi bi-unlock"></i> Reopen
+          </button>
+        }
+        @if (recalculable()) {
+          <button type="button" *appHasPermission="'PAYROLL_RUN_CANCEL'" class="btn btn-danger" [disabled]="actionInProgress()" (click)="openCancelForm()">
+            <i class="bi bi-x-circle"></i> Cancel Run
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (showCancelForm()) {
+      <div class="login-access-section enabled" style="margin-top: 1rem;">
+        <label>Cancellation reason (required)</label>
+        <textarea rows="2" [(ngModel)]="cancelReasonText" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;" placeholder="Why is this payroll run being cancelled?"></textarea>
+        <div class="form-actions" style="border: none; padding-top: 0.5rem;">
+          <button type="button" class="btn btn-secondary" (click)="cancelCancelForm()">Back</button>
+          <button type="button" class="btn btn-danger" [disabled]="actionInProgress()" (click)="confirmCancel()">
+            @if (actionInProgress()) { <span class="btn-spinner"></span>Cancelling... } @else { Confirm Cancellation }
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (showReopenForm()) {
+      <div class="login-access-section enabled" style="margin-top: 1rem;">
+        <label>Reopen reason (required)</label>
+        <textarea rows="2" [(ngModel)]="reopenReasonText" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;" placeholder="Why is this approved payroll being reopened for correction?"></textarea>
+        <p class="muted" style="font-size: 0.8rem;">This returns the run to CALCULATED so it can be reviewed and recalculated. It does not reverse anything already paid.</p>
+        <div class="form-actions" style="border: none; padding-top: 0.5rem;">
+          <button type="button" class="btn btn-secondary" (click)="cancelReopenForm()">Back</button>
+          <button type="button" class="btn btn-primary" [disabled]="actionInProgress()" (click)="confirmReopen()">
+            @if (actionInProgress()) { <span class="btn-spinner"></span>Reopening... } @else { Confirm Reopen }
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (r.status === 'DRAFT') {
+      <div class="empty-state" style="margin-top: 1rem;">This run hasn't been calculated yet. Click "Calculate" to process every active employee for {{ r.monthLabel }}.</div>
+    } @else {
+      <div class="section-title" style="margin-top: 1.5rem;">Summary</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total Employees</div><strong>{{ r.summary.totalEmployees }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total Gross</div><strong>₹{{ r.summary.totalGross }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total EPF</div><strong>₹{{ r.summary.totalEpf }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total ESI</div><strong>₹{{ r.summary.totalEsi }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total P.T.</div><strong>₹{{ r.summary.totalPt }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total Other Deduction</div><strong>₹{{ r.summary.totalOtherDeduction }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total Advance Recovery</div><strong>₹{{ r.summary.totalAdvanceRecovery }}</strong></div>
+        <div class="card" style="padding: 0.9rem;"><div class="muted">Total Deductions</div><strong>₹{{ r.summary.totalDeductions }}</strong></div>
+        <div class="card" style="padding: 0.9rem; background: var(--accent-soft, #eef2ff);"><div class="muted">Total Net Pay</div><strong>₹{{ r.summary.totalNetPay }}</strong></div>
+      </div>
+
+      <div class="section-title" style="margin-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+        <span>Employee Payroll Results</span>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="downloadingRegister()" (click)="downloadSalaryRegister()">
+          @if (downloadingRegister()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-file-earmark-excel"></i> }
+          {{ downloadingRegister() ? 'Generating...' : 'Download Salary Register' }}
+        </button>
+      </div>
+      @if (employees().length === 0) {
+        <div class="empty-state">No employee results yet.</div>
+      } @else {
+        <p class="muted" style="font-size: 0.85rem;">Advance/Uniform deduction and Allowance can be edited directly below - saving automatically recalculates the whole run so totals update right away.</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th><th>Payable Days</th><th>Gross</th><th>EPF</th><th>ESI</th><th>P.T.</th>
+                <th>Advance/Uniform</th><th>Advance Recovery</th><th>Allowance</th><th>Total Deduct</th><th>Net Pay</th><th>Note</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of employees(); track e.id) {
+                <tr>
+                  <td>{{ e.employeeCode }} &middot; {{ e.employeeName }}</td>
+                  <td>{{ e.payableDays }}</td>
+                  <td>₹{{ e.grossSalary }}</td>
+                  <td>₹{{ e.epfEmployee }}</td>
+                  <td>₹{{ e.esiEmployee }}</td>
+                  <td>₹{{ e.professionalTax }}</td>
+                  <td>
+                    @if (editingEmployeeId() === e.employeeId) {
+                      <input type="number" min="0" [(ngModel)]="editAdvanceUniform" style="width: 70px; padding: 0.25rem; border: 1px solid var(--border-color); border-radius: 6px;" />
+                    } @else {
+                      ₹{{ e.otherManualDeduction }}
+                    }
+                  </td>
+                  <td>
+                    <div>₹{{ e.advanceRecovery }}</div>
+                    @if (e.advanceOutstandingBeforeRecovery > 0 || e.advanceOutstandingAfterRecovery > 0) {
+                      <div class="muted" style="font-size: 0.72rem; white-space: nowrap;" title="Advance outstanding before this month's recovery, and what remains after it">
+                        ₹{{ e.advanceOutstandingBeforeRecovery }} &rarr; ₹{{ e.advanceOutstandingAfterRecovery }}
+                      </div>
+                    }
+                  </td>
+                  <td>
+                    @if (editingEmployeeId() === e.employeeId) {
+                      <input type="number" min="0" [(ngModel)]="editAllowance" style="width: 70px; padding: 0.25rem; border: 1px solid var(--border-color); border-radius: 6px;" />
+                    } @else {
+                      ₹{{ e.allowance }}
+                    }
+                  </td>
+                  <td>₹{{ e.totalDeductions }}</td>
+                  <td><strong>₹{{ e.netPay }}</strong></td>
+                  <td class="muted" style="white-space: normal; min-width: 160px;">{{ e.note }}</td>
+                  <td>
+                    <div class="actions">
+                    @if (recalculable()) {
+                      @if (editingEmployeeId() === e.employeeId) {
+                        <button type="button" class="btn btn-primary btn-sm" [disabled]="savingEmployeeId() === e.employeeId" (click)="saveAdjustment(e)">
+                          @if (savingEmployeeId() === e.employeeId) { <span class="btn-spinner"></span> } @else { <i class="bi bi-check-lg"></i> }
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditAdjustment()"><i class="bi bi-x-lg"></i></button>
+                      } @else {
+                        <button type="button" *appHasPermission="'PAYROLL_RUN_CALCULATE'" class="btn-ghost btn btn-sm" (click)="startEditAdjustment(e)" title="Edit Advance/Uniform and Allowance">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      }
+                    }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+  }
+}

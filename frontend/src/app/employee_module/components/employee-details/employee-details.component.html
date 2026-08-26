@@ -1,0 +1,245 @@
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 240px;"></div></div>
+} @else {
+  @if (employee(); as emp) {
+    <div class="page-header">
+      <div>
+        <h1>{{ emp.firstName }} {{ emp.lastName }}</h1>
+        <p class="muted">{{ emp.employeeCode }} &middot; {{ emp.department }} &middot; {{ emp.designation }}</p>
+      </div>
+      <a routerLink="/employees" class="btn btn-secondary">Back to Employees</a>
+    </div>
+
+    <div class="details-grid">
+      <div class="card detail-card">
+        <div class="section-title">Personal Information</div>
+        <dl>
+          <dt>Full Name</dt><dd>{{ emp.firstName }} {{ emp.middleName }} {{ emp.lastName }}</dd>
+          <dt>Email</dt><dd>{{ emp.email }}</dd>
+          <dt>Mobile</dt><dd>{{ emp.mobileNumber || '-' }}</dd>
+          <dt>Date of Birth</dt><dd>{{ emp.dateOfBirth || '-' }}</dd>
+          <dt>Gender</dt><dd>{{ emp.gender || '-' }}</dd>
+        </dl>
+
+        <div class="section-title">Employment Information</div>
+        <dl>
+          <dt>Joining Date</dt><dd>{{ emp.joiningDate }}</dd>
+          <dt>Department</dt><dd>{{ emp.department }}</dd>
+          <dt>Designation</dt><dd>{{ emp.designation }}</dd>
+          <dt>Employment Type</dt><dd>{{ emp.employmentType || '-' }}</dd>
+          <dt>Status</dt>
+          <dd>
+            @if (emp.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+            @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+          </dd>
+        </dl>
+
+        @if (emp.salaryVisible) {
+          <div class="section-title">Current Salary</div>
+          @if (emp.currentSalaryStructureName) {
+            <dl>
+              <dt>Salary Structure</dt><dd>{{ emp.currentSalaryStructureName }} ({{ emp.currentSalaryType }})</dd>
+              <dt>Effective From</dt><dd>{{ emp.currentSalaryEffectiveFrom }}</dd>
+            </dl>
+            <div class="temp-password-box" style="background: var(--info-bg); border-color: var(--secondary-color);">
+              <div style="font-size: 1.05rem;">
+                Gross Earnings: <strong>&#8377;{{ emp.currentGrossEarnings }}</strong>
+              </div>
+              <p class="muted" style="font-size: 0.8rem; margin-top: 0.4rem; margin-bottom: 0;">
+                This is what the employee earns before deductions. Actual Net Pay for a given month comes from Payroll Processing, not from the Salary Structure itself.
+              </p>
+            </div>
+          } @else {
+            <p class="muted">No salary structure assigned yet. See the Salary Structure section below to assign one.</p>
+          }
+        }
+
+        <div class="section-title">Address</div>
+        <dl>
+          <dt>Address</dt><dd>{{ emp.address || '-' }}</dd>
+          <dt>City / State</dt><dd>{{ emp.city || '-' }} / {{ emp.state || '-' }}</dd>
+          <dt>Country</dt><dd>{{ emp.country || '-' }}</dd>
+          <dt>Pincode</dt><dd>{{ emp.pincode || '-' }}</dd>
+        </dl>
+      </div>
+
+      <div class="card detail-card">
+        <div class="section-title">Login Information</div>
+
+        @if (!emp.loginEnabled) {
+          <p class="muted">Login Disabled — this employee has no active login access.</p>
+          @if (!showEnableLoginForm()) {
+            <button type="button" *appHasPermission="'EMPLOYEE_ENABLE_LOGIN'" class="btn btn-primary" (click)="openEnableLoginForm()">
+              Enable Login
+            </button>
+          } @else {
+            <form [formGroup]="enableLoginForm" (ngSubmit)="submitEnableLogin()" class="login-access-section enabled" novalidate>
+              <div class="form-field">
+                <label>Username</label>
+                <input type="text" formControlName="username" />
+              </div>
+              <div class="form-field">
+                <label>Password</label>
+                <input type="password" formControlName="password" />
+              </div>
+              <div class="form-field">
+                <label>Role</label>
+                <select formControlName="roleId">
+                  <option [ngValue]="null">Select a role</option>
+                  @for (role of roles(); track role.id) { <option [ngValue]="role.id">{{ role.name }}</option> }
+                </select>
+              </div>
+              <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
+                <button type="button" class="btn btn-secondary" (click)="showEnableLoginForm.set(false)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="savingLogin()">
+                  {{ savingLogin() ? 'Saving...' : 'Enable Login' }}
+                </button>
+              </div>
+            </form>
+          }
+        } @else {
+          <dl>
+            <dt>Username</dt><dd>{{ emp.username }}</dd>
+            <dt>Login Status</dt>
+            <dd>
+              @if (emp.userLocked) { <app-status-badge label="Locked" kind="danger"></app-status-badge> }
+              @else { <app-status-badge label="🟢 Login Enabled" kind="success"></app-status-badge> }
+            </dd>
+            <dt>Role</dt>
+            <dd>
+              <select (change)="changeRole($any($event.target).value)" *appHasPermission="'EMPLOYEE_ASSIGN_ROLE'">
+                <option value="">{{ emp.roles?.join(', ') }}</option>
+                @for (role of roles(); track role.id) { <option [value]="role.id">{{ role.name }}</option> }
+              </select>
+            </dd>
+            <dt>Last Login</dt><dd>{{ emp.lastLoginAt || 'Never' }}</dd>
+          </dl>
+
+          <div class="actions" style="margin-top: 1rem;">
+            <button type="button" *appHasPermission="'EMPLOYEE_DISABLE_LOGIN'" class="btn btn-danger btn-sm" (click)="disableLogin()">Disable Login</button>
+            <button type="button" *appHasPermission="'EMPLOYEE_RESET_PASSWORD'" class="btn btn-secondary btn-sm" (click)="resetPassword()">Reset Password</button>
+          </div>
+
+          @if (lastTempPassword(); as temp) {
+            <div class="temp-password-box">
+              <strong>Temporary password (shown once):</strong>
+              <code>{{ temp }}</code>
+              <p class="muted">Share this securely with the employee. It will not be shown again.</p>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="card detail-card" style="margin-top: 1rem;">
+        <div class="section-title">Site Assignment</div>
+        @if (currentAssignment(); as current) {
+          <dl>
+            <dt>Current Site</dt><dd>{{ current.siteName || ('Site #' + current.siteId) }}</dd>
+            <dt>Since</dt><dd>{{ current.startDate }}</dd>
+            @if (current.remarks) { <dt>Remarks</dt><dd>{{ current.remarks }}</dd> }
+          </dl>
+        } @else {
+          <p class="muted">Not currently assigned to any site.</p>
+        }
+
+        @if (!showTransferForm()) {
+          <button type="button" class="btn btn-secondary btn-sm" (click)="showTransferForm.set(true)">
+            {{ currentAssignment() ? 'Transfer to Another Site' : 'Assign to a Site' }}
+          </button>
+        } @else {
+          <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()" class="login-access-section enabled" novalidate>
+            <div class="form-field">
+              <label>Transfer To</label>
+              <select formControlName="toSiteId">
+                <option [ngValue]="null">Select a site</option>
+                @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.siteName }} ({{ s.siteCode }})</option> }
+              </select>
+            </div>
+            <div class="form-field"><label>Effective Date</label><input type="date" formControlName="effectiveDate" /></div>
+            <div class="form-field"><label>Reason</label><input type="text" formControlName="reason" placeholder="e.g. Staff rotation" /></div>
+            <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
+              <button type="button" class="btn btn-secondary" (click)="showTransferForm.set(false)">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="transferring()">
+                {{ transferring() ? 'Transferring...' : 'Transfer Employee' }}
+              </button>
+            </div>
+          </form>
+        }
+
+        @if (assignmentHistory().length > 0) {
+          <div class="section-title" style="margin-top: 1.25rem;">Assignment History</div>
+          @for (a of assignmentHistory(); track a.id) {
+            <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.82rem;">
+              <span>{{ a.siteName || ('Site #' + a.siteId) }}</span>
+              <span class="muted">{{ a.startDate }} &rarr; {{ a.endDate || 'current' }}</span>
+            </div>
+          }
+        }
+      </div>
+
+      @if (authState.hasPermission('SALARY_STRUCTURE_READ')) {
+        <div class="card detail-card" style="margin-top: 1rem;">
+          <div class="section-title">Salary Structure</div>
+
+          @if (currentSalaryStructure(); as current) {
+            <dl>
+              <dt>Structure</dt><dd>{{ current.structureName }} ({{ current.structureCode }})</dd>
+              <dt>Effective From</dt><dd>{{ current.effectiveFrom }}</dd>
+              <dt>Gross Earnings</dt><dd><strong>&#8377;{{ current.grossEarnings }}</strong></dd>
+            </dl>
+            <p class="muted" style="font-size: 0.8rem;">This is what the employee earns before deductions. See Payroll Processing for actual monthly Net Pay.</p>
+          } @else {
+            <p class="muted">No salary structure assigned yet.</p>
+          }
+
+          <div class="actions" style="margin-top: 0.75rem;">
+            @if (!showAssignSalaryForm()) {
+              <button type="button" *appHasPermission="'SALARY_ASSIGN'" class="btn btn-secondary btn-sm" (click)="openAssignSalaryForm()">
+                {{ currentSalaryStructure() ? 'Change Salary Structure' : 'Assign Salary Structure' }}
+              </button>
+            }
+            <button type="button" class="btn btn-secondary btn-sm" (click)="toggleSalaryHistory()">
+              {{ showSalaryHistory() ? 'Hide' : 'Show' }} Salary History
+            </button>
+          </div>
+
+          @if (showAssignSalaryForm()) {
+            <form [formGroup]="assignSalaryForm" (ngSubmit)="submitAssignSalary()" class="login-access-section enabled" style="margin-top: 0.75rem;" novalidate>
+              <div class="form-field">
+                <label>Salary Structure</label>
+                <select formControlName="salaryStructureId">
+                  <option [ngValue]="null">Select a structure</option>
+                  @for (s of availableSalaryStructures(); track s.id) {
+                    <option [ngValue]="s.id">{{ s.structureName }} (Gross &#8377;{{ s.grossEarnings }})</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field"><label>Effective From</label><input type="date" formControlName="effectiveFrom" /></div>
+              <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
+                <button type="button" class="btn btn-secondary" (click)="showAssignSalaryForm.set(false)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="assigningSalary()">
+                  {{ assigningSalary() ? 'Assigning...' : 'Assign' }}
+                </button>
+              </div>
+            </form>
+          }
+
+          @if (showSalaryHistory() && salaryHistory().length > 0) {
+            <div class="section-title" style="margin-top: 1.25rem;">Salary History</div>
+            @for (h of salaryHistory(); track h.id) {
+              <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.82rem;">
+                <span>{{ h.structureName }} (Gross &#8377;{{ h.grossEarnings }})</span>
+                <span class="muted">{{ h.effectiveFrom }} &rarr; {{ h.effectiveTo || 'current' }}</span>
+              </div>
+            }
+          }
+        </div>
+      }
+
+      <app-employee-paid-leave [employeeId]="emp.id"></app-employee-paid-leave>
+      <div *appHasPermission="'ADVANCE_READ'">
+        <app-employee-advances [employeeId]="emp.id"></app-employee-advances>
+      </div>
+    </div>
+  }
+}

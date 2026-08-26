@@ -1,0 +1,80 @@
+<div class="login-page">
+  <div class="branding-side">
+    <div class="branding-inner">
+      <div class="brand-mark"><img src="assets/logo.png" alt="WORKZEN" /></div>
+      <h1>WORKZEN</h1>
+      <p>
+        A secure, permission-driven home for your team's employees, roles and
+        access — sign in to manage everything from one dashboard.
+      </p>
+      <ul class="feature-list">
+        <li>Role &amp; permission based access control</li>
+        <li>Employee management with optional login access</li>
+        <li>Full audit trail on every sensitive action</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="form-side">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <p class="subtitle">Welcome back. Please enter your details.</p>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            formControlName="username"
+            autocomplete="username"
+            [class.invalid]="form.controls.username.invalid && form.controls.username.touched" />
+          @if (form.controls.username.invalid && form.controls.username.touched) {
+            <span class="field-error">Username is required</span>
+          }
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="password-wrapper">
+            <input
+              id="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="current-password"
+              [class.invalid]="form.controls.password.invalid && form.controls.password.touched" />
+            <button type="button" class="toggle-visibility" (click)="togglePasswordVisibility()">
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+          @if (form.controls.password.invalid && form.controls.password.touched) {
+            <span class="field-error">Password is required</span>
+          }
+        </div>
+
+        <div class="field-row">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="rememberMe" />
+            Remember me
+          </label>
+          <a href="#" class="forgot-link" (click)="$event.preventDefault()">Forgot password?</a>
+        </div>
+
+        @if (errorMessage()) {
+          <div class="alert" [class.alert-locked]="accountLocked()">
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <button type="submit" class="submit-btn" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner" aria-hidden="true"></span>
+            Signing in...
+          } @else {
+            Sign in
+          }
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

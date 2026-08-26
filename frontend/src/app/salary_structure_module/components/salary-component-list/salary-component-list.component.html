@@ -1,0 +1,90 @@
+<div class="page-header">
+  <div>
+    <h1>Salary Components</h1>
+    <p class="muted">The building blocks (Basic, HRA, PF, ESI...) that Salary Structures are assembled from.</p>
+  </div>
+</div>
+
+<div class="card" *appHasPermission="'SALARY_STRUCTURE_CREATE'" style="padding: 1.25rem; margin-bottom: 1rem;">
+  <div class="section-title">Add Component</div>
+  <p class="muted" style="font-size: 0.85rem; margin-top: -0.5rem;">
+    Only Earning and Reimbursement components can be created here. PF, ESI, Professional Tax, and other monthly deductions are configured in Payroll Settings instead.
+  </p>
+  <div class="form-grid">
+    <div class="form-field">
+      <label>Name</label>
+      <input type="text" [(ngModel)]="newName" placeholder="e.g. House Rent Allowance" />
+    </div>
+    <div class="form-field">
+      <label>Type</label>
+      <select [(ngModel)]="newType">
+        @for (t of componentTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+      </select>
+    </div>
+    <div class="form-field">
+      <label>Calculation</label>
+      <select [(ngModel)]="newCalcType">
+        @for (t of calculationTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+      </select>
+    </div>
+    @if (needsValue(newCalcType)) {
+      <div class="form-field"><label>Amount (₹)</label><input type="number" min="0" [(ngModel)]="newValue" /></div>
+    }
+    @if (needsPercentage(newCalcType)) {
+      <div class="form-field"><label>Percentage</label><input type="number" min="0" max="100" [(ngModel)]="newPercentage" /></div>
+    }
+    <div class="form-field">
+      <label>Taxable</label>
+      <label class="toggle-switch">
+        <input type="checkbox" [(ngModel)]="newTaxable" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="button" class="btn btn-primary" [disabled]="!newName.trim() || saving()" (click)="addComponent()">
+      {{ saving() ? 'Adding...' : '+ Add Component' }}
+    </button>
+  </div>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (components().length === 0) {
+    <div class="empty-state">No salary components yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Calculation</th><th>Value/%</th><th>Taxable</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (c of components(); track c.id) {
+            <tr>
+              <td>{{ c.componentCode }}</td>
+              <td>{{ c.componentName }}</td>
+              <td>{{ c.componentType }}</td>
+              <td>{{ c.calculationType }}</td>
+              <td>{{ c.value != null ? ('₹' + c.value) : (c.percentage != null ? (c.percentage + '%') : '-') }}</td>
+              <td>{{ c.taxable ? 'Yes' : 'No' }}</td>
+              <td>
+                @if (c.active) { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+              </td>
+              <td>
+                <div class="actions">
+                @if (c.active) {
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-danger btn-sm" (click)="toggle(c)">Deactivate</button>
+                } @else {
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-secondary btn-sm" (click)="toggle(c)">Activate</button>
+                }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

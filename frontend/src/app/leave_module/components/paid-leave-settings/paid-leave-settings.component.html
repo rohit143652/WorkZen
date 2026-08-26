@@ -1,0 +1,197 @@
+<div class="page-header">
+  <div>
+    <h1>Paid Leave Settings</h1>
+    <p class="muted">Every employee's monthly paid-leave allocation and carry-forward rules. Each policy is effective-dated - saving never changes an already-effective policy, it schedules a new one for a chosen date. Historical leave balances always keep using the policy that was actually in effect that month.</p>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="card form-card" style="max-width: 640px;"><div class="skeleton" style="height: 160px;"></div></div>
+} @else {
+
+  @if (current(); as c) {
+    <div class="card detail-card" style="max-width: 640px; margin-bottom: 1rem;">
+      <div class="section-title" style="margin-top: 0; display: flex; align-items: center; gap: 0.6rem;">
+        Current Policy
+        @if (c.enabled) {
+          <app-status-badge label="Active" kind="success"></app-status-badge>
+        } @else {
+          <app-status-badge label="Inactive" kind="danger"></app-status-badge>
+        }
+      </div>
+      <p class="muted" style="margin-top: -0.5rem;">
+        @if (c.id != null) {
+          In effect since {{ c.effectiveFrom }}{{ nextScheduled ? '' : ' (open-ended)' }}.
+        } @else {
+          No policy has been scheduled yet - Paid Leave is OFF by default until one is.
+        }
+      </p>
+      @if (!c.enabled) {
+        <p class="muted" style="font-size: 0.85rem;">Paid Leave is switched OFF for this client - employees do not accrue any new monthly paid leave while this is in effect. Any leave balance already carried forward from before can still be used.</p>
+      } @else {
+        <div class="form-grid">
+          <div class="form-field"><label>Monthly Paid Leave</label><div>{{ c.monthlyPaidLeave }} day(s)</div></div>
+          <div class="form-field"><label>Carry Forward</label><div>{{ c.allowCarryForward ? (c.maximumCarryForward != null ? ('On, up to ' + c.maximumCarryForward + ' days') : 'On, unlimited') : 'Off' }}</div></div>
+          <div class="form-field"><label>Annual Reset</label><div>{{ c.resetAnnually ? 'Resets every January' : 'Carries across years' }}</div></div>
+        </div>
+      }
+      @if (nextScheduled; as next) {
+        <div class="temp-password-box" style="background: var(--info-bg); border-color: var(--secondary-color);">
+          <i class="bi bi-calendar-event"></i> A new policy takes effect <strong>{{ next.effectiveFrom }}</strong>:
+          @if (next.enabled) { {{ next.monthlyPaidLeave }} day(s)/month, carry-forward {{ next.allowCarryForward ? 'on' : 'off' }}. }
+          @else { Paid Leave will be switched OFF. }
+        </div>
+      }
+      <div class="form-actions" style="justify-content: flex-start; border: none; padding-top: 0.75rem;">
+        <button type="button" class="btn btn-primary" (click)="openScheduleForm()">
+          <i class="bi bi-calendar-plus"></i> Schedule New Policy
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (showScheduleForm()) {
+    <div class="card form-card" style="max-width: 640px; margin-bottom: 1rem;">
+      <div class="section-title" style="margin-top: 0;">Schedule New Policy</div>
+      <div class="form-field" style="max-width: 220px;">
+        <label>Effective From</label>
+        <input type="date" [(ngModel)]="effectiveFrom" />
+      </div>
+      <p class="muted" style="font-size: 0.85rem;">This policy will apply from the selected effective month onward, until superseded. Historical leave balances will not be changed.</p>
+
+      <div class="toggle-row" style="margin: 1rem 0;">
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="enabled" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Paid Leave Active for this client</span>
+      </div>
+
+      @if (!enabled) {
+        <p class="muted" style="font-size: 0.85rem; margin-bottom: 1rem;">Paid Leave will be switched OFF from the effective date above - no new monthly leave accrues. Already carried-forward balance from before stays usable.</p>
+      } @else {
+        <div class="form-field">
+          <label>Monthly Paid Leave (days per employee)</label>
+          <input type="number" min="0" [(ngModel)]="monthlyPaidLeave" />
+        </div>
+
+        <div class="toggle-row" style="margin: 1rem 0;">
+          <label class="toggle-switch">
+            <input type="checkbox" [(ngModel)]="allowCarryForward" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Allow unused leave to carry forward to next month</span>
+        </div>
+
+        @if (allowCarryForward) {
+          <div class="toggle-row" style="margin-bottom: 0.75rem;">
+            <label class="toggle-switch">
+              <input type="checkbox" [(ngModel)]="hasMaximumCarryForward" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Set a maximum carry-forward limit</span>
+          </div>
+          @if (hasMaximumCarryForward) {
+            <div class="form-field" style="max-width: 220px;">
+              <label>Maximum Carry Forward (days)</label>
+              <input type="number" min="0" [(ngModel)]="maximumCarryForward" />
+            </div>
+          } @else {
+            <p class="muted" style="margin-top: -0.5rem;">Unlimited carry-forward.</p>
+          }
+
+          <div class="toggle-row" style="margin-bottom: 0.4rem;">
+            <label class="toggle-switch">
+              <input type="checkbox" [(ngModel)]="resetAnnually" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Reset carry-forward every year</span>
+          </div>
+          <p class="muted" style="margin-top: -0.5rem; margin-bottom: 0.75rem;">
+            @if (resetAnnually) {
+              Leave only carries forward within the same calendar year. Balances automatically reset to 0 every January.
+            } @else {
+              Leave carries forward indefinitely, across year boundaries too.
+            }
+          </p>
+        }
+      }
+
+      <div class="form-actions" style="justify-content: flex-start;">
+        <button type="button" class="btn btn-secondary" (click)="cancelScheduleForm()">Cancel</button>
+        <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">
+          @if (saving()) { <span class="btn-spinner"></span> }
+          {{ saving() ? 'Scheduling...' : 'Schedule Policy' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="card table-card" style="margin-bottom: 1.5rem;">
+    <div class="section-title" style="padding: 1rem 1rem 0;">Policy History</div>
+    @if (history().length === 0) {
+      <div class="empty-state">No policy history yet.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Effective From</th><th>Effective To</th><th>Paid Leave</th><th>Monthly Leave</th><th>Carry Forward</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (row of history(); track row.id) {
+              <tr>
+                <td>{{ row.effectiveFrom }}</td>
+                <td>{{ row.effectiveTo || 'Open-ended' }}</td>
+                <td>{{ row.enabled ? 'Active' : 'Inactive' }}</td>
+                <td>{{ row.enabled ? row.monthlyPaidLeave : '-' }}</td>
+                <td>{{ row.enabled ? (row.allowCarryForward ? (row.maximumCarryForward != null ? ('Max ' + row.maximumCarryForward) : 'Unlimited') : 'Off') : '-' }}</td>
+                <td>{{ row.status }}</td>
+                <td>
+                  <div class="actions">
+                  @if (row.status === 'ACTIVE' && row.effectiveFrom && row.effectiveFrom > today) {
+                    <button type="button" class="btn btn-danger btn-sm" (click)="cancelFutureConfig(row)">Cancel</button>
+                  }
+                  @if (row.status === 'CANCELLED') {
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="reactivateConfig(row)" title="Schedule a new policy pre-filled with this cancelled one's settings">
+                      <i class="bi bi-arrow-counterclockwise"></i> Reactivate
+                    </button>
+                  }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<div class="card table-card">
+  <div class="section-title" style="margin: 1.25rem 1.25rem 0;"><i class="bi bi-people"></i> Employee Leave Balances</div>
+  <p class="muted" style="margin: 0.25rem 1.25rem 1rem;">Each employee's total available paid leave right now (monthly allocation + carry forward + extra leave - used).</p>
+
+  <div class="filters" style="padding: 0 1.25rem 1rem;">
+    <input type="text" placeholder="Search by employee name or code..." [(ngModel)]="employeeSearch" />
+  </div>
+
+  @if (balancesLoading()) {
+    <div style="padding: 0 1.25rem 1.25rem;"><div class="skeleton" style="height: 120px;"></div></div>
+  } @else if (filteredBalances().length === 0) {
+    <div class="empty-state">No employees match your search.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Employee</th><th>Total Available Leave</th></tr></thead>
+        <tbody>
+          @for (b of filteredBalances(); track b.employeeId) {
+            <tr>
+              <td>{{ b.employeeCode }} &middot; {{ b.employeeName }}</td>
+              <td><strong>{{ b.availableLeave }} day(s)</strong></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

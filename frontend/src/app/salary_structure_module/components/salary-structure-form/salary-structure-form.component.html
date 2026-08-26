@@ -1,0 +1,117 @@
+<div class="page-header">
+  <h1>{{ isEditMode() ? 'Edit Salary Structure' : 'Add Salary Structure' }}</h1>
+</div>
+
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 300px;"></div></div>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" class="card form-card" novalidate>
+
+    <div class="section-title">Structure Details</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Structure Code <span class="muted" style="font-weight:400;">(auto-generated)</span></label>
+        <input type="text" formControlName="structureCode" placeholder="e.g. SS0001" />
+      </div>
+      <div class="form-field">
+        <label>Structure Name</label>
+        <input type="text" formControlName="structureName" [class.invalid]="form.controls.structureName.invalid && form.controls.structureName.touched" />
+        @if (form.controls.structureName.invalid && form.controls.structureName.touched) {
+          <span class="field-error">Structure name is required</span>
+        }
+      </div>
+      <div class="form-field">
+        <label>Salary Type</label>
+        <select formControlName="salaryType">
+          <option value="MONTHLY">Monthly</option>
+          <option value="DAILY">Daily</option>
+          <option value="HOURLY">Hourly</option>
+          <option value="CONTRACT">Contract</option>
+        </select>
+      </div>
+      @if (needsDailyRate()) {
+        <div class="form-field">
+          <label>Daily Rate (₹)</label>
+          <input type="number" formControlName="dailyRate" min="0" step="0.01" placeholder="e.g. 700" />
+        </div>
+      }
+      @if (needsHourlyRate()) {
+        <div class="form-field">
+          <label>Hourly Rate (₹)</label>
+          <input type="number" formControlName="hourlyRate" min="0" step="0.01" placeholder="e.g. 100" />
+        </div>
+      }
+      <div class="form-field" style="grid-column: 1 / -1;">
+        <label>Description</label>
+        <input type="text" formControlName="description" placeholder="Optional" />
+      </div>
+      <div class="form-field">
+        <label>Effective From</label>
+        <input type="date" formControlName="effectiveFrom" [class.invalid]="form.controls.effectiveFrom.invalid && form.controls.effectiveFrom.touched" />
+        @if (form.controls.effectiveFrom.invalid && form.controls.effectiveFrom.touched) {
+          <span class="field-error">Effective from date is required</span>
+        }
+      </div>
+      <div class="form-field">
+        <label>Effective To <span class="muted" style="font-weight:400;">(optional)</span></label>
+        <input type="date" formControlName="effectiveTo" />
+      </div>
+    </div>
+
+    <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+      <span>Components</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="addComponentRow()">+ Add Line</button>
+    </div>
+
+    <div formArrayName="components">
+      @for (row of componentRows.controls; track $index; let i = $index) {
+        <div [formGroupName]="i" class="login-access-section" style="margin-bottom: 0.75rem;">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Component</label>
+              <select formControlName="salaryComponentId">
+                <option [ngValue]="null">Select a component</option>
+                @for (c of availableComponents(); track c.id) { <option [ngValue]="c.id">{{ c.componentName }} ({{ c.componentType }})</option> }
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Calculation</label>
+              <select formControlName="calculationType">
+                <option value="FIXED">Fixed Amount</option>
+                <option value="PERCENTAGE_OF_BASIC">% of Basic</option>
+                <option value="PERCENTAGE_OF_GROSS">% of Gross</option>
+                <option value="PER_DAY">Per Day</option>
+                <option value="PER_HOUR">Per Hour</option>
+                <option value="MANUAL">Manual</option>
+              </select>
+            </div>
+            @if (needsAmount(row.getRawValue().calculationType)) {
+              <div class="form-field"><label>Amount (₹)</label><input type="number" min="0" formControlName="amount" /></div>
+            }
+            @if (needsPercentage(row.getRawValue().calculationType)) {
+              <div class="form-field"><label>Percentage</label><input type="number" min="0" max="100" formControlName="percentage" /></div>
+            }
+          </div>
+          <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.25rem; justify-content: flex-start;">
+            <button type="button" class="btn btn-danger btn-sm" (click)="removeComponentRow(i)">Remove</button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="temp-password-box" style="background: var(--info-bg); border-color: var(--secondary-color); margin-top: 1rem;">
+      <strong>Live Preview</strong>
+      <div class="muted" style="margin-top: 0.4rem; font-size: 0.9rem;">
+        Gross Earnings &#8377;{{ preview.gross }} &minus; Total Deductions &#8377;{{ preview.deductions }}
+        = <strong>Net Salary &#8377;{{ preview.net }}</strong>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving...' : 'Save Structure' }}
+      </button>
+    </div>
+  </form>
+}

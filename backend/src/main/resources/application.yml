@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: workforce-auth
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    # DB_URL isn't a credential (no username/password embedded in it), so a sensible localhost
+    # dev default is fine here - but the actual username/password below have NO default: a
+    # missing DB_USERNAME/DB_PASSWORD must fail application startup loudly rather than silently
+    # falling back to a real (even if common) credential like root/root.
+    url: ${DB_URL:jdbc:mysql://localhost:3306/workforce_auth?useSSL=false&serverTimezone=UTC}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Sized for ~100 concurrent users doing typical CRUD/report requests - a pool this size
+      # comfortably serves that load without exhausting the DB server's own max_connections,
+      # since most requests only hold a connection for the few milliseconds a query takes, not
+      # for the whole time a user is on the page. Tune via env vars per environment/DB server size.
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:30}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT:20000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:300000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME:1500000}
+      pool-name: WorkzenHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+          # Batches multiple INSERT/UPDATE statements into fewer round-trips to the DB - most
+          # helpful for bulk operations (e.g. calculating a Payroll Run across many employees,
+          # seeding attendance) where Hibernate would otherwise send one statement at a time.
+          batch_size: 30
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+jwt:
+  # No default on purpose - a missing JWT_SECRET must fail startup clearly, never silently sign
+  # tokens with an empty/weak key.
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}      # 15 minutes
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  cookie:
+    secure: ${COOKIE_SECURE:true}
+    same-site: ${COOKIE_SAME_SITE:Strict}
+  password-policy:
+    min-length: 8
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  # Sized to comfortably accept 100 concurrent users' requests without queuing - Tomcat's own
+  # default (200 max threads) is already reasonable, but min-spare and accept-count are raised
+  # too so a sudden burst (e.g. everyone logging in around 9am) doesn't have to wait for new
+  # worker threads to spin up or get rejected once the accept queue fills.
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+      min-spare: ${TOMCAT_MIN_SPARE_THREADS:20}
+    accept-count: ${TOMCAT_ACCEPT_COUNT:150}
+    max-connections: ${TOMCAT_MAX_CONNECTIONS:10000}
+  compression:
+    # Compresses JSON/HTML/CSS/JS responses over a certain size - meaningfully smaller payloads
+    # over the network for report/list endpoints without any code change, at a small CPU cost.
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript
+    min-response-size: 2048
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: INFO
+    com.example.application: INFO
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

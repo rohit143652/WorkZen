@@ -1,0 +1,101 @@
+<div class="page-header">
+  <div>
+    <h1>User Management</h1>
+    <p class="muted">Manage login access for employees who have a login account.</p>
+  </div>
+</div>
+
+<div class="card filters">
+  <input type="text" placeholder="Search by name, username or email..." [(ngModel)]="search" (keyup.enter)="onSearch()" />
+  <button type="button" class="btn btn-secondary" (click)="onSearch()">Search</button>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3,4]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (error()) {
+    <div class="error-state">Unable to load users. Please try again.</div>
+  } @else if (users().length === 0) {
+    <div class="empty-state">No users with login access found.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Employee</th><th>Username</th><th>Role</th><th>Login</th><th>Last Login</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (u of users(); track u.id) {
+            <tr>
+              <td>{{ u.employeeCode }} &middot; {{ u.firstName }} {{ u.lastName }}</td>
+              <td>{{ u.username }}</td>
+              <td>{{ u.roles?.join(', ') || '-' }}</td>
+              <td>
+                @if (u.userLocked) { <app-status-badge label="Locked" kind="danger"></app-status-badge> }
+                @else if (u.userActive) { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="Disabled" kind="muted"></app-status-badge> }
+              </td>
+              <td>{{ u.lastLoginAt || 'Never' }}</td>
+              <td>
+                <div class="actions">
+                @if (u.userLocked) {
+                  <button type="button" *appHasPermission="'USER_UPDATE'" class="btn btn-secondary btn-sm" (click)="unlock(u.userId!)">Unlock</button>
+                }
+                <button type="button" *appHasPermission="'USER_UPDATE'" class="btn btn-secondary btn-sm" (click)="resetPassword(u.userId!)">Reset Password</button>
+                <button type="button" *appHasPermission="'USER_UPDATE'" class="btn btn-secondary btn-sm" (click)="openSetPasswordForm(u.userId!)">Set Password</button>
+                </div>
+              </td>
+            </tr>
+            @if (lastTempPassword()?.userId === u.userId) {
+              <tr><td colspan="6">
+                <div class="temp-password-box">
+                  <strong>Temporary password (shown once):</strong> <code>{{ lastTempPassword()?.password }}</code>
+                </div>
+              </td></tr>
+            }
+            @if (settingPasswordForId() === u.userId) {
+              <tr><td colspan="6">
+                <form [formGroup]="setPasswordForm" (ngSubmit)="submitSetPassword(u.userId!)" class="login-access-section enabled" novalidate>
+                  <p class="muted" style="margin: 0 0 0.75rem;">
+                    Choose a specific new password for {{ u.firstName }} {{ u.lastName }}. They will be required to change it on next login.
+                  </p>
+                  <div class="form-grid">
+                    <div class="form-field">
+                      <label>New Password</label>
+                      <input type="password" formControlName="newPassword"
+                             [class.invalid]="setPasswordForm.controls.newPassword.invalid && setPasswordForm.controls.newPassword.touched" />
+                      @if (setPasswordForm.controls.newPassword.invalid && setPasswordForm.controls.newPassword.touched) {
+                        <span class="field-error">Password must be at least 8 characters</span>
+                      }
+                    </div>
+                    <div class="form-field">
+                      <label>Confirm Password</label>
+                      <input type="password" formControlName="confirmPassword"
+                             [class.invalid]="setPasswordForm.errors?.['passwordMismatch'] && setPasswordForm.controls.confirmPassword.touched" />
+                      @if (setPasswordForm.errors?.['passwordMismatch'] && setPasswordForm.controls.confirmPassword.touched) {
+                        <span class="field-error">Passwords do not match</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="form-actions" style="margin-top: 0.75rem; padding-top: 0.75rem;">
+                    <button type="button" class="btn btn-secondary" (click)="cancelSetPassword()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" [disabled]="savingPassword()">
+                      {{ savingPassword() ? 'Saving...' : 'Save Password' }}
+                    </button>
+                  </div>
+                </form>
+              </td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() === 0" (click)="goToPage(page() - 1)">Previous</button>
+      <span>Page {{ page() + 1 }} of {{ totalPages() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() + 1 >= totalPages()" (click)="goToPage(page() + 1)">Next</button>
+    </div>
+  }
+</div>

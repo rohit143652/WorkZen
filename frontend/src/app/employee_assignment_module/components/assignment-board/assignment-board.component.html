@@ -1,0 +1,111 @@
+<div class="page-header">
+  <div>
+    <h1>Employee Assignment</h1>
+    <p class="muted">Select a site, choose employees, and assign them to that location.</p>
+  </div>
+</div>
+
+<div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+  <div class="form-field" style="max-width: 400px;">
+    <label>Site</label>
+    <select [ngModel]="selectedSiteId()" (ngModelChange)="onSiteIdChange($event)">
+      <option [ngValue]="null">Select a site</option>
+      @for (s of assignableSites(); track s.id) { <option [ngValue]="s.id">{{ s.siteName }} ({{ s.siteCode }})</option> }
+    </select>
+  </div>
+
+  @if (selectedSite(); as site) {
+    <div class="chips" style="margin-top: 0.75rem; display:flex; gap:0.5rem;">
+      <app-status-badge [label]="'Required: ' + site.requiredEmployeeCount" kind="info"></app-status-badge>
+      <app-status-badge [label]="'Currently assigned: ' + site.assignedEmployeeCount" kind="muted"></app-status-badge>
+      @if (selectedEmployeeIds().size > 0) {
+        <app-status-badge [label]="'New allocation: ' + projectedAllocation()" kind="success"></app-status-badge>
+      }
+    </div>
+  }
+</div>
+
+@if (selectedSiteId()) {
+  <div class="details-grid" style="display:grid; grid-template-columns: 1.2fr 1fr; gap: 1rem;">
+    <div class="card" style="padding: 1.25rem;">
+      <div class="section-title">Select Employees to Assign</div>
+      <input type="text" placeholder="Search employees..." [(ngModel)]="employeeSearch" (keyup.enter)="onSiteChange()" style="width:100%; margin-bottom: 0.75rem; padding:0.5rem 0.7rem; border:1px solid var(--border-color); border-radius:6px;" />
+
+      @if (loadingEmployees()) {
+        <div class="skeleton" style="height: 200px;"></div>
+      } @else if (selectableEmployees().length === 0) {
+        <div class="empty-state">No active employees found.</div>
+      } @else {
+        <div style="max-height: 360px; overflow-y: auto;">
+          @for (item of selectableEmployees(); track item.employee.id) {
+            <label
+              style="display:flex; align-items:center; gap:0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); font-size:0.88rem;"
+              [style.opacity]="isAssignable(item) ? 1 : 0.5"
+              [style.cursor]="isAssignable(item) ? 'pointer' : 'not-allowed'">
+              <input
+                type="checkbox"
+                [checked]="isSelected(item.employee.id)"
+                [disabled]="!isAssignable(item)"
+                (change)="toggleEmployee(item)" />
+              <span style="flex:1;">
+                {{ item.employee.employeeCode }} &middot; {{ item.employee.firstName }} {{ item.employee.lastName }} &middot; {{ item.employee.department }}
+              </span>
+              @if (!isAssignable(item)) {
+                <app-status-badge [label]="'Assigned: ' + item.assignedElsewhere" kind="warning"></app-status-badge>
+              }
+            </label>
+          }
+        </div>
+      }
+
+      <div class="form-grid" style="margin-top: 1rem;">
+        <div class="form-field"><label>Start Date</label><input type="date" [(ngModel)]="startDate" /></div>
+        <div class="form-field"><label>Remarks</label><input type="text" [(ngModel)]="remarks" /></div>
+      </div>
+
+      <div class="form-actions">
+        <span class="muted">{{ selectedEmployeeIds().size }} employee(s) selected</span>
+        <button type="button" class="btn btn-primary" [disabled]="selectedEmployeeIds().size === 0 || assigning()" (click)="assignSelected()">
+          {{ assigning() ? 'Assigning...' : 'Assign Employees' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 1.25rem;">
+      <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
+        <span>Currently Assigned</span>
+        @if (assignedAtSite().length > 0) {
+          <label style="font-weight:400; font-size:0.8rem; display:flex; align-items:center; gap:0.35rem;">
+            <input type="checkbox" (change)="toggleSelectAllAssigned($any($event.target).checked)" />
+            Select all
+          </label>
+        }
+      </div>
+
+      @if (assignedAtSite().length === 0) {
+        <div class="empty-state">No employees currently assigned.</div>
+      } @else {
+        @for (a of assignedAtSite(); track a.id) {
+          <label style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; cursor:pointer;">
+            <span style="display:flex; align-items:center; gap:0.6rem;">
+              <input type="checkbox" [checked]="isAssignmentSelected(a.id)" (change)="toggleAssignmentSelection(a.id)" />
+              {{ a.employeeCode }} &middot; {{ a.employeeName }}
+            </span>
+            <button type="button" class="btn btn-danger btn-sm" (click)="endAssignment(a.id)">End</button>
+          </label>
+        }
+
+        <div class="form-actions" style="justify-content: flex-start;">
+          <span class="muted">{{ selectedAssignmentIds().size }} selected</span>
+          <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            [disabled]="selectedAssignmentIds().size === 0 || endingSelected()"
+            (click)="endSelectedAssignments()">
+            {{ endingSelected() ? 'Ending...' : 'End Selected' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

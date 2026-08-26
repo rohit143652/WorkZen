@@ -1,0 +1,286 @@
+/* ============================================================
+   Design tokens - refined professional palette for an HRMS/
+   business application. Every existing component already
+   consumes these custom properties (var(--...)) and the shared
+   .btn/.card/.badge/.form-field/table classes below, so tightening
+   this single file lifts the visual design consistently across
+   every screen without touching individual component templates.
+   ============================================================ */
+:root {
+  /* Brand / primary actions - the WORKZEN logo's blue */
+  --primary-color: #1565c0;
+  --primary-color-hover: #0d47a1;
+  --primary-color-soft: #e3f2fd;
+
+  /* Secondary actions / accents - neutral slate, distinct from primary */
+  --secondary-color: #475569;
+  --secondary-color-hover: #334155;
+
+  --background-color: #f4f6f9;
+  --surface-color: #ffffff;
+  --surface-alt-color: #f8fafc;
+  --text-color: #0f172a;
+  --muted-color: #64748b;
+  --border-color: #e2e8f0;
+
+  /* Success/accent - the WORKZEN logo's green */
+  --success-color: #2e7d32;
+  --success-bg: #eaf7ec;
+  --warning-color: #b45309;
+  --warning-bg: #fffbeb;
+  --danger-color: #b91c1c;
+  --danger-bg: #fef2f2;
+  --info-color: #0369a1;
+  --info-bg: #f0f9ff;
+
+  --sidebar-width: 252px;
+  --sidebar-bg: #0a1830;
+  --sidebar-bg-active: #1565c0;
+  --topbar-height: 64px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Bootstrap interop: nudge Bootstrap's own variables toward the same
+     palette so any Bootstrap component/utility used going forward
+     (bs-* classes) matches this design system instead of Bootstrap's
+     stock blue/purple defaults. */
+  --bs-primary: var(--primary-color);
+  --bs-primary-rgb: 21, 101, 192;
+  --bs-secondary: var(--secondary-color);
+  --bs-success: var(--success-color);
+  --bs-warning: var(--warning-color);
+  --bs-danger: var(--danger-color);
+  --bs-info: var(--info-color);
+  --bs-body-color: var(--text-color);
+  --bs-body-bg: var(--background-color);
+  --bs-border-color: var(--border-color);
+  --bs-font-sans-serif: var(--font-family);
+  --bs-border-radius: var(--radius-sm);
+  --bs-border-radius-lg: var(--radius-md);
+}
+
+body { font-family: var(--font-family); }
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.25);
+}
+
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Bootstrap ships its own .btn/.btn-primary/.btn-secondary/.btn-danger
+   component classes whose :hover/:active/:focus states set `color`
+   explicitly (e.g. white text for a Bootstrap secondary button, since its
+   filled gray hover background expects it). Our hover rules must set
+   `color` too on every state - otherwise Bootstrap's declaration is the
+   only one touching that property and wins, which is how "hover turns the
+   text invisible" bugs like this happen. Every state below is written out
+   explicitly so nothing is ever left for Bootstrap to fill in. */
+.btn-primary,
+.btn-primary:hover:not(:disabled),
+.btn-primary:active:not(:disabled),
+.btn-primary:focus:not(:disabled) { color: #fff; }
+.btn-primary { background: var(--primary-color); }
+.btn-primary:hover:not(:disabled),
+.btn-primary:active:not(:disabled) { background: var(--primary-color-hover); }
+
+.btn-secondary,
+.btn-secondary:hover:not(:disabled),
+.btn-secondary:active:not(:disabled),
+.btn-secondary:focus:not(:disabled) { color: var(--text-color); }
+.btn-secondary { background: var(--surface-color); border-color: var(--border-color); }
+.btn-secondary:hover:not(:disabled),
+.btn-secondary:active:not(:disabled) { background: var(--surface-alt-color); border-color: #cbd5e1; }
+
+.btn-danger,
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled),
+.btn-danger:focus:not(:disabled) { color: #fff; }
+.btn-danger { background: var(--danger-color); }
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) { background: #991b1b; }
+
+.btn-ghost,
+.btn-ghost:focus:not(:disabled) { color: var(--muted-color); }
+.btn-ghost { background: transparent; }
+.btn-ghost:hover:not(:disabled),
+.btn-ghost:active:not(:disabled) { background: var(--surface-alt-color); color: var(--text-color); }
+
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+.btn i, .btn .bi { font-size: 0.95em; line-height: 1; }
+
+/* ---- Cards ----
+   Bootstrap ships its own `.card` component (display:flex; flex-direction:
+   column) which collides with this pre-existing generic container class
+   used throughout the app. `display: block` neutralizes Bootstrap's flex
+   context so it can never impose flex-direction/gap/align-items on a plain
+   .card - any component that explicitly wants a flex layout (e.g.
+   `.card.summary-card` on the dashboard) still works because that more
+   specific compound selector overrides this. */
+.card {
+  display: block;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Badges ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.badge-success { background: var(--success-bg); color: var(--success-color); }
+.badge-warning { background: var(--warning-bg); color: var(--warning-color); }
+.badge-danger { background: var(--danger-bg); color: var(--danger-color); }
+.badge-info { background: var(--info-bg); color: var(--info-color); }
+.badge-muted { background: var(--surface-alt-color); color: var(--muted-color); }
+
+/* ---- Forms ---- */
+.form-field { margin-bottom: 1.15rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.form-field label { font-size: 0.82rem; font-weight: 600; color: var(--text-color); }
+.form-field input,
+.form-field select,
+.form-field textarea {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--surface-color);
+  color: var(--text-color);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-field input:hover:not(:disabled),
+.form-field select:hover:not(:disabled),
+.form-field textarea:hover:not(:disabled) { border-color: #cbd5e1; }
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+}
+.form-field input:disabled,
+.form-field select:disabled,
+.form-field textarea:disabled { background: var(--surface-alt-color); color: var(--muted-color); cursor: not-allowed; }
+.form-field input.invalid,
+.form-field select.invalid,
+.form-field textarea.invalid { border-color: var(--danger-color); }
+.form-field .field-error { color: var(--danger-color); font-size: 0.78rem; display: flex; align-items: center; gap: 0.3rem; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 1.25rem;
+}
+@media (max-width: 720px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 1.5rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.section-title:first-child { margin-top: 0; }
+
+/* ---- Toggle switch ---- */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--border-color);
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--primary-color); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+/* ---- Loading / empty / error states ---- */
+.skeleton {
+  background: linear-gradient(90deg, #eceef1 25%, #f5f6f8 37%, #eceef1 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeleton-loading {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.empty-state, .error-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--muted-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.empty-state .bi, .error-state .bi { font-size: 1.75rem; opacity: 0.5; }
+.error-state { color: var(--danger-color); }

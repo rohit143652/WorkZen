@@ -1,0 +1,18 @@
+<div class="page">
+  <h1>Permissions</h1>
+  @if (loading()) {
+    <p>Loading...</p>
+  } @else {
+    <table>
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        @for (permission of permissions(); track permission.id) {
+          <tr>
+            <td>{{ permission.name }}</td>
+            <td>{{ permission.description }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

@@ -1,0 +1,116 @@
+<div class="page-header">
+  <div>
+    <h1>Departments &amp; Designations</h1>
+    <p class="muted">Manage the dropdown options used on the Employee form.</p>
+  </div>
+</div>
+
+<div class="details-grid" style="display:grid; grid-template-columns: 1fr; gap: 1rem;">
+
+  <div class="card" style="padding: 1.25rem;">
+    <div class="section-title">Departments</div>
+
+    <div class="filters" *appHasPermission="'DEPARTMENT_MANAGE'" style="padding: 0; margin-bottom: 1rem;">
+      <input
+        type="text"
+        placeholder="New department name, e.g. Operations"
+        [(ngModel)]="newDepartmentName"
+        (keyup.enter)="addDepartment()" />
+      <button type="button" class="btn btn-primary btn-sm" [disabled]="!newDepartmentName.trim() || savingDepartment()" (click)="addDepartment()">
+        {{ savingDepartment() ? 'Adding...' : '+ Add' }}
+      </button>
+    </div>
+
+    @if (loadingDepartments()) {
+      <div class="skeleton" style="height: 160px;"></div>
+    } @else if (departments().length === 0) {
+      <div class="empty-state">No departments yet.</div>
+    } @else {
+      <table>
+        <thead><tr><th>Name</th><th>Employees</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (d of departments(); track d.id) {
+            <tr>
+              <td>{{ d.name }}</td>
+              <td>{{ d.employeeCount }}</td>
+              <td>
+                @if (d.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+              </td>
+              <td>
+                @if (d.status === 'ACTIVE') {
+                  <button type="button" *appHasPermission="'DEPARTMENT_MANAGE'" class="btn btn-danger btn-sm" (click)="toggleDepartment(d)">Deactivate</button>
+                } @else {
+                  <button type="button" *appHasPermission="'DEPARTMENT_MANAGE'" class="btn btn-secondary btn-sm" (click)="toggleDepartment(d)">Activate</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <div class="card" style="padding: 1.25rem;">
+    <div class="section-title">Designations</div>
+    <p class="muted" style="margin-top: -0.5rem;">Salary is no longer set here - assign a <a routerLink="/salary-structures">Salary Structure</a> to each employee instead.</p>
+
+    <div class="filters" *appHasPermission="'DESIGNATION_MANAGE'" style="padding: 0; margin-bottom: 1rem; flex-wrap: wrap;">
+      <input
+        type="text"
+        placeholder="New designation, e.g. Site Manager"
+        [(ngModel)]="newDesignationName"
+        (keyup.enter)="addDesignation()" />
+      <button type="button" class="btn btn-primary btn-sm" [disabled]="!newDesignationName.trim() || savingDesignation()" (click)="addDesignation()">
+        {{ savingDesignation() ? 'Adding...' : '+ Add' }}
+      </button>
+    </div>
+
+    @if (loadingDesignations()) {
+      <div class="skeleton" style="height: 160px;"></div>
+    } @else if (designations().length === 0) {
+      <div class="empty-state">No designations yet.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Name</th><th>Employees</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (d of designations(); track d.id) {
+              <tr>
+                @if (editingNameId() === d.id) {
+                  <td><input type="text" [(ngModel)]="editingName" style="padding: 0.3rem 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;" /></td>
+                } @else {
+                  <td>{{ d.name }}</td>
+                }
+                <td>{{ d.employeeCount }}</td>
+                <td>
+                  @if (d.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                  @else { <app-status-badge label="Inactive" kind="muted"></app-status-badge> }
+                </td>
+                <td>
+                  <div class="actions">
+                  @if (editingNameId() === d.id) {
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditName()">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="savingName()" (click)="saveEditName(d)">
+                      {{ savingName() ? 'Saving...' : 'Save' }}
+                    </button>
+                  } @else {
+                    <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn btn-secondary btn-sm" (click)="startEditName(d)">Rename</button>
+                    @if (d.status === 'ACTIVE') {
+                      <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn btn-danger btn-sm" (click)="toggleDesignation(d)">Deactivate</button>
+                    } @else {
+                      <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn btn-secondary btn-sm" (click)="toggleDesignation(d)">Activate</button>
+                    }
+                  }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+</div>
+

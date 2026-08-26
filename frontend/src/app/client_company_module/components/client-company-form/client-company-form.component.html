@@ -1,0 +1,73 @@
+<div class="page-header">
+  <h1>{{ isViewOnly() ? 'Client Company Details' : (isEditMode() ? 'Edit Client Company' : 'Add Client Company') }}</h1>
+</div>
+
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 260px;"></div></div>
+} @else {
+  @if (isViewOnly() && company(); as c) {
+    <div class="summary-grid" style="margin-bottom: 1rem;">
+      <div class="card summary-card accent-primary"><span class="summary-value">{{ c.totalEmployees }}</span><span class="summary-label">Employees</span></div>
+      <div class="card summary-card accent-info"><span class="summary-value">{{ c.totalSites }}</span><span class="summary-label">Sites</span></div>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="card form-card" novalidate>
+    <div class="section-title">Company Information</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Company Code</label><input type="text" formControlName="companyCode" /><span class="muted" style="font-size: 0.75rem;">Auto-generated</span></div>
+      <div class="form-field"><label>Company Name</label><input type="text" formControlName="companyName" /></div>
+      <div class="form-field"><label>Legal Name</label><input type="text" formControlName="legalName" /></div>
+      <div class="form-field"><label>Email</label><input type="email" formControlName="email" /></div>
+      <div class="form-field"><label>Phone</label><input type="text" formControlName="phone" /></div>
+      <div class="form-field"><label>Alternate Phone</label><input type="text" formControlName="alternatePhone" /></div>
+    </div>
+
+    <div class="section-title">Address</div>
+    <div class="form-grid">
+      <div class="form-field" style="grid-column: 1 / -1;"><label>Address</label><input type="text" formControlName="address" /></div>
+      <div class="form-field"><label>City</label><input type="text" formControlName="city" /></div>
+      <div class="form-field"><label>State</label><input type="text" formControlName="state" /></div>
+      <div class="form-field"><label>Country</label><input type="text" formControlName="country" /></div>
+      <div class="form-field"><label>Pincode</label><input type="text" formControlName="pincode" /></div>
+    </div>
+
+    <div class="section-title">Contact Person</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Name</label><input type="text" formControlName="contactPersonName" /></div>
+      <div class="form-field"><label>Email</label><input type="email" formControlName="contactPersonEmail" /></div>
+      <div class="form-field"><label>Phone</label><input type="text" formControlName="contactPersonPhone" /></div>
+    </div>
+
+    @if (!isEditMode() && !isViewOnly()) {
+      <div class="section-title">Client Admin Login</div>
+      <div class="login-access-section" [class.enabled]="form.controls.createClientAdminLogin.value">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" formControlName="createClientAdminLogin" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">
+            {{ form.controls.createClientAdminLogin.value ? 'Client Admin Login Enabled' : 'Client Admin Login Disabled' }}
+          </span>
+        </div>
+        @if (form.controls.createClientAdminLogin.value) {
+          <div class="form-grid" formGroupName="clientAdminLogin" style="margin-top: 1rem;">
+            <div class="form-field"><label>Username</label><input type="text" formControlName="username" /></div>
+            <div class="form-field"><label>Password</label><input type="password" formControlName="password" /></div>
+          </div>
+          <p class="muted" style="margin-top: 0.5rem;">Role: CLIENT_ADMIN (assigned automatically). The temporary password must be changed on first login.</p>
+        }
+      </div>
+    }
+
+    <div class="form-actions">
+      <a routerLink="/clients" class="btn btn-secondary">{{ isViewOnly() ? 'Back' : 'Cancel' }}</a>
+      @if (!isViewOnly()) {
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          {{ saving() ? 'Saving...' : 'Save Client Company' }}
+        </button>
+      }
+    </div>
+  </form>
+}

@@ -1,0 +1,122 @@
+@if (visible()) {
+  <div class="card detail-card" style="margin-top: 1rem;">
+    <div class="section-title">Paid Leave</div>
+
+    @if (loading()) {
+      <div class="skeleton" style="height: 100px;"></div>
+    } @else {
+      @if (balance(); as b) {
+      <dl>
+        <dt>Monthly Allocation</dt><dd>{{ b.monthlyAllocation }} day(s)</dd>
+        <dt>Carry Forward</dt><dd>{{ b.carryForward }} day(s)</dd>
+        <dt>Extra Paid Leave</dt><dd>{{ b.extraLeave }} day(s)</dd>
+        <dt>Used Leave</dt><dd>{{ b.usedLeave }} day(s)</dd>
+        <dt>Available Leave</dt><dd><strong>{{ b.availableLeave }} day(s)</strong></dd>
+      </dl>
+
+      <div class="actions" style="margin-top: 0.75rem;">
+        @if (!showGrantForm()) {
+          <button type="button" *appHasPermission="'PAID_LEAVE_GRANT'" class="btn btn-secondary btn-sm" (click)="openGrantForm()">
+            Grant Extra Paid Leave
+          </button>
+        }
+        <button type="button" class="btn btn-secondary btn-sm" (click)="toggleMonthlyHistory()">
+          {{ showMonthlyHistory() ? 'Hide' : 'Show' }} Monthly Leave History
+        </button>
+      </div>
+
+      @if (showGrantForm()) {
+        <form [formGroup]="grantForm" (ngSubmit)="submitGrant()" class="login-access-section enabled" style="margin-top: 0.75rem;" novalidate>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Leave Days</label>
+              <input type="number" min="0.5" step="0.5" formControlName="leaveDays" />
+            </div>
+            <div class="form-field">
+              <label>Reason</label>
+              <select formControlName="reason">
+                @for (r of reasons; track r.value) {
+                  <option [value]="r.value">{{ r.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Start Date</label>
+              <input type="date" formControlName="startDate" />
+            </div>
+            <div class="form-field">
+              <label>End Date (Optional)</label>
+              <input type="date" formControlName="endDate" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Remark</label>
+            <input type="text" formControlName="remark" placeholder="Optional note" />
+          </div>
+          <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" class="btn btn-secondary" (click)="cancelGrantForm()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="granting()">
+              {{ granting() ? 'Saving...' : (editingGrantId() ? 'Save Changes' : 'Grant Leave') }}
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (showMonthlyHistory() && monthlyHistory().length > 0) {
+        <div class="section-title" style="margin-top: 1.25rem;">Monthly Leave History</div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Month</th><th>Allocation</th><th>Carry Forward</th><th>Extra</th><th>Used</th><th>Available</th></tr></thead>
+            <tbody>
+              @for (h of monthlyHistory(); track h.year + '-' + h.month) {
+                <tr>
+                  <td>{{ h.month }}/{{ h.year }}</td>
+                  <td>{{ h.monthlyAllocation }}</td>
+                  <td>{{ h.carryForward }}</td>
+                  <td>{{ h.extraLeave }}</td>
+                  <td>{{ h.usedLeave }}</td>
+                  <td><strong>{{ h.availableLeave }}</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (extraHistory().length > 0) {
+        <div class="section-title" style="margin-top: 1.25rem;">Extra Leave History</div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date</th><th>Days</th><th>Reason</th><th>Start</th><th>End</th><th>Remark</th><th>Granted By</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              @for (g of extraHistory(); track g.id) {
+                <tr>
+                  <td>{{ g.createdAt | slice:0:10 }}</td>
+                  <td>{{ g.leaveDays }}</td>
+                  <td>{{ g.reason }}</td>
+                  <td>{{ g.startDate }}</td>
+                  <td>{{ g.endDate || '-' }}</td>
+                  <td class="muted">{{ g.remark || '-' }}</td>
+                  <td>{{ g.grantedBy }}</td>
+                  <td>
+                    @if (g.status === 'ACTIVE') { <app-status-badge label="Active" kind="success"></app-status-badge> }
+                    @else { <app-status-badge label="Cancelled" kind="muted"></app-status-badge> }
+                  </td>
+                  <td>
+                    <div class="actions">
+                    @if (g.status === 'ACTIVE') {
+                      <button type="button" *appHasPermission="'PAID_LEAVE_UPDATE'" class="btn btn-secondary btn-sm" (click)="editGrant(g)">Edit</button>
+                      <button type="button" *appHasPermission="'PAID_LEAVE_UPDATE'" class="btn btn-danger btn-sm" (click)="cancelGrant(g)">Cancel</button>
+                    }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      }
+    }
+  </div>
+}

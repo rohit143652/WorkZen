@@ -1,0 +1,70 @@
+<div class="page-header">
+  <div>
+    <h1>Roles</h1>
+    <p class="muted">Roles bundle permissions together and are assigned to employee logins.</p>
+  </div>
+  <button type="button" *appHasPermission="'ROLE_CREATE'" class="btn btn-primary" (click)="openAddForm()">+ Add Role</button>
+</div>
+
+@if (showAddForm()) {
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+    <div class="section-title">New Role</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Role Name</label>
+        <input type="text" [(ngModel)]="newRoleName" placeholder="e.g. Site Manager" />
+      </div>
+      <div class="form-field">
+        <label>Description</label>
+        <input type="text" [(ngModel)]="newRoleDescription" placeholder="Optional" />
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label>Permissions</label>
+      <p class="muted" style="margin: 0 0 0.5rem;">
+        You can only grant permissions you yourself currently have.
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem; max-height: 260px; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;">
+        @for (p of selectablePermissions(); track p.id) {
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size: 0.82rem; font-weight: 400;">
+            <input type="checkbox" [checked]="selectedPermissionIds.has(p.id)" (change)="togglePermission(p.id)" />
+            {{ p.name }}
+          </label>
+        }
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="showAddForm.set(false)">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="!newRoleName.trim() || saving()" (click)="submitNewRole()">
+        {{ saving() ? 'Saving...' : 'Add Role' }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else {
+    <table>
+      <thead><tr><th>Name</th><th>Description</th><th>Scope</th><th>Permissions</th></tr></thead>
+      <tbody>
+        @for (role of roles(); track role.id) {
+          <tr>
+            <td>{{ role.name }}</td>
+            <td>{{ role.description }}</td>
+            <td>
+              @if (role.custom) { <app-status-badge label="Custom" kind="info"></app-status-badge> }
+              @else { <app-status-badge label="System" kind="muted"></app-status-badge> }
+            </td>
+            <td>{{ (role.permissions ?? []).length }} permission(s)</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
