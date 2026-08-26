@@ -7,6 +7,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
@@ -38,10 +39,16 @@ public class JwtService {
         }
         // Accept either a raw string or a Base64-encoded secret; Base64 is recommended
         // since it reliably yields enough entropy/bytes for HS512.
+        // NOTE: jjwt's Decoders.BASE64.decode() throws io.jsonwebtoken.io.DecodingException on
+        // invalid input, NOT java.lang.IllegalArgumentException - catching only the latter (as
+        // an earlier version of this method did) meant this fallback never actually ran; any
+        // secret containing a character outside the standard Base64 alphabet (e.g. '_' or '-',
+        // valid only in Base64-URL, not standard Base64) crashed app startup instead of falling
+        // back to being treated as a raw string, exactly like this method was always meant to.
         byte[] keyBytes;
         try {
             keyBytes = Decoders.BASE64.decode(secret);
-        } catch (IllegalArgumentException notBase64) {
+        } catch (DecodingException | IllegalArgumentException notBase64) {
             keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         }
         if (keyBytes.length < 32) {
