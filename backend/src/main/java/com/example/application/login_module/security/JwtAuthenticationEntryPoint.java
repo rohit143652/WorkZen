@@ -15,7 +15,16 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public JwtAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        // Injects Spring Boot's auto-configured ObjectMapper bean (which registers all available
+        // Jackson modules, including jackson-datatype-jsr310 for java.time types like Instant)
+        // instead of a bare `new ObjectMapper()`, which has no modules registered at all and
+        // throws InvalidDefinitionException the moment it tries to serialize ErrorResponse's
+        // Instant timestamp field - exactly what was happening on every 401 response.
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)

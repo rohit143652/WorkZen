@@ -28,6 +28,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- Explicit, not just relying on it arriving transitively via spring-boot-starter-web
+             (spring-boot-starter-json) - guarantees java.time types (Instant, LocalDate, etc.)
+             serialize correctly everywhere, including ErrorResponse's Instant timestamp field
+             written directly by JwtAuthenticationEntryPoint/CustomAccessDeniedHandler, which
+             previously failed with "Java 8 date/time type `java.time.Instant` not supported". -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>

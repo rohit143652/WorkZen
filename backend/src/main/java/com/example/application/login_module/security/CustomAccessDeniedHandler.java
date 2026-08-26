@@ -15,7 +15,13 @@ import java.io.IOException;
 @Component
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public CustomAccessDeniedHandler(ObjectMapper objectMapper) {
+        // Same fix as JwtAuthenticationEntryPoint - inject Spring's auto-configured ObjectMapper
+        // (has the java.time/Instant module registered) instead of a bare `new ObjectMapper()`.
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
