@@ -28,9 +28,9 @@ RUN mvn -B clean package -DskipTests
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Matches pom.xml's <artifactId>workzen</artifactId> / <version>0.0.1-SNAPSHOT</version> -
-# update this if you ever change either of those in pom.xml.
-COPY --from=build /app/target/workzen-0.0.1-SNAPSHOT.jar app.jar
+# Matches pom.xml's <finalName>workzen</finalName> (fixed, no version suffix) - this stays
+# correct even if <version> in pom.xml changes later, since the built jar name doesn't depend on it.
+COPY --from=build /app/target/workzen.jar app.jar
 
 EXPOSE 8080
 
