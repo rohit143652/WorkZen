@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>workforce-auth</artifactId>
-    <version>1.0.0</version>
-    <name>workforce-auth</name>
-    <description>Production-ready Authentication, JWT, RBAC and Permission-based Access Control module</description>
+    <artifactId>workzen</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>workzen</name>
+    <description>WORKZEN - Workforce, Payroll, Attendance, Leave and Advance management</description>
 
     <properties>
         <java.version>21</java.version>

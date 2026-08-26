@@ -1,6 +1,6 @@
 spring:
   application:
-    name: workforce-auth
+    name: workzen
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
