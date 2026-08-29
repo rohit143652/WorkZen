@@ -1,0 +1,17 @@
+/* Roles table: Description can run long ("Administrator for a single Client Company tenant -
+   manages that tenant's employees, sub-clients, sites and assignments") - the global th/td rule
+   is white-space: nowrap (right for most tables, where every column is short), which forced this
+   one column to stay on a single line and made the whole table wider than a laptop screen. This
+   column specifically gets to wrap instead, capped to a sensible width, so the table's total
+   width stays predictable and fits without needing horizontal scroll on a normal laptop. */
+.description-col {
+  white-space: normal;
+  max-width: 320px;
+  min-width: 200px;
+}
+
+@media (max-width: 1280px) {
+  .description-col {
+    max-width: 220px;
+  }
+}

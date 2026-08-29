@@ -218,8 +218,9 @@
         @if (form.controls.enableLogin.value) {
           <div class="form-grid" formGroupName="loginAccess" style="margin-top: 1rem;">
             <div class="form-field">
-              <label>Username</label>
+              <label>Username <span class="muted" style="font-weight: 400;">(auto-generated)</span></label>
               <input type="text" formControlName="username" />
+              <p class="muted" style="font-size: 0.78rem; margin: 0.25rem 0 0;">Generated from the employee's name once both First Name and Last Name are filled in - not editable.</p>
               @if (form.controls.loginAccess.controls.username.invalid && form.controls.loginAccess.controls.username.touched) {
                 <span class="field-error">Username is required</span>
               }

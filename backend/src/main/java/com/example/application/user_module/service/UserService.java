@@ -1,6 +1,7 @@
 package com.example.application.user_module.service;
 
 import com.example.application.audit_module.service.AuditService;
+import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
 import com.example.application.common.exception.ResourceNotFoundException;
 import com.example.application.login_module.entity.User;
@@ -197,5 +198,46 @@ public class UserService {
         Set<String> roleNames = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
         return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getFirstName(),
                 user.getLastName(), user.isActive(), user.isLocked(), user.getLastLoginAt(), roleNames);
+    }
+
+    /**
+     * Generates the next available username for a new login account, following this exact order
+     * (spec): "first initial . last name" (e.g. "Meena Kumari" -> "m.kumari") first; if that's
+     * taken, the FULL first name instead ("meena.kumari"); if that's ALSO taken, fall back to the
+     * short form with an incrementing number suffix ("m.kumari1", "m.kumari2", ...) until one is
+     * free. All lowercase, spaces within a name collapsed away. Read-only (never persists
+     * anything) - the actual User row is only created when the employee is saved with login
+     * enabled, same as today.
+     */
+    @Transactional(readOnly = true)
+    public String generateUsername(String firstName, String lastName) {
+        String first = normalizeForUsername(firstName);
+        String last = normalizeForUsername(lastName);
+        if (first.isEmpty() || last.isEmpty()) {
+            throw new BadRequestException("First name and last name are both required to generate a username.");
+        }
+
+        String shortForm = first.charAt(0) + "." + last;
+        if (!userRepository.existsByUsername(shortForm)) {
+            return shortForm;
+        }
+
+        String fullForm = first + "." + last;
+        if (!userRepository.existsByUsername(fullForm)) {
+            return fullForm;
+        }
+
+        for (int suffix = 1; suffix < 1000; suffix++) {
+            String candidate = shortForm + suffix;
+            if (!userRepository.existsByUsername(candidate)) {
+                return candidate;
+            }
+        }
+        throw new BadRequestException("Could not generate an available username for \"" + firstName + " " + lastName + "\" after 1000 attempts.");
+    }
+
+    private String normalizeForUsername(String name) {
+        if (name == null) return "";
+        return name.trim().toLowerCase().replaceAll("\\s+", "");
     }
 }

@@ -1,0 +1,25 @@
+<div class="page-header">
+  <div>
+    <h1>My Payslip</h1>
+    <p class="muted">Download your own payslip for any month - available once that month's payroll has been approved.</p>
+  </div>
+</div>
+
+<div class="card filters">
+  <div class="form-field" style="margin: 0;">
+    <label>Month</label>
+    <select [(ngModel)]="month">
+      @for (m of months; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }
+    </select>
+  </div>
+  <div class="form-field" style="margin: 0;">
+    <label>Year</label>
+    <select [(ngModel)]="year">
+      @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+    </select>
+  </div>
+  <button type="button" class="btn btn-primary" style="align-self: flex-end;" [disabled]="downloading()" (click)="download()">
+    @if (downloading()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-download"></i> }
+    {{ downloading() ? 'Generating...' : 'Download Payslip' }}
+  </button>
+</div>

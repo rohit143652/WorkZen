@@ -33,7 +33,11 @@
   --info-color: #0369a1;
   --info-bg: #f0f9ff;
 
-  --sidebar-width: 252px;
+  /* 268px - wide enough that the longest nav labels ("Departments & Designations", "Monthly
+     Attendance Report") get real breathing room next to their icon, without wasting space on
+     smaller laptop screens. */
+  --sidebar-width: 268px;
+
   --sidebar-bg: #0a1830;
   --sidebar-bg-active: #1565c0;
   --topbar-height: 64px;
@@ -72,6 +76,13 @@
   --bs-font-sans-serif: var(--font-family);
   --bs-border-radius: var(--radius-sm);
   --bs-border-radius-lg: var(--radius-md);
+}
+
+/* Compact/smaller laptop screens - a slightly narrower sidebar leaves more room for the actual
+   page content (tables especially) without shrinking all the way down to the mobile/tablet
+   drawer pattern, which only kicks in below 900px (see app-shell.component.css). */
+@media (min-width: 901px) and (max-width: 1200px) {
+  :root { --sidebar-width: 232px; }
 }
 
 body { font-family: var(--font-family); }
@@ -173,6 +184,75 @@ body { font-family: var(--font-family); }
 .badge-danger { background: var(--danger-bg); color: var(--danger-color); }
 .badge-info { background: var(--info-bg); color: var(--info-color); }
 .badge-muted { background: var(--surface-alt-color); color: var(--muted-color); }
+
+/* ---- Attendance "Employee" cell - name on top, site name as small subtext below, so the
+   Site column can be dropped entirely without losing that context. ---- */
+.employee-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.employee-cell .employee-name { font-weight: 600; }
+.employee-cell .employee-site { font-size: 0.78rem; color: var(--muted-color); }
+
+/* ---- Attendance status select: a real <select> (not a custom pill widget) so it works
+   identically everywhere (desktop, tablet, phone) with no extra tap targets to design around,
+   but re-skinned so it doesn't look like a bare, dated browser default - custom chevron, rounder
+   corners, and its border/background reflects the chosen status's color the moment something is
+   picked, exactly like the read-only status badges elsewhere already do. ---- */
+.status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 2rem 0.5rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-color);
+  background-color: var(--surface-color);
+  color: var(--muted-color);
+  cursor: pointer;
+  min-width: 150px;
+  transition: all 0.15s ease;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%2364748b' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 14px;
+}
+.status-select:hover { border-color: var(--primary-color); }
+.status-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.15);
+}
+
+.status-select-success { background-color: var(--success-bg); border-color: var(--success-color); color: var(--success-color); }
+.status-select-danger { background-color: var(--danger-bg); border-color: var(--danger-color); color: var(--danger-color); }
+.status-select-warning { background-color: var(--warning-bg); border-color: var(--warning-color); color: var(--warning-color); }
+.status-select-info { background-color: var(--info-bg); border-color: var(--info-color); color: var(--info-color); }
+
+/* ---- Mark Attendance's dual table structure: the full-detail table (desktop) is the default
+   visible one; the simplified 2-column table (mobile) is hidden until the screen is narrow -
+   toggled purely by CSS (both render in the DOM; only one is ever visible per screen size), so
+   there's no JS/template branching needed for what's purely a layout choice. ---- */
+.attendance-table-mobile { display: none; }
+
+.attendance-table-desktop .status-select { min-width: 150px; }
+
+/* On the mobile table specifically, table-layout: fixed locks the Status column to a set
+   percentage instead of letting .status-select's own width push the whole table wider than the
+   screen (which was the dropdown spilling out past the card's right edge on narrow phones). */
+.attendance-table-mobile { table-layout: fixed; width: 100%; }
+.attendance-table-mobile th:first-child, .attendance-table-mobile td:first-child { width: 62%; }
+.attendance-table-mobile th:last-child, .attendance-table-mobile td:last-child { width: 38%; }
+.attendance-table-mobile .status-select { width: 100%; box-sizing: border-box; min-width: 0; }
+
+.remarks-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  width: 140px;
+}
 
 /* ---- Forms ---- */
 .form-field { margin-bottom: 1.15rem; display: flex; flex-direction: column; gap: 0.35rem; }

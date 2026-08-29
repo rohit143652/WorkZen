@@ -75,9 +75,9 @@
               <td>
                 <div class="actions">
                 @if (c.active) {
-                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-danger btn-sm" (click)="toggle(c)">Deactivate</button>
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn-icon-sm btn-icon-danger" title="Deactivate" (click)="toggle(c)"><i class="bi bi-slash-circle"></i></button>
                 } @else {
-                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-secondary btn-sm" (click)="toggle(c)">Activate</button>
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn-icon-sm btn-icon-success" title="Activate" (click)="toggle(c)"><i class="bi bi-check-circle"></i></button>
                 }
                 </div>
               </td>

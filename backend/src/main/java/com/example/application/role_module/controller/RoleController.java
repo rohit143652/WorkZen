@@ -53,7 +53,7 @@ public class RoleController {
                                                               @AuthenticationPrincipal CustomUserPrincipal principal,
                                                               HttpServletRequest httpRequest) {
         return ResponseEntity.ok(ApiResponse.success("Role updated",
-                roleService.update(id, request, principal.getId(), httpRequest)));
+                roleService.update(id, request, principal.getId(), principal.getRoleNames(), httpRequest)));
     }
 
     @PutMapping("/{id}/permissions")
@@ -63,7 +63,7 @@ public class RoleController {
                                                                          @AuthenticationPrincipal CustomUserPrincipal principal,
                                                                          HttpServletRequest httpRequest) {
         return ResponseEntity.ok(ApiResponse.success("Role permissions updated",
-                roleService.updatePermissions(id, request, principal.getId(), httpRequest)));
+                roleService.updatePermissions(id, request, principal.getId(), principal.getRoleNames(), httpRequest)));
     }
 
     @DeleteMapping("/{id}")

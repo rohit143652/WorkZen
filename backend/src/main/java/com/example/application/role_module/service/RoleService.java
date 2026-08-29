@@ -103,9 +103,10 @@ public class RoleService {
     }
 
     @Transactional
-    public RoleResponse update(Long id, RoleRequest request, Long actorId, HttpServletRequest httpRequest) {
+    public RoleResponse update(Long id, RoleRequest request, Long actorId, Set<String> actorRoleNames, HttpServletRequest httpRequest) {
         boolean superAdmin = tenantContext.isSuperAdmin();
         Role role = getOwnedEntity(id, superAdmin);
+        rejectIfEditingOwnRole(role, superAdmin, actorRoleNames);
 
         boolean nameChanged = !role.getName().equalsIgnoreCase(request.getName());
         if (nameChanged) {
@@ -127,9 +128,10 @@ public class RoleService {
     }
 
     @Transactional
-    public RoleResponse updatePermissions(Long id, RolePermissionsRequest request, Long actorId, HttpServletRequest httpRequest) {
+    public RoleResponse updatePermissions(Long id, RolePermissionsRequest request, Long actorId, Set<String> actorRoleNames, HttpServletRequest httpRequest) {
         boolean superAdmin = tenantContext.isSuperAdmin();
         Role role = getOwnedEntity(id, superAdmin);
+        rejectIfEditingOwnRole(role, superAdmin, actorRoleNames);
         role.setPermissions(resolvePermissionsWithCeiling(request.getPermissionIds(), superAdmin));
         Role saved = roleRepository.save(role);
         auditService.log(actorId, "ROLE_UPDATED", "Updated permissions for role " + saved.getName(), httpRequest);
@@ -166,17 +168,43 @@ public class RoleService {
         return role;
     }
 
+    /**
+     * Permissions that any ROLE_UPDATE holder may freely grant/revoke on ANY role - including
+     * their own - regardless of whether they personally hold that permission themselves. This
+     * bypasses the "can't grant what you don't have" ceiling below entirely, in both directions,
+     * for these specific permissions. SUPER_ADMIN is unaffected either way - it already bypasses
+     * every restriction below.
+     */
+    /**
+     * Blanket rule: nobody except SUPER_ADMIN may edit a role that is currently one of their OWN
+     * roles - not the name, not the description, and not a single permission on it, even ones
+     * they already hold themselves. This is a stronger, simpler rule than trying to reason about
+     * which specific permission changes would or wouldn't be self-escalation; editing your own
+     * role at all requires a Super Admin (or another admin who doesn't hold this role) to do it.
+     */
+    private void rejectIfEditingOwnRole(Role role, boolean superAdmin, Set<String> actorRoleNames) {
+        if (!superAdmin && actorRoleNames != null && actorRoleNames.contains(role.getName())) {
+            throw new BadRequestException(
+                    "You cannot edit a role you yourself currently hold (\"" + role.getName()
+                            + "\") - ask a Super Admin, or another admin who doesn't hold this role, to make this change.");
+        }
+    }
+
+    private static final Set<String> UNRESTRICTED_PERMISSIONS = Set.of("PAYSLIP_SELF_VIEW");
+
     private Set<Permission> resolvePermissionsWithCeiling(Set<Long> ids, boolean superAdmin) {
         if (ids == null || ids.isEmpty()) return new HashSet<>();
         Set<Permission> permissions = new HashSet<>(permissionRepository.findAllById(ids));
         if (permissions.size() != ids.size()) {
             throw new ResourceNotFoundException("One or more permission IDs do not exist");
         }
+
         if (!superAdmin) {
             Set<String> ownPermissions = tenantContext.currentPermissionNames();
             Set<String> disallowed = permissions.stream()
                     .map(Permission::getName)
                     .filter(name -> !ownPermissions.contains(name))
+                    .filter(name -> !UNRESTRICTED_PERMISSIONS.contains(name))
                     .collect(Collectors.toCollection(LinkedHashSet::new));
             if (!disallowed.isEmpty()) {
                 throw new BadRequestException(

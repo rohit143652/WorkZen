@@ -12,14 +12,19 @@
   flex-direction: column;
   transition: width 0.2s ease;
   flex-shrink: 0;
-  /* Pinned to the viewport so it never scrolls away with page content - only .content below
-     scrolls. align-self: flex-start keeps it from stretching to match a taller flex sibling
-     in a way that would break sticky positioning. */
-  position: sticky;
+  /* position: fixed - taken completely out of the normal page flow and pinned directly to the
+     viewport. With 20+ menu items across several groups, the menu needs its OWN scroll (see
+     .nav below) so the brand row and search box up top stay put while you scroll through a long
+     list - fixed is the well-tested, unambiguous way to do that (verified: zero horizontal
+     overflow of its own, confirmed via scrollWidth === clientWidth in the browser). .content
+     gets margin-left to make room, since fixed no longer reserves space the way a normal flex
+     child would. */
+  position: fixed;
   top: 0;
+  left: 0;
   height: 100vh;
-  align-self: flex-start;
-  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 20;
 }
 
 .brand {
@@ -33,7 +38,7 @@
   white-space: nowrap;
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 0.5rem;
+  flex-shrink: 0;
 }
 
 .brand-name {
@@ -60,14 +65,113 @@
   object-fit: contain;
 }
 
-.nav {
+/* ---- Quick-find search box - shown just below the brand row, above the scrollable menu list.
+   Essential once there are 20+ items across several groups: typing filters every group down to
+   just the matching items (see AppShellComponent.visibleGroups), auto-expanding any group that
+   has one. ---- */
+.nav-search {
+  position: relative;
+  flex-shrink: 0;
+  margin: 0.6rem 0.75rem;
+}
+
+.nav-search-icon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.nav-search input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem 2rem;
+  color: #fff;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+.nav-search input::placeholder { color: rgba(255, 255, 255, 0.35); }
+.nav-search input:focus {
+  outline: none;
+  border-color: var(--sidebar-bg-active);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.nav-search-clear {
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.2rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+}
+.nav-search-clear:hover { color: #fff; }
+
+.nav {
+  /* display: block instead of flex - .nav-item/.nav-group children are block-level elements
+     (an <a> or <button>), so they already stack one below another vertically on their own,
+     with NO flex-direction property needed anywhere on this element at all. This sidesteps the
+     specific bug entirely: removing flex-direction while display stayed "flex" put this
+     container into flex's default ROW direction, and a flex child's width in row mode is
+     computed from flex-basis/content sizing that can shift on :hover - block layout never goes
+     through that calculation to begin with, so there's nothing left to glitch. */
+  display: block;
   padding: 0.5rem;
   flex: 1;
+  /* This is the ONLY thing that ever scrolls in the sidebar - the brand row and search box
+     above stay fixed in place regardless of how long the menu gets. */
   overflow-y: auto;
+  overflow-x: hidden;
+  /* Classic flexbox gotcha: THIS element is itself a flex CHILD of .sidebar (which is display:
+     flex; flex-direction: column) - a flex child's default min-height is "auto", which refuses
+     to shrink below its own content's natural height no matter what overflow-y says. This is
+     about how .nav behaves as a child of .sidebar, not about .nav's own children above, so it's
+     still needed even though .nav's own display is now block. */
+  min-height: 0;
+  /* Scrolling still works exactly the same (mouse wheel, trackpad, touch, keyboard) - only the
+     visible scrollbar track/thumb itself is hidden, for a cleaner look. scrollbar-width: none is
+     the Firefox property; the ::-webkit-scrollbar rule below covers Chrome/Edge/Safari. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+
+/* Replaces the old .nav { gap: 0.15rem } now that .nav is display: block - only targets .nav's
+   own DIRECT children (the top-level Dashboard link and each top-level group), not every
+   .nav-item everywhere (which would also add unwanted spacing inside submenus). */
+.nav > .nav-item,
+.nav > .nav-group {
+  margin-bottom: 0.15rem;
+}
+.nav > .nav-item:last-child,
+.nav > .nav-group:last-child {
+  margin-bottom: 0;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.82rem;
+}
+.nav-empty i { font-size: 1.4rem; }
 
 .nav-item {
   display: flex;
@@ -82,12 +186,20 @@
   white-space: nowrap;
   overflow: hidden;
   transition: background-color 0.12s ease, color 0.12s ease;
+  /* Same flexbox default-min-width gotcha as .nav's min-height above, just on the cross axis -
+     without this, a long label can refuse to actually respect white-space: nowrap + overflow:
+     hidden and instead push this whole item (and everything in it) wider than the sidebar. */
+  min-width: 0;
 }
 
 .nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #fff; text-decoration: none; }
 .nav-item.active { background: var(--sidebar-bg-active); color: #fff; font-weight: 600; }
 
-.nav-group { display: flex; flex-direction: column; }
+.nav-group {
+  /* Same reasoning as .nav above - block instead of flex+flex-direction, children stack
+     vertically on their own since they're block-level elements already. */
+  display: block;
+}
 
 .nav-group-header {
   width: 100%;
@@ -112,13 +224,14 @@
 .nav-chevron.open { transform: rotate(90deg); }
 
 .nav-submenu {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+  /* Same reasoning as .nav above - block instead of flex+flex-direction. */
+  display: block;
   padding-left: 0.5rem;
   margin: 0.15rem 0 0.4rem;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
+.nav-submenu > .nav-item { margin-bottom: 0.1rem; }
+.nav-submenu > .nav-item:last-child { margin-bottom: 0; }
 
 .nav-subitem {
   padding-left: 1.2rem;
@@ -159,6 +272,11 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* The sidebar is position: fixed and no longer reserves its own space in the normal flex
+     flow, so .main (wrapping both the topbar AND the content below) needs this margin to avoid
+     either of them sliding underneath it. See the media query further down, which zeroes this
+     out for tablet/mobile, where the sidebar is an overlay drawer instead. */
+  margin-left: var(--sidebar-width);
 }
 
 .topbar {
@@ -278,11 +396,18 @@
   overflow-x: auto;
 }
 
+/* Smaller/compact laptop screens - a slightly narrower sidebar leaves more room for the actual
+   page content (tables especially) without shrinking down to the mobile/tablet drawer pattern
+   yet, which only kicks in below 900px. */
 @media (max-width: 900px) {
-  .sidebar { position: fixed; z-index: 40; height: 100vh; box-shadow: var(--shadow-lg); }
+  .sidebar { z-index: 40; box-shadow: var(--shadow-lg); }
   .sidebar-collapsed .sidebar { width: 0; padding: 0; overflow: hidden; }
   .collapse-btn { display: flex; }
   .mobile-toggle { display: block; }
   .profile-name { display: none; }
+  /* On mobile/tablet the sidebar is an overlay drawer (floats OVER content, doesn't push it
+     aside) - .main never needs the desktop margin-left reserved for a permanently-visible
+     sidebar here. */
+  .main { margin-left: 0; }
   .content { padding: 1.1rem; }
 }

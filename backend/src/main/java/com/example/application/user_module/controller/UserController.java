@@ -29,6 +29,19 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("OK", userService.findAll(pageable)));
     }
 
+    /**
+     * Auto-generates the next available username for a login account, from an employee's first
+     * and last name - used by the Employee Add/Edit form the moment "Login Enabled" is switched
+     * on, so the admin never has to type or check a username by hand. Gated on the employee
+     * permissions (not USER_READ) since it's called from the Employee form, by admins who may
+     * not have direct User-management access at all.
+     */
+    @GetMapping("/generate-username")
+    @PreAuthorize("hasAnyAuthority('EMPLOYEE_CREATE', 'EMPLOYEE_UPDATE')")
+    public ResponseEntity<ApiResponse<String>> generateUsername(@RequestParam String firstName, @RequestParam String lastName) {
+        return ResponseEntity.ok(ApiResponse.success("OK", userService.generateUsername(firstName, lastName)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('USER_READ')")
     public ResponseEntity<ApiResponse<UserResponse>> findById(@PathVariable Long id) {

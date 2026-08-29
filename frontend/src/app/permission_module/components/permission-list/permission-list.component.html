@@ -1,18 +1,47 @@
-<div class="page">
-  <h1>Permissions</h1>
+<div class="page-header">
+  <div>
+    <h1>Permissions</h1>
+    <p class="muted">The complete permission catalog - every permission that can be granted to a role, across every module in the app.</p>
+  </div>
+</div>
+
+<div class="card filters">
+  <div class="form-field" style="margin: 0; flex: 1; min-width: 260px;">
+    <label>Search</label>
+    <input type="text" [(ngModel)]="searchTerm" placeholder="Search by name or description..." />
+  </div>
+  <span class="muted" style="align-self: flex-end; padding-bottom: 0.6rem;">{{ permissions().length }} permission(s) total</span>
+</div>
+
+<div class="card table-card">
   @if (loading()) {
-    <p>Loading...</p>
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3,4,5]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (permissions().length === 0) {
+    <div class="empty-state">No permissions found.</div>
+  } @else if (filteredPermissions().length === 0) {
+    <div class="empty-state">No permission matches "{{ searchTerm }}".</div>
   } @else {
-    <table>
-      <thead><tr><th>Name</th><th>Description</th></tr></thead>
-      <tbody>
-        @for (permission of permissions(); track permission.id) {
-          <tr>
-            <td>{{ permission.name }}</td>
-            <td>{{ permission.description }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody>
+          @for (permission of filteredPermissions(); track permission.id) {
+            <tr>
+              <td><code>{{ permission.name }}</code></td>
+              <td>{{ permission.description || '-' }}</td>
+              <td>
+                @if (permission.active === false) {
+                  <app-status-badge label="Inactive" kind="muted"></app-status-badge>
+                } @else {
+                  <app-status-badge label="Active" kind="success"></app-status-badge>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 </div>

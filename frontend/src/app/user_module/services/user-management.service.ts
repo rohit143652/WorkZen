@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -43,5 +43,13 @@ export class UserManagementService {
     return this.http
       .put<ApiEnvelope<void>>(`${environment.apiUrl}/users/${userId}/set-password`, { newPassword, confirmPassword })
       .pipe(map(() => void 0));
+  }
+
+  /** Auto-generates the next available username from an employee's name - called the moment "Login Enabled" is switched on in the Employee form. See UserService.generateUsername() for the exact fallback order. */
+  generateUsername(firstName: string, lastName: string): Observable<string> {
+    const params = new HttpParams().set('firstName', firstName).set('lastName', lastName);
+    return this.http
+      .get<ApiEnvelope<string>>(`${environment.apiUrl}/users/generate-username`, { params })
+      .pipe(map(e => e.data));
   }
 }

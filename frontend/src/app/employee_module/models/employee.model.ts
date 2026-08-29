@@ -90,3 +90,15 @@ export interface EnableLoginRequest {
 export interface AssignRoleRequest {
   roleId: number;
 }
+
+export interface EmployeeBulkImportRowError {
+  rowNumber: number;
+  reason: string;
+}
+
+export interface EmployeeBulkImportResult {
+  totalRows: number;
+  successCount: number;
+  failureCount: number;
+  errors: EmployeeBulkImportRowError[];
+}

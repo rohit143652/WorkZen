@@ -39,9 +39,9 @@
               </td>
               <td>
                 @if (d.status === 'ACTIVE') {
-                  <button type="button" *appHasPermission="'DEPARTMENT_MANAGE'" class="btn btn-danger btn-sm" (click)="toggleDepartment(d)">Deactivate</button>
+                  <button type="button" *appHasPermission="'DEPARTMENT_MANAGE'" class="btn-icon-sm btn-icon-danger" title="Deactivate" (click)="toggleDepartment(d)"><i class="bi bi-slash-circle"></i></button>
                 } @else {
-                  <button type="button" *appHasPermission="'DEPARTMENT_MANAGE'" class="btn btn-secondary btn-sm" (click)="toggleDepartment(d)">Activate</button>
+                  <button type="button" *appHasPermission="'DEPARTMENT_MANAGE'" class="btn-icon-sm btn-icon-success" title="Activate" (click)="toggleDepartment(d)"><i class="bi bi-check-circle"></i></button>
                 }
               </td>
             </tr>
@@ -95,11 +95,11 @@
                       {{ savingName() ? 'Saving...' : 'Save' }}
                     </button>
                   } @else {
-                    <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn btn-secondary btn-sm" (click)="startEditName(d)">Rename</button>
+                    <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn-icon-sm btn-icon-primary" title="Rename" (click)="startEditName(d)"><i class="bi bi-pencil"></i></button>
                     @if (d.status === 'ACTIVE') {
-                      <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn btn-danger btn-sm" (click)="toggleDesignation(d)">Deactivate</button>
+                      <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn-icon-sm btn-icon-danger" title="Deactivate" (click)="toggleDesignation(d)"><i class="bi bi-slash-circle"></i></button>
                     } @else {
-                      <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn btn-secondary btn-sm" (click)="toggleDesignation(d)">Activate</button>
+                      <button type="button" *appHasPermission="'DESIGNATION_MANAGE'" class="btn-icon-sm btn-icon-success" title="Activate" (click)="toggleDesignation(d)"><i class="bi bi-check-circle"></i></button>
                     }
                   }
                   </div>

@@ -17,9 +17,13 @@
       @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.siteName }}</option> }
     </select>
   </div>
+  <div class="form-field" style="margin: 0; min-width: 220px;">
+    <label>Search Employee</label>
+    <input type="text" [(ngModel)]="searchTerm" placeholder="Name or code..." />
+  </div>
 
   @if (unmarkedCount > 0) {
-    <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: flex-end;">
+    <div class="filters-actions">
       <button type="button" class="btn btn-secondary btn-sm" (click)="markAllPresent()">Mark all unmarked as Present</button>
       @if (pendingCount > 0) {
         <button type="button" class="btn btn-secondary btn-sm" (click)="clearSelections()">Clear selections</button>
@@ -35,14 +39,17 @@
     </div>
   } @else if (rows().length === 0) {
     <div class="empty-state">No actively-assigned employees found for this filter.</div>
+  } @else if (filteredRows().length === 0) {
+    <div class="empty-state">No employee matches "{{ searchTerm }}".</div>
   } @else {
     <div class="table-scroll">
-      <table>
+      <!-- Desktop/tablet: full detail (Employee, Site, Status, Remarks, Marked By) - hidden below 768px. -->
+      <table class="attendance-table-desktop">
         <thead>
           <tr><th>Employee</th><th>Site</th><th>Status</th><th>Remarks</th><th>Marked By</th></tr>
         </thead>
         <tbody>
-          @for (row of rows(); track row.employeeId) {
+          @for (row of filteredRows(); track row.employeeId) {
             <tr>
               <td>{{ row.employeeCode }} &middot; {{ row.employeeName }}</td>
               <td>{{ row.siteName }}</td>
@@ -50,7 +57,11 @@
                 @if (row.existingRecord) {
                   <app-status-badge [label]="statusLabel(row.existingRecord.status)" [kind]="badgeKind(row.existingRecord.status)"></app-status-badge>
                 } @else {
-                  <select [ngModel]="selections.get(row.employeeId) ?? ''" (ngModelChange)="setStatus(row.employeeId, $event)">
+                  <select
+                    class="status-select"
+                    [class]="'status-select-' + (selections.get(row.employeeId) ? badgeKind(selections.get(row.employeeId)!) : 'muted')"
+                    [ngModel]="selections.get(row.employeeId) ?? ''"
+                    (ngModelChange)="setStatus(row.employeeId, $event)">
                     <option value="">Not marked</option>
                     @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
                   </select>
@@ -65,11 +76,44 @@
                     placeholder="Optional"
                     [ngModel]="remarksByEmployee.get(row.employeeId) ?? ''"
                     (ngModelChange)="remarksByEmployee.set(row.employeeId, $event)"
-                    style="padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; width: 140px;" />
+                    class="remarks-input" />
                 }
               </td>
               <td class="muted" style="font-size: 0.78rem;">
                 {{ row.existingRecord ? (row.existingRecord.markedByUsername || '-') : '-' }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Mobile only: simplified 2-column (Employee w/ site as subtext, Status) - hidden at 769px and above. -->
+      <table class="attendance-table-mobile">
+        <thead>
+          <tr><th>Employee</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          @for (row of filteredRows(); track row.employeeId) {
+            <tr>
+              <td>
+                <div class="employee-cell">
+                  <span class="employee-name"><span class="employee-code">{{ row.employeeCode }} &middot; </span>{{ row.employeeName }}</span>
+                  <span class="employee-site">{{ row.siteName }}</span>
+                </div>
+              </td>
+              <td>
+                @if (row.existingRecord) {
+                  <app-status-badge [label]="statusLabel(row.existingRecord.status)" [kind]="badgeKind(row.existingRecord.status)"></app-status-badge>
+                } @else {
+                  <select
+                    class="status-select"
+                    [class]="'status-select-' + (selections.get(row.employeeId) ? badgeKind(selections.get(row.employeeId)!) : 'muted')"
+                    [ngModel]="selections.get(row.employeeId) ?? ''"
+                    (ngModelChange)="setStatus(row.employeeId, $event)">
+                    <option value="">Not marked</option>
+                    @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+                  </select>
+                }
               </td>
             </tr>
           }

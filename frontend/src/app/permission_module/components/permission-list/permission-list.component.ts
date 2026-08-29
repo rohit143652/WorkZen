@@ -1,30 +1,37 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { environment } from '../../../../environments/environment';
-
-interface PermissionRow {
-  id: number;
-  name: string;
-  description: string;
-}
+import { FormsModule } from '@angular/forms';
+import { PermissionService } from '../../services/permission.service';
+import { PermissionOption } from '../../models/permission.model';
+import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-permission-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent],
   templateUrl: './permission-list.component.html'
 })
 export class PermissionListComponent {
-  private readonly http = inject(HttpClient);
+  private readonly permissionService = inject(PermissionService);
 
-  readonly permissions = signal<PermissionRow[]>([]);
+  readonly permissions = signal<PermissionOption[]>([]);
   readonly loading = signal(true);
+  searchTerm = '';
 
   constructor() {
-    this.http.get<{ data: PermissionRow[] }>(`${environment.apiUrl}/permissions`).subscribe({
-      next: res => { this.permissions.set(res.data); this.loading.set(false); },
+    this.permissionService.list().subscribe({
+      next: list => { this.permissions.set(list); this.loading.set(false); },
       error: () => this.loading.set(false)
     });
+  }
+
+  /** Every permission ever seeded (across every phase's migrations) shows here - the backend endpoint has no filtering, this is genuinely the complete catalog. */
+  filteredPermissions(): PermissionOption[] {
+    const term = this.searchTerm.trim().toLowerCase();
+    const list = !term
+      ? this.permissions()
+      : this.permissions().filter(p =>
+          p.name.toLowerCase().includes(term) || (p.description ?? '').toLowerCase().includes(term));
+    return [...list].sort((a, b) => a.name.localeCompare(b.name));
   }
 }

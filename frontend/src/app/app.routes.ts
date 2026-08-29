@@ -64,6 +64,14 @@ export const routes: Routes = [
         loadChildren: () => import('./attendance_module/attendance.routes').then(m => m.ATTENDANCE_ROUTES)
       },
       {
+        path: 'holidays',
+        loadChildren: () => import('./holiday_module/holiday.routes').then(m => m.HOLIDAY_ROUTES)
+      },
+      {
+        path: 'employee-exits',
+        loadChildren: () => import('./exit_module/exit.routes').then(m => m.EXIT_ROUTES)
+      },
+      {
         // Sub-routes (settings) guard themselves individually.
         path: 'paid-leave',
         loadChildren: () => import('./leave_module/leave.routes').then(m => m.LEAVE_ROUTES)

@@ -106,6 +106,32 @@ public class AttendanceService {
         return new BulkMarkAttendanceResult(request.getEntries().size(), markedCount, rejected);
     }
 
+    /**
+     * Auto-marks every currently active employee PRESENT for a given date - used when a Client
+     * Admin adds a company Holiday (see HolidayService.create()), so that day flows into Payable
+     * Days the exact same way any other PRESENT attendance record already does, with no separate
+     * "holiday" concept needed in the payroll calculation itself.
+     *
+     * Employees who already have an attendance record for that date (marked manually beforehand,
+     * or already covered by an earlier holiday) are silently skipped, not overwritten or treated
+     * as failures - same for anyone with no active site assignment right now. Returns how many
+     * were actually newly marked.
+     */
+    @Transactional
+    public int markPresentForHoliday(Long tenantId, LocalDate date, String remarks, Long actorId) {
+        List<Employee> activeEmployees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        int marked = 0;
+        for (Employee employee : activeEmployees) {
+            try {
+                markOne(tenantId, employee.getId(), date, "PRESENT", remarks, actorId);
+                marked++;
+            } catch (RuntimeException alreadyMarkedOrNoAssignment) {
+                // Expected/benign for a bulk holiday sweep - just skip this employee.
+            }
+        }
+        return marked;
+    }
+
     /** Shared core of mark() and bulkMark() - see class javadoc for the immutability guarantee this preserves either way. */
     private Attendance markOne(Long tenantId, Long employeeId, LocalDate date, String status, String remarks, Long actorId) {
         validateStatus(status);

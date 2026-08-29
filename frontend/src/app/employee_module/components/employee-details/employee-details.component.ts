@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EmployeeService } from '../../services/employee.service';
 import { EmployeeResponse } from '../../models/employee.model';
@@ -21,11 +21,13 @@ import { SalaryStructureResponse } from '../../../salary_structure_module/models
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { EmployeePaidLeaveComponent } from '../../../leave_module/components/employee-paid-leave/employee-paid-leave.component';
 import { EmployeeAdvancesComponent } from '../../../advance_module/components/employee-advances/employee-advances.component';
+import { PayrollService } from '../../../payroll_module/services/payroll.service';
+import { extractBlobErrorMessage } from '../../../shared/utils/blob-error.util';
 
 @Component({
   selector: 'app-employee-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, StatusBadgeComponent, HasPermissionDirective, EmployeePaidLeaveComponent, EmployeeAdvancesComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, HasPermissionDirective, EmployeePaidLeaveComponent, EmployeeAdvancesComponent],
   templateUrl: './employee-details.component.html',
   styleUrl: './employee-details.component.css'
 })
@@ -41,7 +43,42 @@ export class EmployeeDetailsComponent {
   private readonly assignmentService = inject(EmployeeAssignmentService);
   private readonly employeeSalaryStructureService = inject(EmployeeSalaryStructureService);
   private readonly salaryStructureService = inject(SalaryStructureService);
+  private readonly payrollService = inject(PayrollService);
   readonly authState = inject(AuthStateService);
+
+  // ---- Payslip download (admin picks any month/year for this employee) ----
+  readonly payslipMonths = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ].map((label, index) => ({ label, value: index + 1 }));
+  readonly payslipYears: number[] = (() => {
+    const current = new Date().getFullYear();
+    return [current, current - 1, current - 2];
+  })();
+  payslipMonth = new Date().getMonth() + 1;
+  payslipYear = new Date().getFullYear();
+  readonly downloadingPayslip = signal(false);
+
+  downloadPayslip(employeeId: number): void {
+    this.downloadingPayslip.set(true);
+    this.payrollService.downloadEmployeePayslip(employeeId, this.payslipYear, this.payslipMonth).subscribe({
+      next: blob => {
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `Payslip-${employeeId}-${this.payslipMonth}-${this.payslipYear}.pdf`;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        this.downloadingPayslip.set(false);
+        this.toast.success('Payslip downloaded.');
+      },
+      error: err => {
+        this.downloadingPayslip.set(false);
+        extractBlobErrorMessage(err, 'Unable to generate this payslip - that month may not have been approved yet.')
+          .then(message => this.toast.error(message));
+      }
+    });
+  }
 
   readonly assignmentHistory = signal<EmployeeAssignmentResponse[]>([]);
   readonly sites = signal<SiteResponse[]>([]);

@@ -25,4 +25,9 @@ export class RoleService {
   create(request: RoleRequest): Observable<RoleOption> {
     return this.http.post<ApiEnvelope<RoleOption>>(this.baseUrl, request).pipe(map(e => e.data));
   }
+
+  /** Updates name/description AND permissions together in one call - matches PUT /api/roles/{id}, which the backend already treats as a single "replace with this" operation. */
+  update(id: number, request: RoleRequest): Observable<RoleOption> {
+    return this.http.put<ApiEnvelope<RoleOption>>(`${this.baseUrl}/${id}`, request).pipe(map(e => e.data));
+  }
 }

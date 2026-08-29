@@ -250,6 +250,38 @@ public class EmployeeService {
         return toResponse(saved);
     }
 
+    /**
+     * For an employee who left and is now rejoining - reuses the SAME underlying record (so
+     * their entire employment history - past salary structures, attendance, advances, exit
+     * settlement, everything - stays intact and attached to this one record) rather than
+     * creating a brand new Employee row from scratch. The only thing that changes is the
+     * employeeCode itself, freshly generated the exact same way a new employee's code would be,
+     * since the old code represents a closed employment period that's now over; reusing it would
+     * make attendance/payroll history from the two employment periods impossible to tell apart.
+     */
+    @Transactional
+    public EmployeeResponse rejoin(Long id, Long actorId, HttpServletRequest httpRequest) {
+        Employee employee = getEntity(id);
+        if ("ACTIVE".equals(employee.getStatus())) {
+            throw new BadRequestException("This employee is already active.");
+        }
+        Long tenantId = tenantContextService.currentTenantIdOrNull();
+        String oldCode = employee.getEmployeeCode();
+        String lastCode = employeeRepository
+                .findTopByClientCompanyIdAndEmployeeCodeStartingWithOrderByEmployeeCodeDesc(tenantId, EMPLOYEE_CODE_PREFIX)
+                .map(Employee::getEmployeeCode)
+                .orElse(null);
+        String newCode = com.example.application.common.util.CodeGeneratorService.nextCode(EMPLOYEE_CODE_PREFIX, lastCode, 4);
+
+        employee.setEmployeeCode(newCode);
+        employee.setStatus("ACTIVE");
+        Employee saved = employeeRepository.save(employee);
+
+        auditService.log(actorId, "EMPLOYEE_REJOINED",
+                "Employee " + oldCode + " rejoined the company - reactivated with new code " + newCode, httpRequest);
+        return toResponse(saved);
+    }
+
     /** Deactivating an employee also disables (never deletes) any linked login and revokes its refresh tokens. */
     @Transactional
     public EmployeeResponse deactivate(Long id, Long actorId, HttpServletRequest httpRequest) {

@@ -1,0 +1,121 @@
+<div class="page-header">
+  <div>
+    <h1>Exit Management</h1>
+    <p class="muted">Record a resignation, then process Full &amp; Final Settlement on or after the last working day - this computes prorated salary for the exit month, deducts any outstanding advance, and deactivates the employee.</p>
+  </div>
+  <button type="button" *appHasPermission="'EMPLOYEE_EXIT_CREATE'" class="btn btn-primary" (click)="openAddForm()">+ Record Resignation</button>
+</div>
+
+@if (showAddForm()) {
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+    <div class="section-title">New Resignation</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Employee</label>
+        <select [(ngModel)]="newEmployeeId">
+          <option [ngValue]="null">Select employee...</option>
+          @for (e of activeEmployees(); track e.id) { <option [ngValue]="e.id">{{ e.employeeCode }} &middot; {{ e.firstName }} {{ e.lastName }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Resignation Date</label>
+        <input type="date" [(ngModel)]="newResignationDate" />
+      </div>
+      <div class="form-field">
+        <label>Last Working Day</label>
+        <input type="date" [(ngModel)]="newLastWorkingDay" [min]="newResignationDate" />
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Reason</label>
+      <input type="text" [(ngModel)]="newReason" placeholder="Optional" />
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="closeAddForm()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="!newEmployeeId || !newResignationDate || !newLastWorkingDay || saving()" (click)="submitResignation()">
+        @if (saving()) { <span class="btn-spinner"></span> }
+        {{ saving() ? 'Saving...' : 'Record Resignation' }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (exits().length === 0) {
+    <div class="empty-state">No resignations recorded yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Employee</th><th>Resignation Date</th><th>Last Working Day</th><th>Notice Days</th><th>Status</th><th>Net Settlement</th><th></th></tr></thead>
+        <tbody>
+          @for (exit of exits(); track exit.id) {
+            <tr>
+              <td>{{ exit.employeeCode }} &middot; {{ exit.employeeName }}</td>
+              <td>{{ exit.resignationDate }}</td>
+              <td>{{ exit.lastWorkingDay }}</td>
+              <td>{{ exit.noticePeriodDays }}</td>
+              <td>
+                @if (exit.status === 'SETTLED') { <app-status-badge label="Settled" kind="success"></app-status-badge> }
+                @else { <app-status-badge label="In Progress" kind="warning"></app-status-badge> }
+              </td>
+              <td>{{ exit.netSettlementAmount != null ? ('₹' + exit.netSettlementAmount) : '-' }}</td>
+              <td>
+                <div class="actions">
+                  @if (exit.status === 'INITIATED') {
+                    <button type="button" *appHasPermission="'EMPLOYEE_EXIT_SETTLE'" class="btn-icon-sm btn-icon-primary" title="Process Settlement" (click)="openSettleModal(exit)"><i class="bi bi-cash-coin"></i></button>
+                  } @else if (exit.status === 'SETTLED') {
+                    <button type="button" *appHasPermission="'EMPLOYEE_ACTIVATE'" class="btn-icon-sm btn-icon-success" title="Rejoin - this employee left and is genuinely coming back, reactivates with a new employee code" (click)="rejoinEmployee(exit)"><i class="bi bi-arrow-repeat"></i></button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (showSettleModal() && previewingExit) {
+  <div class="modal-overlay" (click)="closeSettleModal()">
+    <div class="modal-box card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Full &amp; Final Settlement</h3>
+        <button type="button" class="modal-close" (click)="closeSettleModal()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>{{ previewingExit.employeeName }}</strong> ({{ previewingExit.employeeCode }})</p>
+        <p class="muted">Last working day: {{ previewingExit.lastWorkingDay }}</p>
+
+        @if (loadingPreview()) {
+          <div style="padding: 1rem; text-align: center;" class="muted">Calculating settlement...</div>
+        } @else {
+          <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px dashed var(--border-color);">
+            <span>Prorated Salary (exit month)</span>
+            <strong>&#8377;{{ previewingExit.proratedSalary }}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding: 0.4rem 0; border-bottom: 1px dashed var(--border-color);">
+            <span>Less: Outstanding Advance</span>
+            <strong>&#8377;{{ previewingExit.outstandingAdvanceDeduction }}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; padding: 0.6rem 0; font-size: 1.05rem;">
+            <span><strong>Net Settlement</strong></span>
+            <strong style="color: var(--primary-color);">&#8377;{{ previewingExit.netSettlementAmount }}</strong>
+          </div>
+          <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">Confirming this will permanently deactivate the employee and cannot be undone.</p>
+        }
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeSettleModal()">Cancel</button>
+        <button type="button" *appHasPermission="'EMPLOYEE_EXIT_SETTLE'" class="btn btn-primary" [disabled]="loadingPreview() || settling()" (click)="confirmSettle()">
+          @if (settling()) { <span class="btn-spinner"></span> }
+          {{ settling() ? 'Processing...' : 'Confirm & Settle' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

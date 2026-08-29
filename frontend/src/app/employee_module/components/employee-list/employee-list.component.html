@@ -3,7 +3,14 @@
     <h1>Employees</h1>
     <p class="muted">Manage employee records and their login access.</p>
   </div>
-  <a routerLink="/employees/new" *appHasPermission="'EMPLOYEE_CREATE'" class="btn btn-primary">+ Add Employee</a>
+  <div class="header-actions">
+    <a routerLink="/employees/bulk-import" *appHasPermission="'EMPLOYEE_CREATE'" class="btn btn-secondary">
+      <i class="bi bi-upload"></i> Bulk Import
+    </a>
+    <a routerLink="/employees/new" *appHasPermission="'EMPLOYEE_CREATE'" class="btn btn-primary">
+      <i class="bi bi-person-plus"></i> Add Employee
+    </a>
+  </div>
 </div>
 
 <div class="card filters">
@@ -38,48 +45,41 @@
     <div class="empty-state">No employees found.</div>
   } @else {
     <div class="table-scroll">
-      <table>
+      <table class="employee-table">
         <thead>
           <tr>
-            <th>Code</th><th>Name</th><th>Email</th><th>Department</th><th>Designation</th>
-            <th>Login</th><th>Role</th><th>Status</th><th></th>
+            <th>Code</th><th>Employee</th><th>Email</th><th>Department</th><th>Designation</th><th>Role</th><th></th>
           </tr>
         </thead>
         <tbody>
           @for (e of employees(); track e.id) {
             <tr>
               <td>{{ e.employeeCode }}</td>
-              <td>{{ e.firstName }} {{ e.lastName }}</td>
+              <td>
+                <div class="employee-name-cell">
+                  <span class="status-dot" [class.status-dot-active]="e.status === 'ACTIVE'" [title]="e.status === 'ACTIVE' ? 'Active' : 'Inactive'"></span>
+                  <span>{{ e.firstName }} {{ e.lastName }}</span>
+                  <i class="bi" [class.bi-key-fill]="e.loginEnabled" [class.bi-key]="!e.loginEnabled"
+                     [class.login-icon-on]="e.loginEnabled" [class.login-icon-off]="!e.loginEnabled"
+                     [title]="e.loginEnabled ? 'Login enabled' : 'Login disabled'"></i>
+                </div>
+              </td>
               <td>{{ e.email }}</td>
               <td>{{ e.department }}</td>
               <td>{{ e.designation }}</td>
-              <td>
-                @if (e.loginEnabled) {
-                  <app-status-badge label="🟢 Login Enabled" kind="success"></app-status-badge>
-                } @else {
-                  <app-status-badge label="⚪ Login Disabled" kind="muted"></app-status-badge>
-                }
-              </td>
               <td>{{ e.roles?.join(', ') || '-' }}</td>
               <td>
-                @if (e.status === 'ACTIVE') {
-                  <app-status-badge label="Active" kind="success"></app-status-badge>
-                } @else {
-                  <app-status-badge label="Inactive" kind="muted"></app-status-badge>
-                }
-              </td>
-              <td>
                 <div class="actions">
-                <a [routerLink]="['/employees', e.id]" class="btn btn-secondary btn-sm">View</a>
-                <a [routerLink]="['/employees', e.id, 'edit']" *appHasPermission="'EMPLOYEE_UPDATE'" class="btn btn-secondary btn-sm">Edit</a>
-                @if (e.loginEnabled) {
-                  <button type="button" *appHasPermission="'EMPLOYEE_DISABLE_LOGIN'" class="btn btn-danger btn-sm" (click)="toggleLogin(e)">Disable Login</button>
-                }
-                @if (e.status === 'ACTIVE') {
-                  <button type="button" *appHasPermission="'EMPLOYEE_DEACTIVATE'" class="btn btn-danger btn-sm" (click)="toggleActive(e)">Deactivate</button>
-                } @else {
-                  <button type="button" *appHasPermission="'EMPLOYEE_ACTIVATE'" class="btn btn-secondary btn-sm" (click)="toggleActive(e)">Activate</button>
-                }
+                  <a [routerLink]="['/employees', e.id]" class="btn-icon-sm" title="View"><i class="bi bi-eye"></i></a>
+                  <a [routerLink]="['/employees', e.id, 'edit']" *appHasPermission="'EMPLOYEE_UPDATE'" class="btn-icon-sm btn-icon-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                  @if (e.loginEnabled) {
+                    <button type="button" *appHasPermission="'EMPLOYEE_DISABLE_LOGIN'" class="btn-icon-sm btn-icon-danger" title="Disable Login" (click)="toggleLogin(e)"><i class="bi bi-key"></i></button>
+                  }
+                  @if (e.status === 'ACTIVE') {
+                    <button type="button" *appHasPermission="'EMPLOYEE_DEACTIVATE'" class="btn-icon-sm btn-icon-danger" title="Deactivate" (click)="toggleActive(e)"><i class="bi bi-person-dash"></i></button>
+                  } @else {
+                    <button type="button" *appHasPermission="'EMPLOYEE_ACTIVATE'" class="btn-icon-sm btn-icon-success" title="Activate - undo an accidental deactivation" (click)="toggleActive(e)"><i class="bi bi-person-check"></i></button>
+                  }
                 </div>
               </td>
             </tr>

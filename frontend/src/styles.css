@@ -2,6 +2,20 @@
 
 html, body {
   height: 100%;
+  /* The definitive fix for any page-level horizontal scrollbar (e.g. from a fully-expanded
+     sidebar menu, or a wide table) - overflow-x: hidden on .sidebar/.content alone only
+     contains overflow WITHIN those elements; it does nothing to stop the browser's own
+     root-level scrollbar from appearing if something still computes wider than the viewport
+     anywhere on the page. Setting it here, at the true root, guarantees it can never happen,
+     regardless of which element further down the tree caused it. */
+  overflow-x: hidden;
+  /* A horizontal trackpad swipe on a laptop is usually interpreted by the BROWSER itself (not
+     this site) as a "swipe to go back/forward" page-navigation gesture, which visually shifts
+     the whole page sideways for a moment mid-swipe - not something overflow-x can stop, since
+     it's the browser's own gesture handling, not a real scroll of page content. overscroll-
+     behavior-x: none tells the browser this page opts out of that gesture entirely, so a
+     sideways swipe here does nothing instead of nudging the page sideways. */
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -40,6 +54,13 @@ a:hover { text-decoration: underline; }
   letter-spacing: -0.01em;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .muted { color: var(--muted-color); font-size: 0.85rem; margin: 0; }
 
 /* ---- Filters bar ---- */
@@ -72,6 +93,14 @@ a:hover { text-decoration: underline; }
 }
 
 .filters input { flex: 1; min-width: 200px; }
+
+.filters-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
 
 /* ---- Tables ---- */
 .table-card { padding: 0; overflow: hidden; }
@@ -156,6 +185,16 @@ tbody tr:last-child td {
   margin-top: 1.75rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--border-color);
+}
+
+/* .table-card has zero padding of its own (so the table itself can span edge-to-edge) - but that
+   leaves a .form-actions footer row (e.g. "Save All") sitting flush against the card's border
+   with no breathing room. Add it back just for that combination. */
+.table-card .form-actions {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .login-access-section {
@@ -287,5 +326,269 @@ tbody tr:last-child td {
 .table-compact .actions .btn {
   padding: 0.3rem 0.55rem;
   font-size: 0.75rem;
+}
+
+/* ---- Mobile card-table: opt-in (add class="mobile-card-table" to a <table>) - turns a wide,
+   multi-column table into a stack of full-width cards on narrow screens, so filling something
+   like attendance is a single tap per row instead of scrolling a cramped table sideways. Only
+   tables that explicitly use this class are affected; every other table's existing horizontal-
+   scroll behavior is untouched. ---- */
+@media (max-width: 768px) {
+  .mobile-card-table thead { display: none; }
+
+  .mobile-card-table,
+  .mobile-card-table tbody,
+  .mobile-card-table tr,
+  .mobile-card-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-card-table tr {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin: 0 0.75rem 0.9rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .mobile-card-table td {
+    border-bottom: none;
+    padding: 0.5rem 0;
+    white-space: normal;
+  }
+
+  .mobile-card-table td:not(:last-child) {
+    border-bottom: 1px dashed var(--border-color);
+  }
+
+  .mobile-card-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted-color);
+    margin-bottom: 0.35rem;
+  }
+
+  /* The status dropdown still grows to fill the card width on mobile - full-width and a slightly
+     bigger tap target than the compact desktop version, but the same real <select> either way. */
+  .mobile-card-table .status-select {
+    width: 100%;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+    font-size: 0.88rem;
+  }
+
+  .filters { flex-direction: column; align-items: stretch; }
+  .filters .form-field { min-width: 0 !important; width: 100%; }
+  .filters-actions { margin-left: 0; width: 100%; }
+  .filters-actions .btn { flex: 1; }
+
+  /* Employee code (e.g. "EMP0001 ·") is dropped on mobile specifically - the name alone is
+     enough to identify someone on a small screen, and it frees up room for the Status column
+     next to it. Every other view (tablet/laptop/desktop) keeps showing the code. */
+  .employee-code { display: none; }
+
+  /* Swap which of Mark Attendance's two tables is visible - see theme.css for both tables'
+     column/select styling. */
+  .attendance-table-desktop { display: none; }
+  .attendance-table-mobile { display: table; }
+}
+
+/* ---- Holiday Calendar: a full month-grid calendar (7 columns, 6 rows) - each cell is clickable
+   to add a company holiday on that date, or view/delete one that's already there. Indian
+   national holidays and major festivals show as small reference tags (see indian-festivals.ts)
+   even before any company holiday exists on that date - purely visual, not an actual holiday
+   until the admin explicitly adds one. ---- */
+.calendar-card { padding: 1.25rem; }
+
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calendar-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  min-width: 160px;
+  text-align: center;
+}
+
+.calendar-title-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  color: var(--text-color);
+}
+.calendar-title-btn:hover { background: var(--surface-alt-color); }
+
+.btn-icon {
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: all 0.12s ease;
+}
+.btn-icon:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+/* ---- Compact icon-button variant for dense table action columns (Employees list, etc.) -
+   smaller than the default .btn-icon (calendar nav uses that size), and color variants so a
+   destructive or primary action still reads at a glance without needing button text. ---- */
+.btn-icon-sm {
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: all 0.12s ease;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.btn-icon-sm:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--primary-color-soft); }
+.btn-icon-sm.btn-icon-danger { border-color: var(--danger-color); color: var(--danger-color); }
+.btn-icon-sm.btn-icon-danger:hover { background: var(--danger-color); color: #fff; }
+.btn-icon-sm.btn-icon-primary { border-color: var(--primary-color); color: var(--primary-color); }
+.btn-icon-sm.btn-icon-primary:hover { background: var(--primary-color); color: #fff; }
+.btn-icon-sm.btn-icon-success { border-color: var(--success-color); color: var(--success-color); }
+.btn-icon-sm.btn-icon-success:hover { background: var(--success-color); color: #fff; }
+
+/* ---- Employee list: status/login shown as small inline indicators next to the name instead of
+   their own dedicated table columns - keeps the same information glanceable while letting the
+   table breathe (fewer columns = no more horizontal scrolling on a normal screen). ---- */
+.employee-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted-color);
+  flex-shrink: 0;
+}
+.status-dot-active { background: var(--success-color); }
+
+.login-icon-on { color: var(--success-color); font-size: 0.85rem; }
+.login-icon-off { color: var(--border-color); font-size: 0.85rem; }
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  font-size: 0.78rem;
+  color: var(--muted-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.calendar-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.legend-dot-holiday { background: var(--primary-color); }
+.legend-dot-national { background: var(--success-color); }
+.legend-dot-festival { background: var(--warning-color); }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted-color);
+  text-transform: uppercase;
+  padding: 0.4rem 0;
+}
+
+.calendar-cell {
+  min-height: 84px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.4rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: var(--surface-color);
+}
+.calendar-cell:hover { border-color: var(--primary-color); box-shadow: var(--shadow-sm); }
+
+.calendar-cell-outside { opacity: 0.4; }
+
+.calendar-cell-past {
+  cursor: not-allowed;
+  background: var(--surface-alt-color);
+}
+.calendar-cell-past:hover { border-color: var(--border-color); box-shadow: none; }
+.calendar-cell-past .calendar-daynum { color: var(--muted-color); }
+
+.calendar-cell-today .calendar-daynum {
+  background: var(--primary-color);
+  color: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-cell-holiday {
+  background: var(--primary-color-soft);
+  border-color: var(--primary-color);
+}
+
+.calendar-daynum { font-size: 0.82rem; font-weight: 600; }
+
+.calendar-tag {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+.calendar-tag-holiday { background: var(--primary-color); color: #fff; font-weight: 600; }
+.calendar-tag-national { background: var(--success-bg); color: var(--success-color); }
+.calendar-tag-festival { background: var(--warning-bg); color: var(--warning-color); }
+
+@media (max-width: 768px) {
+  .calendar-cell { min-height: 56px; }
+  .calendar-tag { font-size: 0.6rem; }
+  .calendar-title { min-width: 0; font-size: 1rem; }
 }
 

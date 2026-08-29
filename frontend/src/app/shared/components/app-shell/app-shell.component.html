@@ -10,8 +10,24 @@
       </button>
     </div>
 
+    @if (sidebarOpen()) {
+      <div class="nav-search">
+        <i class="bi bi-search nav-search-icon"></i>
+        <input
+          type="text"
+          placeholder="Find a menu..."
+          [ngModel]="navSearch()"
+          (ngModelChange)="onNavSearchChange($event)" />
+        @if (navSearch()) {
+          <button type="button" class="nav-search-clear" (click)="clearNavSearch()" aria-label="Clear search">
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        }
+      </div>
+    }
+
     <nav class="nav">
-      @if (isVisible(dashboardItem)) {
+      @if (dashboardVisible) {
         <a [routerLink]="dashboardItem.path" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
           <i class="bi nav-icon" [ngClass]="'bi-' + dashboardItem.icon"></i>
           @if (sidebarOpen()) { <span>{{ dashboardItem.label }}</span> }
@@ -38,6 +54,13 @@
               }
             </div>
           }
+        </div>
+      }
+
+      @if (navSearch().trim() && !dashboardVisible && visibleGroups.length === 0) {
+        <div class="nav-empty">
+          <i class="bi bi-search"></i>
+          <span>No menu matches "{{ navSearch() }}"</span>
         </div>
       }
     </nav>

@@ -7,6 +7,7 @@ import { MonthlyAttendanceReportResponse, MonthlyAttendanceReportRow } from '../
 import { SiteService } from '../../../site_module/services/site.service';
 import { SiteResponse } from '../../../site_module/models/site.model';
 import { ToastService } from '../../../shared/services/toast.service';
+import { extractBlobErrorMessage } from '../../../shared/utils/blob-error.util';
 import { PaidLeaveService } from '../../../leave_module/services/paid-leave.service';
 
 const MONTH_NAMES = [
@@ -164,9 +165,9 @@ export class MonthlyReportComponent {
         this.downloading.set(null);
         this.toast.success('Report downloaded.');
       },
-      error: () => {
+      error: err => {
         this.downloading.set(null);
-        this.toast.error('Unable to generate the report. Please try again.');
+        extractBlobErrorMessage(err, 'Unable to generate the report. Please try again.').then(message => this.toast.error(message));
       }
     });
   }

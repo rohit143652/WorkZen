@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../../login_module/services/auth.service';
@@ -39,7 +40,8 @@ const NAV_GROUPS: NavGroup[] = [
     children: [
       { label: 'Employees', path: '/employees', icon: 'people', permission: 'EMPLOYEE_READ' },
       { label: 'Departments & Designations', path: '/org-settings', icon: 'diagram-3', permission: 'DEPARTMENT_READ' },
-      { label: 'Employee Assignments', path: '/employee-assignments', icon: 'link-45deg', permission: 'EMPLOYEE_ASSIGNMENT_READ' }
+      { label: 'Employee Assignments', path: '/employee-assignments', icon: 'link-45deg', permission: 'EMPLOYEE_ASSIGNMENT_READ' },
+      { label: 'Exit Management', path: '/employee-exits', icon: 'box-arrow-right', permission: 'EMPLOYEE_EXIT_READ' }
     ]
   },
   {
@@ -47,7 +49,8 @@ const NAV_GROUPS: NavGroup[] = [
     children: [
       { label: 'Mark Attendance', path: '/attendance', icon: 'check2-square', permission: 'ATTENDANCE_CREATE' },
       { label: 'Attendance History', path: '/attendance/history', icon: 'clock-history', permission: 'ATTENDANCE_READ' },
-      { label: 'Monthly Payment Report', path: '/attendance/monthly-report', icon: 'file-earmark-excel', permission: 'MONTHLY_PAYMENT_REPORT_EXPORT' },
+      { label: 'Monthly Attendance Report', path: '/attendance/monthly-report', icon: 'file-earmark-excel', permission: 'MONTHLY_PAYMENT_REPORT_EXPORT' },
+      { label: 'Holiday Calendar', path: '/holidays', icon: 'calendar-heart', permission: 'HOLIDAY_READ' },
       { label: 'Paid Leave Settings', path: '/paid-leave/settings', icon: 'calendar2-check', permission: 'PAID_LEAVE_CONFIG_UPDATE' }
     ]
   },
@@ -58,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
     // itself (see Attendance group below) - one report, not two.
     label: 'Payroll', icon: 'cash-stack',
     children: [
+      { label: 'My Payslip', path: '/payroll/my-payslip', icon: 'receipt', permission: 'PAYSLIP_SELF_VIEW' },
       { label: 'Salary Structures', path: '/salary-structures', icon: 'cash-stack', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Salary Components', path: '/salary-components', icon: 'sliders', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Payroll Settings', path: '/payroll/settings', icon: 'gear', permission: 'PAYROLL_REGISTER_EXPORT' },
@@ -86,7 +90,7 @@ const DASHBOARD_ITEM: NavLeaf = { label: 'Dashboard', path: '/dashboard', icon: 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ToastContainerComponent, ConfirmDialogComponent],
+  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, ToastContainerComponent, ConfirmDialogComponent],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.css'
 })
@@ -101,6 +105,10 @@ export class AppShellComponent {
   readonly sidebarOpen = signal(typeof window === 'undefined' || window.innerWidth > 900);
   readonly profileMenuOpen = signal(false);
   readonly expandedGroups = signal<Set<string>>(new Set());
+  /** Quick-find across every nav item - essential once the menu has 20+ entries across several
+      groups; typing auto-expands any group with a match so results are visible without also
+      having to manually open that section first. */
+  readonly navSearch = signal('');
 
   readonly dashboardItem = DASHBOARD_ITEM;
 
@@ -112,6 +120,7 @@ export class AppShellComponent {
     this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
       .subscribe(e => {
         this.expandGroupForCurrentUrl(e.urlAfterRedirects);
+        this.navSearch.set('');
         // Auto-close the drawer after navigating on tablet/mobile, where it's an overlay - on
         // desktop this is a no-op since there's no way to close the sidebar there anyway.
         if (typeof window !== 'undefined' && window.innerWidth <= 900) {
@@ -121,9 +130,18 @@ export class AppShellComponent {
   }
 
   get visibleGroups(): NavGroup[] {
+    const term = this.navSearch().trim().toLowerCase();
     return NAV_GROUPS
-      .map(group => ({ ...group, children: group.children.filter(c => this.isVisible(c)) }))
+      .map(group => ({
+        ...group,
+        children: group.children.filter(c => this.isVisible(c) && (!term || c.label.toLowerCase().includes(term)))
+      }))
       .filter(group => group.children.length > 0);
+  }
+
+  get dashboardVisible(): boolean {
+    const term = this.navSearch().trim().toLowerCase();
+    return this.isVisible(this.dashboardItem) && (!term || this.dashboardItem.label.toLowerCase().includes(term));
   }
 
   isVisible(item: NavLeaf): boolean {
@@ -131,7 +149,18 @@ export class AppShellComponent {
   }
 
   isExpanded(label: string): boolean {
+    // While searching, every group with a surviving match auto-expands, regardless of its
+    // normal collapsed/expanded state - no point hiding the very result someone just typed for.
+    if (this.navSearch().trim()) return true;
     return this.expandedGroups().has(label);
+  }
+
+  onNavSearchChange(value: string): void {
+    this.navSearch.set(value);
+  }
+
+  clearNavSearch(): void {
+    this.navSearch.set('');
   }
 
   toggleGroup(label: string): void {

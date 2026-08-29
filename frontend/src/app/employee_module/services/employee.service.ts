@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResult } from '../../core/models/page.model';
-import { AssignRoleRequest, EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EnableLoginRequest } from '../models/employee.model';
+import { AssignRoleRequest, EmployeeBulkImportResult, EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EnableLoginRequest } from '../models/employee.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 
@@ -55,6 +55,11 @@ export class EmployeeService {
     return this.http.put<ApiEnvelope<EmployeeResponse>>(`${this.baseUrl}/${id}/activate`, {}).pipe(map(e => e.data));
   }
 
+  /** For an ex-employee coming back - reactivates this SAME record (keeping all their history) but with a freshly generated employeeCode, distinct from a plain activate() which keeps the old code. */
+  rejoin(id: number): Observable<EmployeeResponse> {
+    return this.http.put<ApiEnvelope<EmployeeResponse>>(`${this.baseUrl}/${id}/rejoin`, {}).pipe(map(e => e.data));
+  }
+
   deactivate(id: number): Observable<EmployeeResponse> {
     return this.http.put<ApiEnvelope<EmployeeResponse>>(`${this.baseUrl}/${id}/deactivate`, {}).pipe(map(e => e.data));
   }
@@ -75,5 +80,17 @@ export class EmployeeService {
     return this.http
       .post<ApiEnvelope<{ temporaryPassword: string }>>(`${this.baseUrl}/${id}/reset-password`, {})
       .pipe(map(e => e.data.temporaryPassword));
+  }
+
+  downloadImportTemplate(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/bulk-import/template`, { responseType: 'blob' });
+  }
+
+  bulkImport(file: File): Observable<EmployeeBulkImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http
+      .post<ApiEnvelope<EmployeeBulkImportResult>>(`${this.baseUrl}/bulk-import`, formData)
+      .pipe(map(e => e.data));
   }
 }

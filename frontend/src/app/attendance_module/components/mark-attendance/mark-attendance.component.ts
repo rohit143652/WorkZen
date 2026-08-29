@@ -28,6 +28,8 @@ export class MarkAttendanceComponent {
   readonly today = todayIso();
   selectedDate = this.today;
   selectedSiteId: number | null = null;
+  /** Client-side filter over the already-loaded rows for this date/site - lets an admin quickly jump to one employee in a long list rather than scrolling to find them. */
+  searchTerm = '';
 
   readonly sites = signal<SiteResponse[]>([]);
   readonly rows = signal<EmployeeAttendanceOption[]>([]);
@@ -46,6 +48,13 @@ export class MarkAttendanceComponent {
 
   onFilterChange(): void {
     this.load();
+  }
+
+  filteredRows(): EmployeeAttendanceOption[] {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) return this.rows();
+    return this.rows().filter(r =>
+      r.employeeName.toLowerCase().includes(term) || r.employeeCode.toLowerCase().includes(term));
   }
 
   private load(): void {

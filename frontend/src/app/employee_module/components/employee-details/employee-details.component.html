@@ -240,6 +240,31 @@
       <div *appHasPermission="'ADVANCE_READ'">
         <app-employee-advances [employeeId]="emp.id"></app-employee-advances>
       </div>
+
+      @if (authState.hasPermission('PAYROLL_RUN_READ')) {
+        <div class="card" style="padding: 1.25rem; margin-top: 1.25rem;">
+          <div class="section-title" style="margin-top: 0;">Payslip</div>
+          <p class="muted" style="margin-top: -0.5rem;">Download this employee's payslip for any month - available once that month's payroll has been approved.</p>
+          <div class="form-grid" style="align-items: flex-end;">
+            <div class="form-field" style="margin: 0;">
+              <label>Month</label>
+              <select [(ngModel)]="payslipMonth">
+                @for (m of payslipMonths; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }
+              </select>
+            </div>
+            <div class="form-field" style="margin: 0;">
+              <label>Year</label>
+              <select [(ngModel)]="payslipYear">
+                @for (y of payslipYears; track y) { <option [ngValue]="y">{{ y }}</option> }
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary" (click)="downloadPayslip(emp.id)" [disabled]="downloadingPayslip()">
+              @if (downloadingPayslip()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-download"></i> }
+              {{ downloadingPayslip() ? 'Generating...' : 'Download Payslip' }}
+            </button>
+          </div>
+        </div>
+      }
     </div>
   }
 }

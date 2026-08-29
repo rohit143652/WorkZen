@@ -4,14 +4,18 @@ import com.example.application.common.response.ApiResponse;
 import com.example.application.employee_module.dto.*;
 import com.example.application.login_module.security.CustomUserPrincipal;
 import com.example.application.employee_module.service.EmployeeService;
+import com.example.application.employee_module.service.EmployeeBulkImportService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -20,9 +24,11 @@ import java.util.Map;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final EmployeeBulkImportService employeeBulkImportService;
 
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(EmployeeService employeeService, EmployeeBulkImportService employeeBulkImportService) {
         this.employeeService = employeeService;
+        this.employeeBulkImportService = employeeBulkImportService;
     }
 
     @GetMapping
@@ -77,6 +83,16 @@ public class EmployeeController {
                                                                     HttpServletRequest httpRequest) {
         return ResponseEntity.ok(ApiResponse.success("Employee activated successfully",
                 employeeService.activate(id, principal.getId(), httpRequest)));
+    }
+
+    /** For an ex-employee coming back - reactivates this SAME record (keeping all their history) with a freshly generated employeeCode. */
+    @PutMapping("/{id}/rejoin")
+    @PreAuthorize("hasAuthority('EMPLOYEE_ACTIVATE')")
+    public ResponseEntity<ApiResponse<EmployeeResponse>> rejoin(@PathVariable Long id,
+                                                                  @AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                  HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(ApiResponse.success("Employee rejoined with a new employee code",
+                employeeService.rejoin(id, principal.getId(), httpRequest)));
     }
 
     @PutMapping("/{id}/deactivate")
@@ -137,5 +153,27 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Temporary password issued. It will not be shown again.",
                 Map.of("temporaryPassword", tempPassword)));
+    }
+
+    /** A downloadable starting point with the exact expected headers plus one example row. */
+    @GetMapping("/bulk-import/template")
+    @PreAuthorize("hasAuthority('EMPLOYEE_CREATE')")
+    public ResponseEntity<byte[]> downloadImportTemplate() {
+        byte[] workbook = employeeBulkImportService.generateTemplate();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"employee-import-template.xlsx\"")
+                .body(workbook);
+    }
+
+    /** Best-effort, row-by-row import (see EmployeeBulkImportService javadoc) - one bad row never blocks the good ones. */
+    @PostMapping("/bulk-import")
+    @PreAuthorize("hasAuthority('EMPLOYEE_CREATE')")
+    public ResponseEntity<ApiResponse<EmployeeBulkImportResult>> bulkImport(@RequestParam("file") MultipartFile file,
+                                                                              @AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                              HttpServletRequest httpRequest) {
+        EmployeeBulkImportResult result = employeeBulkImportService.importFromExcel(file, principal.getId(), httpRequest);
+        String message = result.getSuccessCount() + " of " + result.getTotalRows() + " employee(s) imported successfully";
+        return ResponseEntity.ok(ApiResponse.success(message, result));
     }
 }

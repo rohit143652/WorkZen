@@ -1,0 +1,143 @@
+<div class="page-header">
+  <div>
+    <h1>Holiday Calendar</h1>
+    <p class="muted">Click any date to add a company holiday - it automatically marks every currently active employee Present for that date (or date range), which counts toward Payable Days.</p>
+  </div>
+</div>
+
+<div class="card calendar-card">
+  <div class="calendar-toolbar">
+    <div class="calendar-nav">
+      <button type="button" class="btn-icon" (click)="prevMonth()" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
+      <button type="button" class="calendar-title-btn" (click)="openMonthYearPicker()">
+        <span class="calendar-title">{{ monthNames[viewMonth()] }} {{ viewYear() }}</span>
+        <i class="bi bi-caret-down-fill" style="font-size: 0.6rem; margin-left: 0.4rem;"></i>
+      </button>
+      <button type="button" class="btn-icon" (click)="nextMonth()" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="goToToday()">Today</button>
+  </div>
+
+  @if (showMonthYearPicker()) {
+    <div class="modal-overlay" (click)="closeMonthYearPicker()">
+      <div class="modal-box card" style="max-width: 340px;" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Jump to Month</h3>
+          <button type="button" class="modal-close" (click)="closeMonthYearPicker()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-field">
+            <label>Month</label>
+            <select [(ngModel)]="pickerMonth">
+              @for (m of monthNames; track m; let i = $index) { <option [ngValue]="i">{{ m }}</option> }
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Year</label>
+            <select [(ngModel)]="pickerYear">
+              @for (y of pickerYears(); track y) { <option [ngValue]="y">{{ y }}</option> }
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeMonthYearPicker()">Cancel</button>
+          <button type="button" class="btn btn-primary" (click)="applyMonthYearPicker()">Go</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="calendar-legend">
+    <span><span class="legend-dot legend-dot-holiday"></span> Company Holiday</span>
+    <span><span class="legend-dot legend-dot-national"></span> National Holiday (reference)</span>
+    <span><span class="legend-dot legend-dot-festival"></span> Festival (reference)</span>
+  </div>
+
+  @if (loading()) {
+    <div style="padding: 2rem; text-align: center;" class="muted">Loading calendar...</div>
+  } @else {
+    <div class="calendar-grid">
+      @for (label of weekdayLabels; track label) {
+        <div class="calendar-weekday">{{ label }}</div>
+      }
+      @for (cell of calendarCells(); track cell.dateStr) {
+        <div
+          class="calendar-cell"
+          [class.calendar-cell-outside]="!cell.inCurrentMonth"
+          [class.calendar-cell-today]="cell.isToday"
+          [class.calendar-cell-holiday]="cell.holiday"
+          [class.calendar-cell-past]="cell.isPast && !cell.holiday"
+          (click)="onDayClick(cell)">
+          <span class="calendar-daynum">{{ cell.dayNum }}</span>
+          @if (cell.holiday) {
+            <span class="calendar-tag calendar-tag-holiday" [title]="cell.holiday.name">{{ cell.holiday.name }}</span>
+          } @else if (cell.festival) {
+            <span class="calendar-tag" [class.calendar-tag-national]="cell.festival.kind === 'national'" [class.calendar-tag-festival]="cell.festival.kind === 'festival'" [title]="cell.festival.name">{{ cell.festival.name }}</span>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Add Holiday modal -->
+@if (showAddModal()) {
+  <div class="modal-overlay" (click)="closeAddModal()">
+    <div class="modal-box card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Add Holiday</h3>
+        <button type="button" class="modal-close" (click)="closeAddModal()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Start Date</label>
+            <input type="date" [(ngModel)]="formStartDate" />
+          </div>
+          <div class="form-field">
+            <label>End Date</label>
+            <input type="date" [(ngModel)]="formEndDate" [min]="formStartDate" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Name</label>
+          <input type="text" [(ngModel)]="formName" placeholder="e.g. Diwali" />
+        </div>
+        <div class="form-field">
+          <label>Description</label>
+          <input type="text" [(ngModel)]="formDescription" placeholder="Optional" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
+        <button type="button" *appHasPermission="'HOLIDAY_CREATE'" class="btn btn-primary" [disabled]="!formStartDate || !formEndDate || !formName.trim() || saving()" (click)="submitNewHoliday()">
+          @if (saving()) { <span class="btn-spinner"></span> }
+          {{ saving() ? 'Saving...' : 'Add Holiday' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- View/Delete Holiday modal -->
+@if (showViewModal() && viewingHoliday) {
+  <div class="modal-overlay" (click)="closeViewModal()">
+    <div class="modal-box card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ viewingHoliday.name }}</h3>
+        <button type="button" class="modal-close" (click)="closeViewModal()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Dates:</strong> {{ viewingHoliday.startDate }} @if (viewingHoliday.endDate !== viewingHoliday.startDate) { to {{ viewingHoliday.endDate }} }</p>
+        @if (viewingHoliday.description) { <p><strong>Description:</strong> {{ viewingHoliday.description }}</p> }
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeViewModal()">Close</button>
+        <button type="button" *appHasPermission="'HOLIDAY_DELETE'" class="btn btn-danger" [disabled]="deleting()" (click)="deleteHoliday(viewingHoliday)">
+          @if (deleting()) { <span class="btn-spinner"></span> }
+          {{ deleting() ? 'Removing...' : 'Remove Holiday' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { debounceTime } from 'rxjs';
 import { EmployeeService } from '../../services/employee.service';
 import { RoleService } from '../../../role_module/services/role.service';
 import { RoleOption } from '../../../role_module/models/role.model';
@@ -15,6 +16,7 @@ import { SalaryStructureResponse } from '../../../salary_structure_module/models
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { EmployeeResponse } from '../../models/employee.model';
+import { UserManagementService } from '../../../user_module/services/user-management.service';
 
 function passwordsMatchValidator(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password')?.value;
@@ -38,6 +40,7 @@ export class EmployeeFormComponent {
   private readonly designationService = inject(DesignationService);
   private readonly salaryStructureService = inject(SalaryStructureService);
   private readonly toast = inject(ToastService);
+  private readonly userManagementService = inject(UserManagementService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -112,6 +115,17 @@ export class EmployeeFormComponent {
 
     this.form.controls.enableLogin.valueChanges.subscribe(enabled => this.applyLoginValidators(enabled));
 
+    // Keep the auto-generated username in sync if the admin edits the name AFTER already
+    // switching Login Enabled on (e.g. fixed a typo in the last name) - a no-op while login is
+    // off, since autoGenerateUsername() only touches the (currently hidden) username field.
+    // Debounced so it doesn't fire (and hit the backend) on every single keystroke.
+    this.form.controls.firstName.valueChanges.pipe(debounceTime(500)).subscribe(() => {
+      if (this.form.controls.enableLogin.value) this.autoGenerateUsername();
+    });
+    this.form.controls.lastName.valueChanges.pipe(debounceTime(500)).subscribe(() => {
+      if (this.form.controls.enableLogin.value) this.autoGenerateUsername();
+    });
+
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.isEditMode.set(true);
@@ -138,13 +152,47 @@ export class EmployeeFormComponent {
       group.controls.password.setValidators([Validators.required, Validators.minLength(8)]);
       group.controls.confirmPassword.setValidators([Validators.required]);
       group.controls.roleId.setValidators([Validators.required]);
+      this.autoGenerateUsername();
     } else {
       group.controls.username.clearValidators();
       group.controls.password.clearValidators();
       group.controls.confirmPassword.clearValidators();
       group.controls.roleId.clearValidators();
+      group.controls.username.enable({ emitEvent: false });
+      group.controls.username.setValue('');
     }
     Object.values(group.controls).forEach(c => c.updateValueAndValidity());
+  }
+
+  /**
+   * Auto-fills and locks the username the moment "Login Enabled" is switched on (spec: admin
+   * never types a username by hand) - "first initial.lastname" first (e.g. "m.kumari" for Meena
+   * Kumari), falling back through fuller/numbered variants server-side if that's already taken.
+   * See UserService.generateUsername() for the exact fallback order. Disabled while generating so
+   * a second toggle-off/on cycle can't race a stale request against a fresh one. Shared by both
+   * the create-mode nested loginAccess group and the separate edit-mode enableLoginForm - both
+   * read the SAME employee's firstName/lastName off the main form either way.
+   */
+  private autoGenerateUsername(usernameControl = this.form.controls.loginAccess.controls.username): void {
+    const firstName = this.form.controls.firstName.value?.trim();
+    const lastName = this.form.controls.lastName.value?.trim();
+    if (!firstName || !lastName) {
+      // Nothing to generate from yet - leave the field editable and empty until both names are
+      // filled in (e.g. mid-way through the Personal Details section, above this one).
+      usernameControl.enable({ emitEvent: false });
+      usernameControl.setValue('');
+      return;
+    }
+    usernameControl.disable({ emitEvent: false });
+    usernameControl.setValue('Generating…');
+    this.userManagementService.generateUsername(firstName, lastName).subscribe({
+      next: username => usernameControl.setValue(username),
+      error: () => {
+        this.toast.error('Unable to auto-generate a username - please enter one manually.');
+        usernameControl.setValue('');
+        usernameControl.enable({ emitEvent: false });
+      }
+    });
   }
 
   private patchForm(emp: EmployeeResponse): void {
@@ -242,6 +290,7 @@ export class EmployeeFormComponent {
 
   openEnableLoginForm(): void {
     this.showEnableLoginForm.set(true);
+    this.autoGenerateUsername(this.enableLoginForm.controls.username);
   }
 
   onLoginToggle(checked: boolean): void {

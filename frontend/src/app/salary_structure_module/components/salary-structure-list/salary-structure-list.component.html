@@ -33,16 +33,16 @@
               </td>
               <td>
                 <div class="actions">
-                <a [routerLink]="['/salary-structures', s.id]" class="btn btn-secondary btn-sm">View</a>
-                <a [routerLink]="['/salary-structures', s.id, 'edit']" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-secondary btn-sm">Edit</a>
-                <button type="button" *appHasPermission="'SALARY_STRUCTURE_CREATE'" class="btn btn-secondary btn-sm" (click)="duplicate(s)">Duplicate</button>
+                <a [routerLink]="['/salary-structures', s.id]" class="btn-icon-sm" title="View"><i class="bi bi-eye"></i></a>
+                <a [routerLink]="['/salary-structures', s.id, 'edit']" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn-icon-sm btn-icon-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                <button type="button" *appHasPermission="'SALARY_STRUCTURE_CREATE'" class="btn-icon-sm" title="Duplicate" (click)="duplicate(s)"><i class="bi bi-copy"></i></button>
                 @if (s.status === 'ACTIVE') {
-                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-danger btn-sm" (click)="toggleStatus(s)">Deactivate</button>
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn-icon-sm btn-icon-danger" title="Deactivate" (click)="toggleStatus(s)"><i class="bi bi-slash-circle"></i></button>
                 } @else {
-                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn btn-secondary btn-sm" (click)="toggleStatus(s)">Activate</button>
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_UPDATE'" class="btn-icon-sm btn-icon-success" title="Activate" (click)="toggleStatus(s)"><i class="bi bi-check-circle"></i></button>
                 }
                 @if (s.employeeCount === 0) {
-                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_DELETE'" class="btn btn-danger btn-sm" (click)="remove(s)">Delete</button>
+                  <button type="button" *appHasPermission="'SALARY_STRUCTURE_DELETE'" class="btn-icon-sm btn-icon-danger" title="Delete" (click)="remove(s)"><i class="bi bi-trash"></i></button>
                 }
                 </div>
               </td>

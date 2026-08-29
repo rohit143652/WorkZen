@@ -42,4 +42,16 @@ export class PayrollService {
   cancelConfig(id: number): Observable<void> {
     return this.http.delete<ApiEnvelope<void>>(`${this.baseUrl}/settings/${id}`).pipe(map(() => void 0));
   }
+
+  /** Self-service - the currently logged-in user's own payslip for that month. Only available once that month's payroll is APPROVED or PAID. */
+  downloadMyPayslip(year: number, month: number): Observable<Blob> {
+    const params = new HttpParams().set('year', year).set('month', month);
+    return this.http.get(`${this.baseUrl}/payslip/me`, { params, responseType: 'blob' });
+  }
+
+  /** Admin path - any employee in the current tenant, by employee ID. */
+  downloadEmployeePayslip(employeeId: number, year: number, month: number): Observable<Blob> {
+    const params = new HttpParams().set('year', year).set('month', month);
+    return this.http.get(`${this.baseUrl}/payslip/employee/${employeeId}`, { params, responseType: 'blob' });
+  }
 }

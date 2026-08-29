@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PayrollRunService } from '../../services/payroll-run.service';
+import { extractBlobErrorMessage } from '../../../shared/utils/blob-error.util';
 import { PayrollRun, PayrollRunEmployeeResult } from '../../models/payroll-run.model';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
@@ -235,7 +236,7 @@ export class PayrollRunDetailsComponent {
       },
       error: err => {
         this.downloadingRegister.set(false);
-        this.toast.error(err.error?.message ?? 'Unable to generate the salary register.');
+        extractBlobErrorMessage(err, 'Unable to generate the salary register.').then(message => this.toast.error(message));
       }
     });
   }

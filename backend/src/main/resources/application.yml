@@ -1,4 +1,10 @@
 spring:
+  servlet:
+    multipart:
+      # Sized for a bulk Employee import spreadsheet (even a few hundred rows is well under this) -
+      # not for large file uploads generally, which this app doesn't otherwise need.
+      max-file-size: 5MB
+      max-request-size: 5MB
   application:
     name: workzen
   profiles:
