@@ -60,6 +60,8 @@
           <dt>City / State</dt><dd>{{ emp.city || '-' }} / {{ emp.state || '-' }}</dd>
           <dt>Country</dt><dd>{{ emp.country || '-' }}</dd>
           <dt>Pincode</dt><dd>{{ emp.pincode || '-' }}</dd>
+          <dt>Aadhar Number</dt><dd>{{ formatAadhar(emp.aadharNumber) }}</dd>
+          <dt>PAN Number</dt><dd>{{ emp.panNumber || '-' }}</dd>
         </dl>
       </div>
 

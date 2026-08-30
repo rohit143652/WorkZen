@@ -64,6 +64,30 @@
           <span class="field-error">A valid email is required</span>
         }
       </div>
+      <div class="form-field">
+        <label>Aadhar Number</label>
+        <input type="text" formControlName="aadharNumber" placeholder="1234 5678 9012" maxlength="14" (input)="onAadharInput($event)"
+               [class.invalid]="form.controls.aadharNumber.invalid && form.controls.aadharNumber.touched" />
+        @if (form.controls.aadharNumber.invalid && form.controls.aadharNumber.touched) {
+          @if (form.controls.aadharNumber.errors?.['required']) {
+            <span class="field-error">Aadhar number is required</span>
+          } @else if (form.controls.aadharNumber.errors?.['pattern']) {
+            <span class="field-error">Aadhar number must be exactly 12 digits</span>
+          }
+        }
+      </div>
+      <div class="form-field">
+        <label>PAN Number</label>
+        <input type="text" formControlName="panNumber" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform: uppercase;"
+               [class.invalid]="form.controls.panNumber.invalid && form.controls.panNumber.touched" />
+        @if (form.controls.panNumber.invalid && form.controls.panNumber.touched) {
+          @if (form.controls.panNumber.errors?.['required']) {
+            <span class="field-error">PAN number is required</span>
+          } @else if (form.controls.panNumber.errors?.['pattern']) {
+            <span class="field-error">PAN number must be in the format ABCDE1234F</span>
+          }
+        }
+      </div>
     </div>
 
     <div class="section-title">Employment Information</div>

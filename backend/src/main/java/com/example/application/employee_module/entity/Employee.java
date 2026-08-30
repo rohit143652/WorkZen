@@ -79,6 +79,12 @@ public class Employee {
     @Column(length = 20)
     private String pincode;
 
+    /** 12-digit Government of India Aadhar number - unique per tenant, mandatory for new employees (see EmployeeRequest). Nullable here only so pre-existing rows from before this field don't break. */
+    private String aadharNumber;
+
+    /** 10-character Income Tax PAN (format ABCDE1234F, always stored upper-case) - unique per tenant, mandatory for new employees (see EmployeeRequest). Nullable here only so pre-existing rows from before this field don't break. */
+    private String panNumber;
+
     /** ACTIVE or INACTIVE. Deliberately independent of the linked User's login status. */
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
@@ -156,6 +162,10 @@ public class Employee {
     public void setCountry(String country) { this.country = country; }
     public String getPincode() { return pincode; }
     public void setPincode(String pincode) { this.pincode = pincode; }
+    public String getAadharNumber() { return aadharNumber; }
+    public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
+    public String getPanNumber() { return panNumber; }
+    public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public boolean isPfApplicable() { return pfApplicable; }

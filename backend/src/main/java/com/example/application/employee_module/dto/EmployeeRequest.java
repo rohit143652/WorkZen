@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDate;
 
@@ -55,6 +56,14 @@ public class EmployeeRequest {
     private String state;
     private String country;
     private String pincode;
+
+    @NotBlank(message = "Aadhar number is required")
+    @Pattern(regexp = "^[0-9]{12}$", message = "Aadhar number must be exactly 12 digits")
+    private String aadharNumber;
+
+    @NotBlank(message = "PAN number is required")
+    @Pattern(regexp = "^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$", message = "PAN number must be in the format ABCDE1234F")
+    private String panNumber;
 
     /**
      * PF/ESI/PT deduction applicability for THIS employee - independent of the Salary Structure
@@ -112,6 +121,10 @@ public class EmployeeRequest {
     public void setCountry(String country) { this.country = country; }
     public String getPincode() { return pincode; }
     public void setPincode(String pincode) { this.pincode = pincode; }
+    public String getAadharNumber() { return aadharNumber; }
+    public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
+    public String getPanNumber() { return panNumber; }
+    public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
     public Boolean getPfApplicable() { return pfApplicable; }
     public void setPfApplicable(Boolean pfApplicable) { this.pfApplicable = pfApplicable; }
     public Boolean getEsiApplicable() { return esiApplicable; }

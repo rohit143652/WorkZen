@@ -24,6 +24,8 @@ export interface EmployeeRequest {
   state?: string;
   country?: string;
   pincode?: string;
+  aadharNumber: string;
+  panNumber: string;
   /** PF/ESI/PT deduction applicability for this specific employee - independent of Salary Structure type. Both this AND the tenant's Payroll Settings must be enabled for a deduction to apply. Omit to keep the default (true). */
   pfApplicable?: boolean;
   esiApplicable?: boolean;
@@ -58,6 +60,8 @@ export interface EmployeeResponse {
   state?: string;
   country?: string;
   pincode?: string;
+  aadharNumber?: string;
+  panNumber?: string;
   pfApplicable: boolean;
   esiApplicable: boolean;
   ptApplicable: boolean;

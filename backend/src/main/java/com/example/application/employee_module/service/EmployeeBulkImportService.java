@@ -61,10 +61,13 @@ public class EmployeeBulkImportService {
     private static final String[] TEMPLATE_HEADERS = {
             "First Name*", "Middle Name", "Last Name*", "Email*", "Mobile Number",
             "Date of Birth (YYYY-MM-DD)", "Gender", "Joining Date (YYYY-MM-DD)*",
-            "Department*", "Designation*", "Employment Type", "Address", "City", "State", "Country", "Pincode"
+            "Department*", "Designation*", "Employment Type", "Address", "City", "State", "Country", "Pincode",
+            "Aadhar Number*", "PAN Number*"
     };
     private static final int DEPARTMENT_COL = 8;
     private static final int DESIGNATION_COL = 9;
+    private static final int AADHAR_COL = 16;
+    private static final int PAN_COL = 17;
     private static final double FUZZY_MATCH_THRESHOLD = 90.0;
 
     private final EmployeeService employeeService;
@@ -150,7 +153,8 @@ public class EmployeeBulkImportService {
             String[] example = {
                     "Rohit", "", "Patil", "rohit.patil.example@company.com", "9876543210",
                     "1995-06-15", "Male", "2026-01-15", "Operations", "Site Supervisor",
-                    "FULL_TIME", "123 MG Road", "Pune", "Maharashtra", "India", "411001"
+                    "FULL_TIME", "123 MG Road", "Pune", "Maharashtra", "India", "411001",
+                    "123456789012", "ABCDE1234F"
             };
             for (int i = 0; i < example.length; i++) {
                 exampleRow.createCell(i).setCellValue(example[i]);
@@ -309,6 +313,8 @@ public class EmployeeBulkImportService {
         request.setState(blankToNull(getCellString(row, 13)));
         request.setCountry(blankToNull(getCellString(row, 14)));
         request.setPincode(blankToNull(getCellString(row, 15)));
+        request.setAadharNumber(getCellString(row, AADHAR_COL));
+        request.setPanNumber(getCellString(row, PAN_COL));
         // Employee code, salary structure, and login are deliberately left unset here - see
         // class javadoc. EmployeeService.create() auto-generates the code when left blank,
         // exactly as it does for a single manually-added employee.
@@ -317,6 +323,8 @@ public class EmployeeBulkImportService {
         // holds far more text than any real name/field ever would (e.g. a stray note or comment
         // accidentally left in the data area rather than its own sheet).
         requireReasonableLength(request.getFirstName(), "First Name", 100);
+        requireAadhar(request.getAadharNumber());
+        requirePan(request.getPanNumber());
         requireReasonableLength(request.getLastName(), "Last Name", 100);
         requireReasonableLength(request.getEmail(), "Email", 150);
 
@@ -327,6 +335,26 @@ public class EmployeeBulkImportService {
         if (value != null && value.length() > maxLength) {
             throw new BadRequestException(fieldLabel + " is " + value.length() + " characters - far longer than a real value should be "
                     + "(max " + maxLength + "). Check this row doesn't contain a note or comment instead of actual data.");
+        }
+    }
+
+    /** Mirrors EmployeeRequest's own @NotBlank + @Pattern for Aadhar - needed here too since a manual employeeService.create() call from bulk import never goes through @Valid the way a single-employee API request does. */
+    private void requireAadhar(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException("Aadhar Number is required.");
+        }
+        if (!value.matches("^[0-9]{12}$")) {
+            throw new BadRequestException("Aadhar Number \"" + value + "\" must be exactly 12 digits.");
+        }
+    }
+
+    /** Mirrors EmployeeRequest's own @NotBlank + @Pattern for PAN - same reasoning as requireAadhar() above. */
+    private void requirePan(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException("PAN Number is required.");
+        }
+        if (!value.matches("^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$")) {
+            throw new BadRequestException("PAN Number \"" + value + "\" must be in the format ABCDE1234F.");
         }
     }
 

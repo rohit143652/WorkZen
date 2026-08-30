@@ -29,18 +29,28 @@ interface NavGroup {
  */
 const NAV_GROUPS: NavGroup[] = [
   {
+    // Setup/structure items - things a Client Admin configures once (or rarely changes),
+    // before any day-to-day workforce/attendance/payroll work happens. Departments &
+    // Designations moved here from Workforce - it's the same kind of one-time setup as
+    // Sites, not an ongoing "manage my people" action like the rest of that group.
     label: 'Organization', icon: 'building',
     children: [
       { label: 'Client Companies', path: '/clients', icon: 'building', permission: 'CLIENT_COMPANY_READ' },
-      { label: 'Sites', path: '/sites', icon: 'geo-alt', permission: 'SITE_READ' }
+      { label: 'Sites', path: '/sites', icon: 'geo-alt', permission: 'SITE_READ' },
+      { label: 'Departments & Designations', path: '/org-settings', icon: 'diagram-3', permission: 'DEPARTMENT_READ' }
     ]
   },
   {
+    // Ongoing people management, in the order you'd actually touch them: add/manage an
+    // employee, assign them to a site, and - eventually - process their exit.
     label: 'Workforce', icon: 'people',
     children: [
       { label: 'Employees', path: '/employees', icon: 'people', permission: 'EMPLOYEE_READ' },
-      { label: 'Departments & Designations', path: '/org-settings', icon: 'diagram-3', permission: 'DEPARTMENT_READ' },
-      { label: 'Employee Assignments', path: '/employee-assignments', icon: 'link-45deg', permission: 'EMPLOYEE_ASSIGNMENT_READ' },
+      // Renamed from "Employee Assignments" - the page itself says "Select a site, choose
+      // employees, and assign them to that location", so "Site Assignments" says at a
+      // glance what direction the assignment goes (site <- employees), not just that some
+      // kind of assignment happens.
+      { label: 'Site Assignments', path: '/employee-assignments', icon: 'link-45deg', permission: 'EMPLOYEE_ASSIGNMENT_READ' },
       { label: 'Exit Management', path: '/employee-exits', icon: 'box-arrow-right', permission: 'EMPLOYEE_EXIT_READ' }
     ]
   },
@@ -55,17 +65,21 @@ const NAV_GROUPS: NavGroup[] = [
     ]
   },
   {
-    // Bonus/Deduction/Advance/Loan/Payslip modules are planned to join
-    // this group over time; the full payroll register (Basic/DA, EPF/ESI/PT,
-    // Net Payment) now lives on the Monthly Attendance & Payment Report
-    // itself (see Attendance group below) - one report, not two.
+    // Bonus/Deduction/Advance/Loan modules are planned to join this group over time; the full
+    // payroll register (Basic/DA, EPF/ESI/PT, Net Payment) now lives on the Monthly Attendance
+    // & Payment Report itself (see Attendance group above) - one report, not two.
+    //
+    // Reordered to match the actual monthly flow: set up pay structures and components first,
+    // configure payroll-wide settings, THEN run payroll - "My Payslip" moved to last since it's
+    // a different audience entirely (an employee checking their own payslip, not an admin
+    // doing payroll work) rather than a step in the admin's own sequence.
     label: 'Payroll', icon: 'cash-stack',
     children: [
-      { label: 'My Payslip', path: '/payroll/my-payslip', icon: 'receipt', permission: 'PAYSLIP_SELF_VIEW' },
       { label: 'Salary Structures', path: '/salary-structures', icon: 'cash-stack', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Salary Components', path: '/salary-components', icon: 'sliders', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Payroll Settings', path: '/payroll/settings', icon: 'gear', permission: 'PAYROLL_REGISTER_EXPORT' },
-      { label: 'Payroll Processing', path: '/payroll/runs', icon: 'journal-check', permission: 'PAYROLL_RUN_READ' }
+      { label: 'Payroll Processing', path: '/payroll/runs', icon: 'journal-check', permission: 'PAYROLL_RUN_READ' },
+      { label: 'My Payslip', path: '/payroll/my-payslip', icon: 'receipt', permission: 'PAYSLIP_SELF_VIEW' }
     ]
   },
   {

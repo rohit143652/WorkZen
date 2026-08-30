@@ -277,4 +277,10 @@ export class EmployeeDetailsComponent {
       error: err => this.toast.error(err.error?.message ?? 'Unable to reset password.')
     });
   }
+
+  /** Purely a display formatter - spaces every 4 digits ("123456789012" -> "1234 5678 9012") for readability; the stored value in the database is always the plain 12 digits. */
+  formatAadhar(value: string | undefined): string {
+    if (!value) return '-';
+    return value.replace(/(\d{4})(?=\d)/g, '$1 ');
+  }
 }

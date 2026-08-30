@@ -88,6 +88,8 @@ export class EmployeeFormComponent {
     state: [''],
     country: [''],
     pincode: [''],
+    aadharNumber: ['', [Validators.required, Validators.pattern(/^\d{4} ?\d{4} ?\d{4}$/)]],
+    panNumber: ['', [Validators.required, Validators.pattern(/^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$/)]],
     pfApplicable: [false],
     esiApplicable: [false],
     ptApplicable: [false],
@@ -236,6 +238,8 @@ export class EmployeeFormComponent {
       state: emp.state ?? '',
       country: emp.country ?? '',
       pincode: emp.pincode ?? '',
+      aadharNumber: this.formatAadhar(emp.aadharNumber ?? ''),
+      panNumber: emp.panNumber ?? '',
       pfApplicable: emp.pfApplicable,
       esiApplicable: emp.esiApplicable,
       ptApplicable: emp.ptApplicable,
@@ -250,6 +254,20 @@ export class EmployeeFormComponent {
     return this.salaryStructures().find(s => s.id === id) ?? null;
   }
 
+  /** Inserts a space every 4 digits ("123456789012" -> "1234 5678 9012") - purely for readability, never what actually gets sent to or stored by the backend (see submit(), which strips spaces back out). */
+  private formatAadhar(value: string): string {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 12);
+    return digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ');
+  }
+
+  /** Live-reformats the Aadhar field as the user types, so the spacing stays correct even after they delete/retype a digit in the middle. */
+  onAadharInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const formatted = this.formatAadhar(input.value);
+    this.form.controls.aadharNumber.setValue(formatted, { emitEvent: false });
+    input.value = formatted;
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -258,6 +276,10 @@ export class EmployeeFormComponent {
 
     this.saving.set(true);
     const raw = this.form.getRawValue();
+    // The form control shows the Aadhar number formatted with spaces (see onAadharInput()) purely
+    // for readability while typing - the backend only ever wants the plain 12 digits, so this is
+    // the one place that strips them back out again, right before either payload is built below.
+    raw.aadharNumber = (raw.aadharNumber || '').replace(/\s+/g, '');
 
     if (this.isEditMode()) {
       const { employeeCode, enableLogin, loginAccess, ...updatePayload } = raw;

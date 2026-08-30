@@ -25,12 +25,19 @@
       <p class="muted" style="margin: 0 0 0.5rem;">
         You can only grant permissions you yourself currently have.
       </p>
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem; max-height: 260px; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;">
-        @for (p of selectablePermissions(); track p.id) {
-          <label style="display:flex; align-items:center; gap:0.4rem; font-size: 0.82rem; font-weight: 400;" [title]="p.description || p.name">
-            <input type="checkbox" [checked]="selectedPermissionIds.has(p.id)" (change)="togglePermission(p.id)" />
-            {{ p.name }}
-          </label>
+      <div style="max-height: 320px; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;">
+        @for (group of groupedSelectablePermissions; track group.category) {
+          <div style="margin-bottom: 0.75rem;">
+            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-color); margin-bottom: 0.35rem;">{{ group.category }}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem;">
+              @for (p of group.permissions; track p.id) {
+                <label style="display:flex; align-items:center; gap:0.4rem; font-size: 0.82rem; font-weight: 400;" [title]="p.description || p.name">
+                  <input type="checkbox" [checked]="selectedPermissionIds.has(p.id)" (change)="togglePermission(p.id)" />
+                  {{ p.name }}
+                </label>
+              }
+            </div>
+          </div>
         }
       </div>
     </div>
@@ -63,13 +70,20 @@
       <p class="muted" style="margin: 0 0 0.5rem;">
         You can only grant/revoke permissions you yourself currently have - anything else this role already has stays checked, but locked, below.
       </p>
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem; max-height: 260px; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;">
-        @for (p of selectablePermissions(); track p.id) {
-          <label style="display:flex; align-items:center; gap:0.4rem; font-size: 0.82rem; font-weight: 400;" [style.opacity]="isPermissionLocked(p.id) ? 0.6 : 1" [title]="p.description || p.name">
-            <input type="checkbox" [checked]="editSelectedPermissionIds.has(p.id)" [disabled]="isPermissionLocked(p.id)" (change)="toggleEditPermission(p.id)" />
-            {{ p.name }}
-            @if (isPermissionLocked(p.id)) { <i class="bi bi-lock-fill" style="font-size: 0.7rem;" [title]="permissionLockReason()"></i> }
-          </label>
+      <div style="max-height: 320px; overflow-y: auto; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px;">
+        @for (group of groupedSelectablePermissions; track group.category) {
+          <div style="margin-bottom: 0.75rem;">
+            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-color); margin-bottom: 0.35rem;">{{ group.category }}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem;">
+              @for (p of group.permissions; track p.id) {
+                <label style="display:flex; align-items:center; gap:0.4rem; font-size: 0.82rem; font-weight: 400;" [style.opacity]="isPermissionLocked(p.id) ? 0.6 : 1" [title]="p.description || p.name">
+                  <input type="checkbox" [checked]="editSelectedPermissionIds.has(p.id)" [disabled]="isPermissionLocked(p.id)" (change)="toggleEditPermission(p.id)" />
+                  {{ p.name }}
+                  @if (isPermissionLocked(p.id)) { <i class="bi bi-lock-fill" style="font-size: 0.7rem;" [title]="permissionLockReason()"></i> }
+                </label>
+              }
+            </div>
+          </div>
         }
       </div>
     </div>

@@ -39,6 +39,8 @@ public class EmployeeResponse {
     private String state;
     private String country;
     private String pincode;
+    private String aadharNumber;
+    private String panNumber;
     private boolean pfApplicable;
     private boolean esiApplicable;
     private boolean ptApplicable;
@@ -107,6 +109,10 @@ public class EmployeeResponse {
     public void setCountry(String country) { this.country = country; }
     public String getPincode() { return pincode; }
     public void setPincode(String pincode) { this.pincode = pincode; }
+    public String getAadharNumber() { return aadharNumber; }
+    public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
+    public String getPanNumber() { return panNumber; }
+    public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
     public boolean isPfApplicable() { return pfApplicable; }
     public void setPfApplicable(boolean pfApplicable) { this.pfApplicable = pfApplicable; }
     public boolean isEsiApplicable() { return esiApplicable; }

@@ -133,6 +133,12 @@ public class EmployeeService {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
+        if (employeeRepository.existsByClientCompanyIdAndAadharNumber(tenantId, request.getAadharNumber())) {
+            throw new DuplicateResourceException("Aadhar number already registered for another employee: " + request.getAadharNumber());
+        }
+        if (employeeRepository.existsByClientCompanyIdAndPanNumber(tenantId, request.getPanNumber().toUpperCase())) {
+            throw new DuplicateResourceException("PAN number already registered for another employee: " + request.getPanNumber().toUpperCase());
+        }
         validateDepartmentAndDesignation(request.getDepartment(), request.getDesignation());
         if (request.getSalaryStructureId() != null) {
             enforceSalaryUpdatePermission();
@@ -144,7 +150,7 @@ public class EmployeeService {
                 request.getLastName(), request.getEmail(), request.getMobileNumber(), request.getAlternateMobileNumber(),
                 request.getDateOfBirth(), request.getGender(), request.getJoiningDate(), request.getDepartment(),
                 request.getDesignation(), request.getEmploymentType(), request.getAddress(), request.getCity(),
-                request.getState(), request.getCountry(), request.getPincode());
+                request.getState(), request.getCountry(), request.getPincode(), request.getAadharNumber(), request.getPanNumber());
         employee.setStatus("ACTIVE");
         if (request.getPfApplicable() != null) employee.setPfApplicable(request.getPfApplicable());
         if (request.getEsiApplicable() != null) employee.setEsiApplicable(request.getEsiApplicable());
@@ -187,6 +193,15 @@ public class EmployeeService {
         if (!employee.getEmail().equals(request.getEmail()) && employeeRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
+        String newPan = request.getPanNumber() != null ? request.getPanNumber().toUpperCase() : null;
+        if (!request.getAadharNumber().equals(employee.getAadharNumber())
+                && employeeRepository.existsByClientCompanyIdAndAadharNumber(employee.getClientCompanyId(), request.getAadharNumber())) {
+            throw new DuplicateResourceException("Aadhar number already registered for another employee: " + request.getAadharNumber());
+        }
+        if (!newPan.equals(employee.getPanNumber())
+                && employeeRepository.existsByClientCompanyIdAndPanNumber(employee.getClientCompanyId(), newPan)) {
+            throw new DuplicateResourceException("PAN number already registered for another employee: " + newPan);
+        }
         validateDepartmentAndDesignation(request.getDepartment(), request.getDesignation());
         employee.setFirstName(request.getFirstName());
         employee.setMiddleName(request.getMiddleName());
@@ -205,6 +220,8 @@ public class EmployeeService {
         employee.setState(request.getState());
         employee.setCountry(request.getCountry());
         employee.setPincode(request.getPincode());
+        employee.setAadharNumber(request.getAadharNumber());
+        employee.setPanNumber(newPan);
         if (request.getPfApplicable() != null) employee.setPfApplicable(request.getPfApplicable());
         if (request.getEsiApplicable() != null) employee.setEsiApplicable(request.getEsiApplicable());
         if (request.getPtApplicable() != null) employee.setPtApplicable(request.getPtApplicable());
@@ -466,7 +483,7 @@ public class EmployeeService {
                                    String email, String mobile, String altMobile, java.time.LocalDate dob,
                                    String gender, java.time.LocalDate joiningDate, String department,
                                    String designation, String employmentType, String address, String city,
-                                   String state, String country, String pincode) {
+                                   String state, String country, String pincode, String aadharNumber, String panNumber) {
         e.setEmployeeCode(code);
         e.setFirstName(firstName);
         e.setMiddleName(middleName);
@@ -485,6 +502,10 @@ public class EmployeeService {
         e.setState(state);
         e.setCountry(country);
         e.setPincode(pincode);
+        e.setAadharNumber(aadharNumber);
+        // PAN is conventionally written upper-case (ABCDE1234F) - normalized here regardless of
+        // how the user typed it, so lookups/uniqueness checks are never case-sensitive by accident.
+        e.setPanNumber(panNumber != null ? panNumber.toUpperCase() : null);
     }
 
     private Employee getEntity(Long id) {
@@ -523,6 +544,8 @@ public class EmployeeService {
         r.setState(e.getState());
         r.setCountry(e.getCountry());
         r.setPincode(e.getPincode());
+        r.setAadharNumber(e.getAadharNumber());
+        r.setPanNumber(e.getPanNumber());
         r.setPfApplicable(e.isPfApplicable());
         r.setEsiApplicable(e.isEsiApplicable());
         r.setPtApplicable(e.isPtApplicable());

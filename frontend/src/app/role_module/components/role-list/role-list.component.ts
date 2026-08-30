@@ -5,6 +5,7 @@ import { RoleService } from '../../services/role.service';
 import { RoleOption } from '../../models/role.model';
 import { PermissionService } from '../../../permission_module/services/permission.service';
 import { PermissionOption } from '../../../permission_module/models/permission.model';
+import { groupPermissionsByCategory } from '../../../permission_module/utils/permission-category.util';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -39,6 +40,10 @@ export class RoleListComponent {
    * exactly, so the form never lets you attempt something that will 400.
    */
   readonly selectablePermissions = signal<PermissionOption[]>([]);
+
+  get groupedSelectablePermissions() {
+    return groupPermissionsByCategory(this.selectablePermissions());
+  }
 
   newRoleName = '';
   newRoleDescription = '';
