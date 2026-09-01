@@ -20,6 +20,10 @@ public class SiteRequest {
     private String siteContactPerson;
     private String siteContactNumber;
 
+    private java.math.BigDecimal latitude;
+    private java.math.BigDecimal longitude;
+    private Integer geofenceRadiusMeters;
+
     @Min(value = 0, message = "Required employee count cannot be negative")
     private int requiredEmployeeCount;
 
@@ -45,6 +49,12 @@ public class SiteRequest {
     public void setSiteContactPerson(String siteContactPerson) { this.siteContactPerson = siteContactPerson; }
     public String getSiteContactNumber() { return siteContactNumber; }
     public void setSiteContactNumber(String siteContactNumber) { this.siteContactNumber = siteContactNumber; }
+    public java.math.BigDecimal getLatitude() { return latitude; }
+    public void setLatitude(java.math.BigDecimal latitude) { this.latitude = latitude; }
+    public java.math.BigDecimal getLongitude() { return longitude; }
+    public void setLongitude(java.math.BigDecimal longitude) { this.longitude = longitude; }
+    public Integer getGeofenceRadiusMeters() { return geofenceRadiusMeters; }
+    public void setGeofenceRadiusMeters(Integer geofenceRadiusMeters) { this.geofenceRadiusMeters = geofenceRadiusMeters; }
     public int getRequiredEmployeeCount() { return requiredEmployeeCount; }
     public void setRequiredEmployeeCount(int requiredEmployeeCount) { this.requiredEmployeeCount = requiredEmployeeCount; }
     public boolean isAllowOverAllocation() { return allowOverAllocation; }

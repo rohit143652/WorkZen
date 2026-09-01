@@ -68,6 +68,10 @@ export const routes: Routes = [
         loadChildren: () => import('./holiday_module/holiday.routes').then(m => m.HOLIDAY_ROUTES)
       },
       {
+        path: 'leave-requests',
+        loadChildren: () => import('./leave_request_module/leave-request.routes').then(m => m.LEAVE_REQUEST_ROUTES)
+      },
+      {
         path: 'employee-exits',
         loadChildren: () => import('./exit_module/exit.routes').then(m => m.EXIT_ROUTES)
       },

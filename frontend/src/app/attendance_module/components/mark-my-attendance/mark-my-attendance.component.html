@@ -1,0 +1,35 @@
+<div class="page-header">
+  <div>
+    <h1>My Attendance</h1>
+    <p class="muted">One click to check yourself in for today. If your site requires it, you'll need to be within range - your device's location is only used for that check.</p>
+  </div>
+</div>
+
+<div class="card" style="padding: 2rem; text-align: center; max-width: 480px; margin: 0 auto;">
+  @if (loading()) {
+    <div class="skeleton" style="height: 120px;"></div>
+  } @else {
+    @if (todayStatus(); as status) {
+      <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: var(--success-color);"></i>
+      <h2 style="margin: 0.75rem 0 0.25rem;">You're marked {{ status.status === 'PRESENT' ? 'Present' : status.status }} today</h2>
+      <p class="muted">{{ status.attendanceDate }}</p>
+      <p class="muted" style="font-size: 0.8rem;">Attendance can't be changed once marked - contact a Client Admin if this needs correcting.</p>
+    } @else {
+      <i class="bi bi-geo-alt" style="font-size: 3rem; color: var(--primary-color);"></i>
+      <h2 style="margin: 0.75rem 0 0.25rem;">You haven't checked in today</h2>
+      <p class="muted">Tap below to mark yourself Present for today.</p>
+
+      @if (locationError()) {
+        <p style="color: var(--warning-color); font-size: 0.82rem; margin-top: 0.5rem;">
+          <i class="bi bi-exclamation-triangle"></i> {{ locationError() }}
+        </p>
+      }
+
+      <button type="button" class="btn btn-primary" style="margin-top: 1.25rem; padding: 0.85rem 2rem; font-size: 1rem;"
+              [disabled]="marking()" (click)="markMyAttendance()">
+        @if (marking()) { <span class="btn-spinner"></span> }
+        <i class="bi bi-geo-alt-fill"></i> {{ marking() ? 'Checking your location...' : 'Mark My Attendance' }}
+      </button>
+    }
+  }
+</div>

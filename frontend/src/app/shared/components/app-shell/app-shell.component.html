@@ -74,7 +74,7 @@
       <div class="app-title">WORKZEN</div>
 
       <div class="topbar-right">
-        <div class="profile" (click)="toggleProfileMenu()">
+        <div class="profile" #profileRoot (click)="toggleProfileMenu()">
           <span class="avatar">{{ initials() }}</span>
           @if (authState.currentUser(); as user) {
             <span class="profile-name">
@@ -86,6 +86,17 @@
 
           @if (profileMenuOpen()) {
             <div class="profile-dropdown card" (click)="$event.stopPropagation()">
+              @if (authState.hasPermission('ATTENDANCE_SELF_MARK')) {
+                @if (todayAttendanceMarked()) {
+                  <div class="dropdown-item" style="color: var(--success-color); cursor: default;">
+                    <i class="bi bi-check-circle-fill"></i> Marked Present Today
+                  </div>
+                } @else {
+                  <button type="button" class="dropdown-item" (click)="openMarkAttendanceConfirm()">
+                    <i class="bi bi-geo-alt-fill"></i> Mark My Attendance
+                  </button>
+                }
+              }
               <button type="button" class="dropdown-item" (click)="logout()">
                 <i class="bi bi-box-arrow-right"></i> Logout
               </button>
@@ -93,6 +104,28 @@
           }
         </div>
       </div>
+
+      @if (showAttendanceConfirm()) {
+        <div class="modal-overlay" (click)="closeAttendanceConfirm()">
+          <div class="modal-box card" style="max-width: 380px; text-align: center;" (click)="$event.stopPropagation()">
+            <i class="bi bi-geo-alt-fill" style="font-size: 2.2rem; color: var(--primary-color);"></i>
+            <h3 style="margin: 0.75rem 0 0.4rem;">Mark yourself Present today?</h3>
+            <p class="muted" style="font-size: 0.85rem;">
+              This uses your device's location only if your site requires it - once marked, this can't be changed by you afterward.
+            </p>
+            @if (attendanceMarkError()) {
+              <p style="color: var(--danger-color); font-size: 0.82rem;">{{ attendanceMarkError() }}</p>
+            }
+            <div class="form-actions" style="justify-content: center; margin-top: 1rem;">
+              <button type="button" class="btn btn-secondary" (click)="closeAttendanceConfirm()">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="markingAttendance()" (click)="confirmMarkAttendance()">
+                @if (markingAttendance()) { <span class="btn-spinner"></span> }
+                {{ markingAttendance() ? 'Marking...' : 'Yes, Mark Present' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </header>
 
     <main class="content">

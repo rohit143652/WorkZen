@@ -1,0 +1,83 @@
+<div class="page-header">
+  <div>
+    <h1>Leave Requests</h1>
+    <p class="muted">Approve or reject pending requests, or add leave directly for any employee (including those without a login) - either way, it's marked on attendance right away.</p>
+  </div>
+  <button type="button" *appHasPermission="'LEAVE_REQUEST_MANAGE'" class="btn btn-primary" (click)="openAddForm()">+ Add Leave</button>
+</div>
+
+@if (showAddForm()) {
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+    <div class="section-title" style="margin-top: 0;">Add Leave Directly</div>
+    <p class="muted" style="margin-top: -0.5rem;">This is approved immediately and marked on the employee's attendance - use this for employees without a login, or whenever you're recording leave on someone's behalf.</p>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Employee</label>
+        <select [(ngModel)]="newEmployeeId">
+          <option [ngValue]="null">Select employee...</option>
+          @for (e of activeEmployees(); track e.id) { <option [ngValue]="e.id">{{ e.employeeCode }} &middot; {{ e.firstName }} {{ e.lastName }}</option> }
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Start Date</label>
+        <input type="date" [(ngModel)]="newStartDate" />
+      </div>
+      <div class="form-field">
+        <label>End Date</label>
+        <input type="date" [(ngModel)]="newEndDate" [min]="newStartDate" />
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Reason</label>
+      <input type="text" [(ngModel)]="newReason" placeholder="Optional" />
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="closeAddForm()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="!newEmployeeId || !newStartDate || !newEndDate || saving()" (click)="submitAdminAdd()">
+        @if (saving()) { <span class="btn-spinner"></span> }
+        {{ saving() ? 'Saving...' : 'Add Leave' }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (requests().length === 0) {
+    <div class="empty-state">No leave requests yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Employee</th><th>Start Date</th><th>End Date</th><th>Days</th><th>Reason</th><th>Source</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          @for (r of requests(); track r.id) {
+            <tr>
+              <td>{{ r.employeeCode }} &middot; {{ r.employeeName }}</td>
+              <td>{{ r.startDate }}</td>
+              <td>{{ r.endDate }}</td>
+              <td>{{ r.dayCount }}</td>
+              <td>{{ r.reason || '-' }}</td>
+              <td>{{ r.selfRequested ? 'Self-requested' : 'Added by admin' }}</td>
+              <td>
+                @if (r.status === 'APPROVED') { <app-status-badge label="Approved" kind="success"></app-status-badge> }
+                @else if (r.status === 'REJECTED') { <app-status-badge label="Rejected" kind="danger"></app-status-badge> }
+                @else { <app-status-badge label="Pending" kind="warning"></app-status-badge> }
+              </td>
+              <td>
+                @if (r.status === 'PENDING') {
+                  <div class="actions">
+                    <button type="button" *appHasPermission="'LEAVE_REQUEST_MANAGE'" class="btn-icon-sm btn-icon-success" title="Approve" [disabled]="actingOnId() === r.id" (click)="approve(r)"><i class="bi bi-check-lg"></i></button>
+                    <button type="button" *appHasPermission="'LEAVE_REQUEST_MANAGE'" class="btn-icon-sm btn-icon-danger" title="Reject" [disabled]="actingOnId() === r.id" (click)="reject(r)"><i class="bi bi-x-lg"></i></button>
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

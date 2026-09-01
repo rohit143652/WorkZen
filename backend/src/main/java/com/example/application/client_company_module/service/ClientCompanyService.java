@@ -49,12 +49,13 @@ public class ClientCompanyService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final AuditService auditService;
+    private final StarterRoleSeederService starterRoleSeederService;
 
     public ClientCompanyService(ClientCompanyRepository clientCompanyRepository, UserRepository userRepository,
                                  RoleRepository roleRepository, EmployeeRepository employeeRepository,
                                  SiteRepository siteRepository,
                                  PasswordEncoder passwordEncoder, RefreshTokenService refreshTokenService,
-                                 AuditService auditService) {
+                                 AuditService auditService, StarterRoleSeederService starterRoleSeederService) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -63,6 +64,7 @@ public class ClientCompanyService {
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenService = refreshTokenService;
         this.auditService = auditService;
+        this.starterRoleSeederService = starterRoleSeederService;
     }
 
     @Transactional(readOnly = true)
@@ -109,6 +111,14 @@ public class ClientCompanyService {
         company.setStatus("ACTIVE");
         company.setCreatedBy(actorId);
         ClientCompany saved = clientCompanyRepository.save(company);
+
+        // A brand new company otherwise starts with NOTHING but the two system-wide roles
+        // (CLIENT_ADMIN, CLIENT_USER) - this gives them a sensible, ready-to-use starting set
+        // (HR Admin, Site Admin, Accountant, ...) instead of a Client Admin having to hand-build
+        // every role and tick every permission before their team can do anything at all. See
+        // StarterRoleSeederService for exactly what each one gets, and why - all of it can be
+        // renamed, re-permissioned, or deleted afterward like any other custom role.
+        starterRoleSeederService.seedStandardRoles(saved.getId());
 
         if (request.isCreateClientAdminLogin()) {
             if (request.getClientAdminLogin() == null) {

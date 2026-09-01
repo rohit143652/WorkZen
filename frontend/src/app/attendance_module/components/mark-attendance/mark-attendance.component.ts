@@ -115,6 +115,22 @@ export class MarkAttendanceComponent {
     this.selections.clear();
   }
 
+  /** Best-effort GPS capture - resolves to {} (no coordinates) rather than rejecting if the
+      browser has no geolocation support, the user denies permission, or it times out, since most
+      sites have no geofence configured at all and shouldn't be blocked from marking attendance
+      over this. Sites that DO have a geofence will get a clear rejection from the backend
+      instead, naming exactly which employees couldn't be marked and why. */
+  private getCurrentLocation(): Promise<{ latitude?: number; longitude?: number }> {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) { resolve({}); return; }
+      navigator.geolocation.getCurrentPosition(
+        position => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+        () => resolve({}),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+  }
+
   /**
    * One request for every selected row instead of one request PER row -
    * this is the actual fix for "100 employees would mean 100 saves".
@@ -141,8 +157,13 @@ export class MarkAttendanceComponent {
     });
     if (!ok) return;
 
+    // Best-effort - a site with no GPS geofence configured doesn't need this at all, and even a
+    // site that DOES have one will get a clear per-employee rejection from the backend (not a
+    // silent failure) if location access isn't available, so there's nothing to block on here.
+    const location = await this.getCurrentLocation();
+
     this.savingAll.set(true);
-    this.attendanceService.bulkMark({ attendanceDate: this.selectedDate, entries }).subscribe({
+    this.attendanceService.bulkMark({ attendanceDate: this.selectedDate, entries, ...location }).subscribe({
       next: result => {
         this.savingAll.set(false);
         if (result.rejected.length > 0) {

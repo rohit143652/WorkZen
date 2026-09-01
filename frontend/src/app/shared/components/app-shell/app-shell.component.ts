@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -7,12 +7,16 @@ import { AuthService } from '../../../login_module/services/auth.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ToastContainerComponent } from '../toast/toast.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
+import { AttendanceService } from '../../../attendance_module/services/attendance.service';
 
 interface NavLeaf {
   label: string;
   path: string;
   icon: string;
-  permission?: string;
+  /** A single permission, or a list - visible if the user has ANY one of them. Used for pages
+      like Leave that merge into one menu entry regardless of whether someone has the
+      self-service permission, the manage permission, or (commonly) both. */
+  permission?: string | string[];
 }
 
 interface NavGroup {
@@ -61,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Attendance History', path: '/attendance/history', icon: 'clock-history', permission: 'ATTENDANCE_READ' },
       { label: 'Monthly Attendance Report', path: '/attendance/monthly-report', icon: 'file-earmark-excel', permission: 'MONTHLY_PAYMENT_REPORT_EXPORT' },
       { label: 'Holiday Calendar', path: '/holidays', icon: 'calendar-heart', permission: 'HOLIDAY_READ' },
+      { label: 'Leave Requests', path: '/leave-requests', icon: 'calendar-week', permission: ['LEAVE_REQUEST_READ', 'LEAVE_REQUEST_SELF_CREATE'] },
       { label: 'Paid Leave Settings', path: '/paid-leave/settings', icon: 'calendar2-check', permission: 'PAID_LEAVE_CONFIG_UPDATE' }
     ]
   },
@@ -110,6 +115,7 @@ const DASHBOARD_ITEM: NavLeaf = { label: 'Dashboard', path: '/dashboard', icon: 
 })
 export class AppShellComponent {
   private readonly authService = inject(AuthService);
+  private readonly attendanceService = inject(AttendanceService);
   private readonly router = inject(Router);
 
   readonly authState = inject(AuthStateService);
@@ -118,6 +124,20 @@ export class AppShellComponent {
       there (the toggle button is hidden entirely above 900px, see the component CSS). */
   readonly sidebarOpen = signal(typeof window === 'undefined' || window.innerWidth > 900);
   readonly profileMenuOpen = signal(false);
+  @ViewChild('profileRoot') profileRoot?: ElementRef<HTMLElement>;
+
+  /** Closes the profile dropdown on any click outside it - the dropdown's own content already
+      stops its clicks from bubbling this far (see the template), so this only ever needs to
+      check "was the click on the profile trigger/dropdown itself, or somewhere else on the
+      page" using a plain DOM containment check against the profile root element. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.profileMenuOpen()) return;
+    const target = event.target as Node;
+    if (this.profileRoot && !this.profileRoot.nativeElement.contains(target)) {
+      this.profileMenuOpen.set(false);
+    }
+  }
   readonly expandedGroups = signal<Set<string>>(new Set());
   /** Quick-find across every nav item - essential once the menu has 20+ entries across several
       groups; typing auto-expands any group with a match so results are visible without also
@@ -141,6 +161,69 @@ export class AppShellComponent {
           this.sidebarOpen.set(false);
         }
       });
+
+    // Re-checks EVERY time the logged-in user changes (not just once, at component
+    // construction) - AppShellComponent is the root authenticated layout, so it can easily
+    // stay alive across a logout/login cycle if that transition doesn't fully tear the
+    // component down. Without this being reactive, "already marked today" from the PREVIOUS
+    // user's session could keep showing for whoever logs in next, even though they personally
+    // haven't marked anything - a stale-state bug, not a real cross-employee data leak (the
+    // backend always scopes strictly to whichever user's token made the request).
+    effect(() => {
+      const user = this.authState.currentUser();
+      if (!user || !this.authState.hasPermission('ATTENDANCE_SELF_MARK')) {
+        this.todayAttendanceMarked.set(false);
+        return;
+      }
+      this.attendanceService.myTodayStatus().subscribe({
+        next: status => this.todayAttendanceMarked.set(status !== null),
+        error: () => this.todayAttendanceMarked.set(false)
+      });
+    });
+  }
+
+  // ---- "Mark My Attendance" - lives in the profile dropdown (see template) rather than its
+  // own page, since a one-click self check-in is exactly the kind of thing someone wants
+  // available from anywhere, not a destination you navigate to. ----
+  readonly todayAttendanceMarked = signal(false);
+  readonly showAttendanceConfirm = signal(false);
+  readonly markingAttendance = signal(false);
+  readonly attendanceMarkError = signal<string | null>(null);
+
+  openMarkAttendanceConfirm(): void {
+    this.profileMenuOpen.set(false);
+    this.attendanceMarkError.set(null);
+    this.showAttendanceConfirm.set(true);
+  }
+
+  closeAttendanceConfirm(): void {
+    this.showAttendanceConfirm.set(false);
+  }
+
+  confirmMarkAttendance(): void {
+    this.markingAttendance.set(true);
+    this.attendanceMarkError.set(null);
+
+    const submit = (latitude?: number, longitude?: number) => {
+      this.attendanceService.markMine(latitude, longitude).subscribe({
+        next: () => {
+          this.markingAttendance.set(false);
+          this.todayAttendanceMarked.set(true);
+          this.showAttendanceConfirm.set(false);
+        },
+        error: err => {
+          this.markingAttendance.set(false);
+          this.attendanceMarkError.set(err.error?.message ?? 'Unable to mark your attendance.');
+        }
+      });
+    };
+
+    if (!navigator.geolocation) { submit(); return; }
+    navigator.geolocation.getCurrentPosition(
+      position => submit(position.coords.latitude, position.coords.longitude),
+      () => submit(),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   }
 
   get visibleGroups(): NavGroup[] {
@@ -159,7 +242,9 @@ export class AppShellComponent {
   }
 
   isVisible(item: NavLeaf): boolean {
-    return !item.permission || this.authState.hasPermission(item.permission);
+    if (!item.permission) return true;
+    const permissions = Array.isArray(item.permission) ? item.permission : [item.permission];
+    return permissions.some(p => this.authState.hasPermission(p));
   }
 
   isExpanded(label: string): boolean {

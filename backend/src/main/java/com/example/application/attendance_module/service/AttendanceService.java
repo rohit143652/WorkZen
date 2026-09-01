@@ -66,10 +66,44 @@ public class AttendanceService {
     public AttendanceResponse mark(MarkAttendanceRequest request, Long actorId, HttpServletRequest httpRequest) {
         Long tenantId = tenantContext.requireCurrentTenantId();
         Attendance saved = markOne(tenantId, request.getEmployeeId(), request.getAttendanceDate(),
-                request.getStatus(), request.getRemarks(), actorId);
+                request.getStatus(), request.getRemarks(), actorId, request.getLatitude(), request.getLongitude());
         auditService.log(actorId, "ATTENDANCE_MARKED",
                 "Marked " + request.getStatus() + " for employee id " + request.getEmployeeId()
                         + " on " + request.getAttendanceDate(), httpRequest);
+        return toResponse(saved);
+    }
+
+    /** For "Mark My Attendance" (self-service) - is today already marked for the logged-in employee? Lets the UI show the existing status instead of a mark button once they've already checked in. */
+    @Transactional(readOnly = true)
+    public AttendanceResponse findMyTodayStatus(Long userId) {
+        Long tenantId = tenantContext.requireCurrentTenantId();
+        Employee employee = employeeRepository.findByUserId(userId)
+                .orElseThrow(() -> new BadRequestException("No employee profile is linked to this login."));
+        return attendanceRepository.findByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employee.getId(), LocalDate.now())
+                .map(this::toResponse)
+                .orElse(null);
+    }
+
+    /**
+     * One-click self-service attendance marking - always PRESENT, always today, and the
+     * employee is ALWAYS resolved from the caller's own login (never accepts an employeeId),
+     * same structural guarantee already used for LeaveRequestService.selfCreate() and
+     * PayslipService.generateMyPayslip() - there is no way to call this and mark anyone's
+     * attendance but your own. Goes through the exact same markOne() (and therefore the same
+     * geofence check) as the supervisor-driven mark()/bulkMark() above.
+     */
+    @Transactional
+    public AttendanceResponse markMine(Long userId, java.math.BigDecimal latitude, java.math.BigDecimal longitude,
+                                        Long actorId, HttpServletRequest httpRequest) {
+        Long tenantId = tenantContext.requireCurrentTenantId();
+        Employee employee = employeeRepository.findByUserId(userId)
+                .orElseThrow(() -> new BadRequestException("No employee profile is linked to this login."));
+
+        Attendance saved = markOne(tenantId, employee.getId(), LocalDate.now(), "PRESENT",
+                "Self-marked", actorId, latitude, longitude);
+
+        auditService.log(actorId, "ATTENDANCE_SELF_MARKED",
+                employee.getEmployeeCode() + " marked their own attendance for " + saved.getAttendanceDate(), httpRequest);
         return toResponse(saved);
     }
 
@@ -90,7 +124,7 @@ public class AttendanceService {
         for (BulkAttendanceEntry entry : request.getEntries()) {
             try {
                 markOne(tenantId, entry.getEmployeeId(), request.getAttendanceDate(),
-                        entry.getStatus(), entry.getRemarks(), actorId);
+                        entry.getStatus(), entry.getRemarks(), actorId, request.getLatitude(), request.getLongitude());
                 markedCount++;
             } catch (RuntimeException ex) {
                 String label = employeeRepository.findById(entry.getEmployeeId())
@@ -132,8 +166,41 @@ public class AttendanceService {
         return marked;
     }
 
-    /** Shared core of mark() and bulkMark() - see class javadoc for the immutability guarantee this preserves either way. */
+    /**
+     * Marks ON_LEAVE for one employee across a date range - used when a leave request is
+     * approved (LeaveRequestService.approve()/adminCreate()). Unlike markPresentForHoliday()
+     * above, this does NOT silently skip conflicting dates: if ANY date in the range already
+     * has attendance marked (present, absent, whatever), the whole thing is rejected upfront
+     * with a clear list of exactly which dates conflict, before anything is written - approving
+     * a leave request should never partially apply and leave a confusing half-marked state, and
+     * the reviewer needs to know a conflict exists so they can resolve it (e.g. by adjusting the
+     * requested dates) rather than have some days silently not count as leave.
+     */
+    @Transactional
+    public void markOnLeaveForRange(Long tenantId, Long employeeId, LocalDate start, LocalDate end, String remarks, Long actorId) {
+        List<LocalDate> conflicts = new ArrayList<>();
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            if (attendanceRepository.existsByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employeeId, d)) {
+                conflicts.add(d);
+            }
+        }
+        if (!conflicts.isEmpty()) {
+            throw new BadRequestException("Attendance is already marked for " + conflicts.size()
+                    + " day(s) in this range (" + conflicts + ") - cannot approve leave over existing attendance records.");
+        }
+        for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+            markOne(tenantId, employeeId, d, "ON_LEAVE", remarks, actorId);
+        }
+    }
+
+    /** Shared core of mark() and bulkMark() - see class javadoc for the immutability guarantee this preserves either way. This overload is used by every OTHER caller (holiday auto-marking, leave approval, etc.) that has no real device location to report - those never had a geofence to check against anyway. */
     private Attendance markOne(Long tenantId, Long employeeId, LocalDate date, String status, String remarks, Long actorId) {
+        return markOne(tenantId, employeeId, date, status, remarks, actorId, null, null);
+    }
+
+    /** Same as above, but for the two callers that DO have a real device GPS position to check - mark() and bulkMark(). See checkGeofence() for what actually happens with latitude/longitude. */
+    private Attendance markOne(Long tenantId, Long employeeId, LocalDate date, String status, String remarks, Long actorId,
+                                java.math.BigDecimal latitude, java.math.BigDecimal longitude) {
         validateStatus(status);
 
         Employee employee = employeeRepository.findByIdAndClientCompanyId(employeeId, tenantId)
@@ -149,6 +216,8 @@ public class AttendanceService {
                     "attendance for " + date + " is already marked and cannot be changed");
         }
 
+        checkGeofence(currentAssignment.getSiteId(), latitude, longitude);
+
         Attendance attendance = new Attendance();
         attendance.setClientCompanyId(tenantId);
         attendance.setEmployeeId(employee.getId());
@@ -157,8 +226,46 @@ public class AttendanceService {
         attendance.setStatus(status);
         attendance.setRemarks(remarks);
         attendance.setMarkedBy(actorId);
+        attendance.setMarkedLatitude(latitude);
+        attendance.setMarkedLongitude(longitude);
 
         return attendanceRepository.save(attendance);
+    }
+
+    private static final int DEFAULT_GEOFENCE_RADIUS_METERS = 200;
+    private static final double EARTH_RADIUS_METERS = 6_371_000;
+
+    /**
+     * A site with no latitude/longitude configured has NO geofence at all - this is a silent
+     * no-op for every site that hasn't opted into GPS-based attendance, so nothing about
+     * existing behavior changes for them. Only once a site HAS both coordinates set does this
+     * start requiring (and checking) the marking device's own position, using the standard
+     * Haversine great-circle-distance formula - accurate enough for a same-city geofence check
+     * without needing any external mapping service.
+     */
+    private void checkGeofence(Long siteId, java.math.BigDecimal latitude, java.math.BigDecimal longitude) {
+        var site = siteService.findById(siteId);
+        if (site.getLatitude() == null || site.getLongitude() == null) return;
+
+        if (latitude == null || longitude == null) {
+            throw new BadRequestException("Location access is required to mark attendance for \""
+                    + site.getSiteName() + "\" - please allow location access on your device and try again.");
+        }
+
+        double lat1 = Math.toRadians(site.getLatitude().doubleValue());
+        double lat2 = Math.toRadians(latitude.doubleValue());
+        double dLat = Math.toRadians(latitude.doubleValue() - site.getLatitude().doubleValue());
+        double dLon = Math.toRadians(longitude.doubleValue() - site.getLongitude().doubleValue());
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double distanceMeters = EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        int allowedRadius = site.getGeofenceRadiusMeters() != null ? site.getGeofenceRadiusMeters() : DEFAULT_GEOFENCE_RADIUS_METERS;
+        if (distanceMeters > allowedRadius) {
+            throw new BadRequestException(String.format(
+                    "You are %.0fm away from \"%s\" - you must be within %dm of the site to mark attendance here.",
+                    distanceMeters, site.getSiteName(), allowedRadius));
+        }
     }
 
     /** Gated by ATTENDANCE_UPDATE at the controller - this method itself does not re-check the permission ceiling. */

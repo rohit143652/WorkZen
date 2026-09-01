@@ -13,6 +13,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findByIdAndClientCompanyId(Long id, Long clientCompanyId);
 
+    /** Used by "Mark My Attendance" (self-service) to check if today is already marked, so the UI can show the existing status instead of a mark button. */
+    Optional<Attendance> findByClientCompanyIdAndEmployeeIdAndAttendanceDate(Long clientCompanyId, Long employeeId, LocalDate attendanceDate);
+
     boolean existsByClientCompanyIdAndEmployeeIdAndAttendanceDate(Long clientCompanyId, Long employeeId, LocalDate attendanceDate);
 
     List<Attendance> findAllByClientCompanyIdAndEmployeeIdAndAttendanceDateBetweenOrderByAttendanceDateDesc(

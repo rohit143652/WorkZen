@@ -36,6 +36,25 @@ public class AttendanceController {
         return ResponseEntity.status(201).body(ApiResponse.success("Attendance marked successfully", created));
     }
 
+    /** For "Mark My Attendance" (self-service) - is today already marked? Returns null (as data) if not. */
+    @GetMapping("/mine/today")
+    @PreAuthorize("hasAuthority('ATTENDANCE_SELF_MARK')")
+    public ResponseEntity<ApiResponse<AttendanceResponse>> myTodayStatus(@AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.findMyTodayStatus(principal.getId())));
+    }
+
+    /** One-click self-service attendance marking - see MarkMyAttendanceRequest/AttendanceService.markMine() for why this deliberately has no employeeId, date, or status fields. */
+    @PostMapping("/mine")
+    @PreAuthorize("hasAuthority('ATTENDANCE_SELF_MARK')")
+    public ResponseEntity<ApiResponse<AttendanceResponse>> markMine(@RequestBody(required = false) MarkMyAttendanceRequest request,
+                                                                      @AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                      HttpServletRequest httpRequest) {
+        var lat = request != null ? request.getLatitude() : null;
+        var lng = request != null ? request.getLongitude() : null;
+        AttendanceResponse created = attendanceService.markMine(principal.getId(), lat, lng, principal.getId(), httpRequest);
+        return ResponseEntity.status(201).body(ApiResponse.success("Your attendance has been marked for today", created));
+    }
+
     /**
      * Marks many employees at once for the same date - the answer to "100
      * employees would mean 100 saves". Each entry succeeds or fails on its

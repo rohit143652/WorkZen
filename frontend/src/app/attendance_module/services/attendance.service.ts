@@ -29,6 +29,16 @@ export class AttendanceService {
     return this.http.post<ApiEnvelope<BulkMarkAttendanceResult>>(`${this.baseUrl}/bulk`, request).pipe(map(e => e.data));
   }
 
+  /** For "Mark My Attendance" (self-service) - null (as data) means today isn't marked yet. */
+  myTodayStatus(): Observable<AttendanceResponse | null> {
+    return this.http.get<ApiEnvelope<AttendanceResponse | null>>(`${this.baseUrl}/mine/today`).pipe(map(e => e.data));
+  }
+
+  /** One-click self-service mark - always today, always PRESENT (see backend for why). */
+  markMine(latitude?: number, longitude?: number): Observable<AttendanceResponse> {
+    return this.http.post<ApiEnvelope<AttendanceResponse>>(`${this.baseUrl}/mine`, { latitude, longitude }).pipe(map(e => e.data));
+  }
+
   update(id: number, request: UpdateAttendanceRequest): Observable<AttendanceResponse> {
     return this.http.put<ApiEnvelope<AttendanceResponse>>(`${this.baseUrl}/${id}`, request).pipe(map(e => e.data));
   }

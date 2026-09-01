@@ -153,6 +153,9 @@ public class SiteService {
         s.setPincode(r.getPincode());
         s.setSiteContactPerson(r.getSiteContactPerson());
         s.setSiteContactNumber(r.getSiteContactNumber());
+        s.setLatitude(r.getLatitude());
+        s.setLongitude(r.getLongitude());
+        s.setGeofenceRadiusMeters(r.getGeofenceRadiusMeters());
         s.setRequiredEmployeeCount(r.getRequiredEmployeeCount());
         s.setAllowOverAllocation(r.isAllowOverAllocation());
     }
@@ -170,6 +173,9 @@ public class SiteService {
         r.setPincode(s.getPincode());
         r.setSiteContactPerson(s.getSiteContactPerson());
         r.setSiteContactNumber(s.getSiteContactNumber());
+        r.setLatitude(s.getLatitude());
+        r.setLongitude(s.getLongitude());
+        r.setGeofenceRadiusMeters(s.getGeofenceRadiusMeters());
         r.setRequiredEmployeeCount(s.getRequiredEmployeeCount());
         r.setAssignedEmployeeCount(assignmentRepository.countBySiteIdAndClientCompanyIdAndStatus(
                 s.getId(), s.getClientCompanyId(), "ACTIVE"));

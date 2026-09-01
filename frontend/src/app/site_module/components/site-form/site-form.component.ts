@@ -34,9 +34,14 @@ export class SiteFormComponent {
     pincode: [''],
     siteContactPerson: [''],
     siteContactNumber: [''],
+    latitude: [null as number | null],
+    longitude: [null as number | null],
+    geofenceRadiusMeters: [200 as number | null],
     requiredEmployeeCount: [0, [Validators.required, Validators.min(0)]],
     allowOverAllocation: [false]
   });
+
+  readonly locatingDevice = signal(false);
 
   constructor() {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -52,6 +57,31 @@ export class SiteFormComponent {
         error: () => this.toast.error('Unable to generate the next site code.')
       });
     }
+  }
+
+  /** Fills the Latitude/Longitude fields from the browser's own GPS - meant to be used while
+      the admin is physically standing at the site during setup, so they don't have to look up
+      or type in coordinates manually. Purely a convenience; the fields can always be edited or
+      typed in directly too. */
+  useMyLocation(): void {
+    if (!navigator.geolocation) {
+      this.toast.error('Location access is not available in this browser.');
+      return;
+    }
+    this.locatingDevice.set(true);
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        this.locatingDevice.set(false);
+        this.form.controls.latitude.setValue(position.coords.latitude);
+        this.form.controls.longitude.setValue(position.coords.longitude);
+        this.toast.success('Location captured from this device.');
+      },
+      () => {
+        this.locatingDevice.set(false);
+        this.toast.error('Unable to access your location - check your browser/device location permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }
 
   submit(): void {

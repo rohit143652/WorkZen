@@ -1,0 +1,66 @@
+<div class="page-header">
+  <div>
+    <h1>My Leave</h1>
+    <p class="muted">Apply for leave - an admin or supervisor needs to approve it before it counts against your attendance.</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openAddForm()">+ Apply for Leave</button>
+</div>
+
+@if (showAddForm()) {
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+    <div class="section-title" style="margin-top: 0;">New Leave Request</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Start Date</label>
+        <input type="date" [(ngModel)]="newStartDate" />
+      </div>
+      <div class="form-field">
+        <label>End Date</label>
+        <input type="date" [(ngModel)]="newEndDate" [min]="newStartDate" />
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Reason</label>
+      <input type="text" [(ngModel)]="newReason" placeholder="Optional" />
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="closeAddForm()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="!newStartDate || !newEndDate || saving()" (click)="submit()">
+        @if (saving()) { <span class="btn-spinner"></span> }
+        {{ saving() ? 'Submitting...' : 'Submit Request' }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (requests().length === 0) {
+    <div class="empty-state">No leave requests yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Start Date</th><th>End Date</th><th>Days</th><th>Reason</th><th>Status</th><th>Reviewed By</th></tr></thead>
+        <tbody>
+          @for (r of requests(); track r.id) {
+            <tr>
+              <td>{{ r.startDate }}</td>
+              <td>{{ r.endDate }}</td>
+              <td>{{ r.dayCount }}</td>
+              <td>{{ r.reason || '-' }}</td>
+              <td>
+                @if (r.status === 'APPROVED') { <app-status-badge label="Approved" kind="success"></app-status-badge> }
+                @else if (r.status === 'REJECTED') { <app-status-badge label="Rejected" kind="danger"></app-status-badge> }
+                @else { <app-status-badge label="Pending" kind="warning"></app-status-badge> }
+              </td>
+              <td>{{ r.reviewedByName || '-' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -17,8 +17,16 @@ public class BulkMarkAttendanceRequest {
     @Valid
     private List<BulkAttendanceEntry> entries;
 
+    /** Captured once for the whole batch, from the marking device (the supervisor's own phone/browser) - not per-employee, since one submission comes from one device at one point in time. Checked against EACH employee's own assigned site individually (see AttendanceService.checkGeofence()), since a bulk batch can span employees at different sites. */
+    private java.math.BigDecimal latitude;
+    private java.math.BigDecimal longitude;
+
     public LocalDate getAttendanceDate() { return attendanceDate; }
     public void setAttendanceDate(LocalDate attendanceDate) { this.attendanceDate = attendanceDate; }
     public List<BulkAttendanceEntry> getEntries() { return entries; }
     public void setEntries(List<BulkAttendanceEntry> entries) { this.entries = entries; }
+    public java.math.BigDecimal getLatitude() { return latitude; }
+    public void setLatitude(java.math.BigDecimal latitude) { this.latitude = latitude; }
+    public java.math.BigDecimal getLongitude() { return longitude; }
+    public void setLongitude(java.math.BigDecimal longitude) { this.longitude = longitude; }
 }

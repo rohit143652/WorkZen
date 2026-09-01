@@ -48,6 +48,11 @@ public class Site {
     @Column(name = "site_contact_number", length = 30)
     private String siteContactNumber;
 
+    /** All three nullable together - a site with no latitude/longitude has NO geofence restriction at all; attendance marking works exactly as before. See AttendanceService for the actual distance check. */
+    private java.math.BigDecimal latitude;
+    private java.math.BigDecimal longitude;
+    private Integer geofenceRadiusMeters;
+
     @Column(name = "required_employee_count", nullable = false)
     private int requiredEmployeeCount = 0;
 
@@ -95,6 +100,12 @@ public class Site {
     public void setSiteContactPerson(String siteContactPerson) { this.siteContactPerson = siteContactPerson; }
     public String getSiteContactNumber() { return siteContactNumber; }
     public void setSiteContactNumber(String siteContactNumber) { this.siteContactNumber = siteContactNumber; }
+    public java.math.BigDecimal getLatitude() { return latitude; }
+    public void setLatitude(java.math.BigDecimal latitude) { this.latitude = latitude; }
+    public java.math.BigDecimal getLongitude() { return longitude; }
+    public void setLongitude(java.math.BigDecimal longitude) { this.longitude = longitude; }
+    public Integer getGeofenceRadiusMeters() { return geofenceRadiusMeters; }
+    public void setGeofenceRadiusMeters(Integer geofenceRadiusMeters) { this.geofenceRadiusMeters = geofenceRadiusMeters; }
     public int getRequiredEmployeeCount() { return requiredEmployeeCount; }
     public void setRequiredEmployeeCount(int requiredEmployeeCount) { this.requiredEmployeeCount = requiredEmployeeCount; }
     public boolean isAllowOverAllocation() { return allowOverAllocation; }

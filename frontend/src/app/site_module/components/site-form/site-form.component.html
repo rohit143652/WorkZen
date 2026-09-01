@@ -22,6 +22,24 @@
     <div class="form-field"><label>Pincode</label><input type="text" formControlName="pincode" /></div>
   </div>
 
+  <div class="section-title">GPS Geofence for Attendance</div>
+  <p class="muted" style="margin-top: -0.5rem; margin-bottom: 0.75rem;">
+    Optional. Leave Latitude/Longitude blank to allow attendance marking from anywhere, same as before.
+    Set them (e.g. by standing at the site and clicking "Use My Current Location") to require the marking
+    device to actually be at this site, within the radius below.
+  </p>
+  <div class="form-grid">
+    <div class="form-field"><label>Latitude</label><input type="number" step="any" formControlName="latitude" placeholder="e.g. 18.5204" /></div>
+    <div class="form-field"><label>Longitude</label><input type="number" step="any" formControlName="longitude" placeholder="e.g. 73.8567" /></div>
+    <div class="form-field"><label>Allowed Radius (meters)</label><input type="number" min="10" formControlName="geofenceRadiusMeters" /></div>
+    <div class="form-field" style="justify-content: flex-end;">
+      <button type="button" class="btn btn-secondary" [disabled]="locatingDevice()" (click)="useMyLocation()">
+        @if (locatingDevice()) { <span class="btn-spinner"></span> }
+        <i class="bi bi-geo-alt"></i> {{ locatingDevice() ? 'Locating...' : 'Use My Current Location' }}
+      </button>
+    </div>
+  </div>
+
   <div class="section-title">Manpower Requirement</div>
   <div class="form-grid">
     <div class="form-field"><label>Required Employee Count</label><input type="number" min="0" formControlName="requiredEmployeeCount" /></div>

@@ -9,6 +9,9 @@ export interface SiteRequest {
   pincode?: string;
   siteContactPerson?: string;
   siteContactNumber?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceRadiusMeters?: number | null;
   requiredEmployeeCount: number;
   allowOverAllocation: boolean;
 }
@@ -25,6 +28,9 @@ export interface SiteResponse {
   pincode?: string;
   siteContactPerson?: string;
   siteContactNumber?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceRadiusMeters?: number | null;
   requiredEmployeeCount: number;
   assignedEmployeeCount: number;
   allowOverAllocation: boolean;

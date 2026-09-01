@@ -23,6 +23,8 @@ export interface BulkAttendanceEntry {
 export interface BulkMarkAttendanceRequest {
   attendanceDate: string;
   entries: BulkAttendanceEntry[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface BulkMarkAttendanceResult {

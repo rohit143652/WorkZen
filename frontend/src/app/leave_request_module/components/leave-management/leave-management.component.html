@@ -1,0 +1,26 @@
+@if (showTabs) {
+  <div class="tab-bar" style="display: flex; gap: 0.4rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
+    <button type="button"
+      style="padding: 0.65rem 1.1rem; border: none; background: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -1px;"
+      [style.color]="activeTab() === 'all' ? 'var(--primary-color)' : 'var(--muted-color)'"
+      [style.borderBottomColor]="activeTab() === 'all' ? 'var(--primary-color)' : 'transparent'"
+      (click)="setTab('all')">
+      All Requests
+    </button>
+    <button type="button"
+      style="padding: 0.65rem 1.1rem; border: none; background: none; cursor: pointer; font-weight: 600; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -1px;"
+      [style.color]="activeTab() === 'mine' ? 'var(--primary-color)' : 'var(--muted-color)'"
+      [style.borderBottomColor]="activeTab() === 'mine' ? 'var(--primary-color)' : 'transparent'"
+      (click)="setTab('mine')">
+      My Leave
+    </button>
+  </div>
+}
+
+@if (canSeeAll && (!showTabs || activeTab() === 'all')) {
+  <app-leave-requests></app-leave-requests>
+}
+
+@if (canSeeMine && (!showTabs || activeTab() === 'mine')) {
+  <app-my-leave></app-my-leave>
+}
