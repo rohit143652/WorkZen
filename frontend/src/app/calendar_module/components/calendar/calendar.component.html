@@ -1,0 +1,221 @@
+<div class="cal-header">
+  <div class="cal-header-left">
+    <button type="button" class="btn btn-secondary cal-today-btn" (click)="goToday()">Today</button>
+    <button type="button" class="btn-icon-sm" (click)="navigatePrev()" title="Previous"><i class="bi bi-chevron-left"></i></button>
+    <button type="button" class="btn-icon-sm" (click)="navigateNext()" title="Next"><i class="bi bi-chevron-right"></i></button>
+    <span class="cal-header-label">{{ headerLabel() }}</span>
+  </div>
+  <div class="cal-header-right">
+    <label class="cal-filter-check"><input type="checkbox" [checked]="showHolidays()" (change)="toggleShowHolidays()" /> <i class="bi bi-star-fill"></i> Holidays</label>
+    <label class="cal-filter-check"><input type="checkbox" [checked]="showEvents()" (change)="toggleShowEvents()" /> <i class="bi bi-calendar-event-fill"></i> Events</label>
+
+    <div class="cal-view-switcher">
+      <button type="button" [class.active]="viewMode() === 'day'" (click)="setView('day')">Day</button>
+      <button type="button" [class.active]="viewMode() === 'week'" (click)="setView('week')">Week</button>
+      <button type="button" [class.active]="viewMode() === 'month'" (click)="setView('month')">Month</button>
+    </div>
+
+    @if (canCreateEvent()) {
+      <button type="button" class="btn btn-primary" (click)="openCreateEvent()"><i class="bi bi-plus-lg"></i> Add Event</button>
+    }
+    @if (canCreateHoliday()) {
+      <button type="button" class="btn btn-secondary" (click)="openCreateHoliday()"><i class="bi bi-star"></i> Add Holiday</button>
+      <button type="button" class="btn btn-secondary" (click)="openBulkHolidayForm()"><i class="bi bi-calendar-range"></i> Add Year's Holidays</button>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="skeleton" style="height: 400px; margin-top: 1rem;"></div>
+} @else {
+
+  <!-- ============ MONTH VIEW ============ -->
+  @if (viewMode() === 'month') {
+    <div class="cal-month-grid">
+      @for (d of ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']; track d) {
+        <div class="cal-month-dow">{{ d }}</div>
+      }
+
+      @for (cell of monthCells(); track cell.date.getTime()) {
+        <div class="cal-month-cell" [class.cal-dim]="!cell.inCurrentMonth" [class.cal-today-cell]="cell.isToday"
+             (click)="canCreateEvent() ? openCreateEvent(cell.date) : null">
+          <span class="cal-date-num" [class.cal-today-num]="cell.isToday">{{ cell.date.getDate() }}</span>
+
+          @if (festivalNameFor(cell.date); as festival) {
+            <div class="cal-chip cal-chip-festival-ref" (click)="$event.stopPropagation()"
+                 [title]="festival + ' - reference only, not a company holiday unless you add it separately'">
+              <i class="bi bi-stars"></i>
+              <span class="cal-chip-title">{{ festival }}</span>
+            </div>
+          }
+
+          @for (it of cell.items.slice(0, 3); track it.id) {
+            <div class="cal-chip" [class.cal-chip-holiday]="it.type === 'HOLIDAY'" (click)="$event.stopPropagation(); openDetail(it)">
+              <i class="bi" [class.bi-star-fill]="it.type === 'HOLIDAY'" [class.bi-calendar-event-fill]="it.type === 'EVENT'"></i>
+              <span class="cal-chip-title">{{ it.title }}</span>
+            </div>
+          }
+          @if (cell.items.length > 3) {
+            <button type="button" class="cal-more-btn" (click)="$event.stopPropagation(); showMoreForDate(cell.date, cell.items)">
+              +{{ cell.items.length - 3 }} more
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ============ WEEK / DAY VIEW ============ -->
+  @if (viewMode() === 'week' || viewMode() === 'day') {
+    <div class="cal-timegrid-wrap">
+      <div class="cal-timegrid-header" [style.gridTemplateColumns]="'56px repeat(' + weekDays().length + ', 1fr)'">
+        <div></div>
+        @for (d of weekDays(); track d.date.getTime()) {
+          <div class="cal-day-col-header" [class.cal-today-col-header]="d.isToday">
+            <span class="cal-dow-label">{{ d.date.toLocaleDateString(undefined, { weekday: 'short' }) }}</span>
+            <span class="cal-day-num" [class.cal-today-num]="d.isToday">{{ d.date.getDate() }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- All-day row -->
+      <div class="cal-allday-row" [style.gridTemplateColumns]="'56px repeat(' + weekDays().length + ', 1fr)'">
+        <div class="cal-allday-label">All-day</div>
+        @for (dayItems of allDayItemsByDay(); track $index) {
+          <div class="cal-allday-cell">
+            @for (it of dayItems; track it.id) {
+              <div class="cal-chip" [class.cal-chip-holiday]="it.type === 'HOLIDAY'" (click)="openDetail(it)">
+                <i class="bi" [class.bi-star-fill]="it.type === 'HOLIDAY'" [class.bi-calendar-event-fill]="it.type === 'EVENT'"></i>
+                <span class="cal-chip-title">{{ it.title }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="cal-timegrid-scroll">
+        <div class="cal-timegrid-body" [style.gridTemplateColumns]="'56px repeat(' + weekDays().length + ', 1fr)'">
+          <div class="cal-hour-col">
+            @for (h of hours; track h) {
+              <div class="cal-hour-label" [style.height.px]="hourHeightPx">{{ h === 0 ? '' : (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? ' AM' : ' PM') }}</div>
+            }
+          </div>
+
+          @for (d of weekDays(); track d.date.getTime(); let dayIndex = $index) {
+            <div class="cal-day-col" (click)="canCreateEvent() ? openCreateEvent(d.date) : null">
+              @for (h of hours; track h) {
+                <div class="cal-hour-slot" [style.height.px]="hourHeightPx"></div>
+              }
+              @if (isCurrentTimeVisibleForDay(dayIndex)) {
+                <div class="cal-current-time-line" [style.top.px]="currentTimeTopPx()"></div>
+              }
+              @for (pi of timedPositionedItems(); track pi.item.id) {
+                @if (pi.dayIndex === dayIndex) {
+                  <div class="cal-event-block" [class.cal-event-block-holiday]="pi.item.type === 'HOLIDAY'"
+                       [style.top.px]="pi.topPx" [style.height.px]="pi.heightPx"
+                       (click)="$event.stopPropagation(); openDetail(pi.item)">
+                    <span class="cal-chip-title">{{ pi.item.title }}</span>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+}
+
+@if (showEventForm()) {
+  <app-event-form-modal [editingEvent]="editingEvent()" [prefillStart]="prefillStart()"
+                         (saved)="onEventSaved()" (cancelled)="closeEventForm()"></app-event-form-modal>
+}
+
+@if (selectedDetailItem(); as item) {
+  <app-calendar-item-detail-modal [item]="item" (close)="closeDetail()" (edit)="openEditEvent($event)" (delete)="deleteEvent($event)"></app-calendar-item-detail-modal>
+}
+
+@if (moreItemsForDate(); as more) {
+  <div class="modal-overlay" (click)="closeMoreModal()">
+    <div class="modal-box card" style="max-width: 360px;" (click)="$event.stopPropagation()">
+      <div class="section-title" style="margin-top: 0;">{{ more.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) }}</div>
+      @for (it of more.items; track it.id) {
+        <div class="cal-chip" [class.cal-chip-holiday]="it.type === 'HOLIDAY'" style="margin-bottom: 0.4rem;" (click)="openDetail(it)">
+          <i class="bi" [class.bi-star-fill]="it.type === 'HOLIDAY'" [class.bi-calendar-event-fill]="it.type === 'EVENT'"></i>
+          <span class="cal-chip-title">{{ it.title }}</span>
+        </div>
+      }
+      <div class="form-actions"><button type="button" class="btn btn-secondary" (click)="closeMoreModal()">Close</button></div>
+    </div>
+  </div>
+}
+
+@if (showHolidayForm()) {
+  <div class="modal-overlay" (click)="closeHolidayForm()">
+    <div class="modal-box card" style="max-width: 420px; text-align: left;" (click)="$event.stopPropagation()">
+      <div class="section-title" style="margin-top: 0;">Add Holiday</div>
+      <p class="muted" style="font-size: 0.82rem; margin-top: -0.4rem;">Company-wide - visible to every employee automatically.</p>
+      <div class="form-field">
+        <label>Holiday Name</label>
+        <input type="text" [(ngModel)]="newHolidayName" placeholder="e.g. Ganesh Chaturthi" />
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Start Date</label>
+          <input type="date" [(ngModel)]="newHolidayStartDate" />
+        </div>
+        <div class="form-field">
+          <label>End Date</label>
+          <input type="date" [(ngModel)]="newHolidayEndDate" [min]="newHolidayStartDate" />
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Description</label>
+        <input type="text" [(ngModel)]="newHolidayDescription" placeholder="Optional" />
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeHolidayForm()">Cancel</button>
+        <button type="button" class="btn btn-primary" [disabled]="!newHolidayName.trim() || savingHoliday()" (click)="submitHoliday()">
+          @if (savingHoliday()) { <span class="btn-spinner"></span> }
+          {{ savingHoliday() ? 'Saving...' : 'Add Holiday' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showBulkHolidayForm()) {
+  <div class="modal-overlay" (click)="closeBulkHolidayForm()">
+    <div class="modal-box card" style="max-width: 480px; max-height: 85vh; overflow-y: auto; text-align: left; position: relative;" (click)="$event.stopPropagation()">
+      <button type="button" class="modal-close" style="position: absolute; top: 0.75rem; right: 0.75rem;" (click)="closeBulkHolidayForm()" title="Close"><i class="bi bi-x-lg"></i></button>
+      <div class="section-title" style="margin-top: 0;">Add Year's Holidays</div>
+      <p class="muted" style="font-size: 0.82rem; margin-top: -0.4rem;">
+        Reference Indian festival/national-day dates for the year below - untick anything you don't want, then add the rest in one go. Each becomes its own company-wide holiday.
+      </p>
+
+      <div class="form-field">
+        <label>Year</label>
+        <input type="number" [(ngModel)]="bulkYear" (ngModelChange)="onBulkYearChange()" style="max-width: 140px;" />
+      </div>
+
+      <div style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.5rem;">
+        @for (item of bulkYearItems; track item.date; let i = $index) {
+          <label style="display:flex; align-items:center; gap:0.5rem; padding: 0.3rem 0.2rem; font-size: 0.85rem;">
+            <input type="checkbox" [checked]="item.selected" (change)="toggleBulkItem(i)" style="width:auto;" />
+            <span class="muted" style="min-width: 90px;">{{ item.date }}</span>
+            <span>{{ item.name }}</span>
+          </label>
+        }
+      </div>
+      <p class="muted" style="font-size: 0.78rem; margin-top: 0.3rem;">{{ bulkYearItems.length }} reference date(s) for {{ bulkYear }}</p>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeBulkHolidayForm()">Cancel</button>
+        <button type="button" class="btn btn-primary" [disabled]="savingBulkHolidays()" (click)="submitBulkHolidays()">
+          @if (savingBulkHolidays()) { <span class="btn-spinner"></span> }
+          {{ savingBulkHolidays() ? 'Adding...' : 'Add Selected Holidays' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

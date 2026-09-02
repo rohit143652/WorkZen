@@ -64,7 +64,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Mark Attendance', path: '/attendance', icon: 'check2-square', permission: 'ATTENDANCE_CREATE' },
       { label: 'Attendance History', path: '/attendance/history', icon: 'clock-history', permission: 'ATTENDANCE_READ' },
       { label: 'Monthly Attendance Report', path: '/attendance/monthly-report', icon: 'file-earmark-excel', permission: 'MONTHLY_PAYMENT_REPORT_EXPORT' },
-      { label: 'Holiday Calendar', path: '/holidays', icon: 'calendar-heart', permission: 'HOLIDAY_READ' },
+      { label: 'Calendar', path: '/calendar', icon: 'calendar-heart', permission: ['EVENT_READ', 'HOLIDAY_READ'] },
       { label: 'Leave Requests', path: '/leave-requests', icon: 'calendar-week', permission: ['LEAVE_REQUEST_READ', 'LEAVE_REQUEST_SELF_CREATE'] },
       { label: 'Paid Leave Settings', path: '/paid-leave/settings', icon: 'calendar2-check', permission: 'PAID_LEAVE_CONFIG_UPDATE' }
     ]

@@ -6,6 +6,7 @@ import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
 import com.example.application.common.exception.ResourceNotFoundException;
 import com.example.application.common.tenant.TenantContextService;
+import com.example.application.holiday_module.dto.HolidayBulkResult;
 import com.example.application.holiday_module.dto.HolidayRequest;
 import com.example.application.holiday_module.dto.HolidayResponse;
 import com.example.application.holiday_module.entity.Holiday;
@@ -97,6 +98,34 @@ public class HolidayService {
                         + ") - auto-marked " + totalMarked + " attendance record(s) Present", httpRequest);
 
         return toResponse(saved, totalMarked);
+    }
+
+    /**
+     * For adding a whole year's holidays in one go (e.g. from the Indian festival reference
+     * list) - NOT a single holiday spanning a year (MAX_RANGE_DAYS still applies to each one
+     * individually, and rightly so - a 31-day cap makes no sense for one holiday but is still a
+     * sane guard per item here). Best-effort like EmployeeBulkImportService: one bad/overlapping
+     * item never blocks the rest of the batch, matching the established bulk-operation pattern
+     * elsewhere in this app.
+     */
+    @Transactional
+    public HolidayBulkResult createBulk(List<HolidayRequest> requests, Long actorId, HttpServletRequest httpRequest) {
+        int successCount = 0;
+        List<HolidayBulkResult.ItemError> errors = new java.util.ArrayList<>();
+
+        for (HolidayRequest request : requests) {
+            try {
+                create(request, actorId, httpRequest);
+                successCount++;
+            } catch (RuntimeException ex) {
+                errors.add(new HolidayBulkResult.ItemError(request.getName(), ex.getMessage()));
+            }
+        }
+
+        auditService.log(actorId, "HOLIDAY_BULK_CREATED",
+                "Bulk-added holidays: " + successCount + " succeeded, " + errors.size() + " failed (of " + requests.size() + " requested)", httpRequest);
+
+        return new HolidayBulkResult(requests.size(), successCount, errors.size(), errors);
     }
 
     @Transactional

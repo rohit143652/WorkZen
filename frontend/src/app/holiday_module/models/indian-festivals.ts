@@ -80,3 +80,20 @@ export function getFestivalRef(dateStr: string): FestivalRef | undefined {
 
   return undefined;
 }
+
+/** Every reference festival/national-day date for one calendar year - used by "Add Year's
+    Holidays" to offer a full year's worth of suggestions in one go, instead of a Client Admin
+    manually adding each one date-by-date. Still just a reference list; nothing here becomes an
+    actual company Holiday until explicitly submitted through that bulk-add flow. */
+export function getFestivalsForYear(year: number): { date: string; name: string }[] {
+  const result: { date: string; name: string }[] = [];
+  for (const [monthDay, name] of Object.entries(FIXED_HOLIDAYS)) {
+    result.push({ date: `${year}-${monthDay}`, name });
+  }
+  for (const [dateStr, name] of Object.entries(VARIABLE_FESTIVALS)) {
+    if (dateStr.startsWith(`${year}-`)) {
+      result.push({ date: dateStr, name });
+    }
+  }
+  return result.sort((a, b) => a.date.localeCompare(b.date));
+}

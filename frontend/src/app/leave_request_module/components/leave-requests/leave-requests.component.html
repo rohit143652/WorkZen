@@ -10,11 +10,11 @@
   <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
     <div class="section-title" style="margin-top: 0;">Add Leave Directly</div>
     <p class="muted" style="margin-top: -0.5rem;">This is approved immediately and marked on the employee's attendance - use this for employees without a login, or whenever you're recording leave on someone's behalf.</p>
+    <div class="form-field">
+      <label>Employee</label>
+      <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
+    </div>
     <div class="form-grid">
-      <div class="form-field">
-        <label>Employee</label>
-        <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
-      </div>
       <div class="form-field">
         <label>Start Date</label>
         <input type="date" [(ngModel)]="newStartDate" />

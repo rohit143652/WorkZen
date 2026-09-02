@@ -64,6 +64,10 @@ export const routes: Routes = [
         loadChildren: () => import('./attendance_module/attendance.routes').then(m => m.ATTENDANCE_ROUTES)
       },
       {
+        path: 'calendar',
+        loadChildren: () => import('./calendar_module/calendar.routes').then(m => m.CALENDAR_ROUTES)
+      },
+      {
         path: 'holidays',
         loadChildren: () => import('./holiday_module/holiday.routes').then(m => m.HOLIDAY_ROUTES)
       },

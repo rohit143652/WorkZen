@@ -9,11 +9,11 @@
 @if (showAddForm()) {
   <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
     <div class="section-title">New Resignation</div>
+    <div class="form-field">
+      <label>Employee</label>
+      <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
+    </div>
     <div class="form-grid">
-      <div class="form-field">
-        <label>Employee</label>
-        <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
-      </div>
       <div class="form-field">
         <label>Resignation Date</label>
         <input type="date" [(ngModel)]="newResignationDate" />

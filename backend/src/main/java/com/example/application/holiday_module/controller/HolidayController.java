@@ -1,6 +1,7 @@
 package com.example.application.holiday_module.controller;
 
 import com.example.application.common.response.ApiResponse;
+import com.example.application.holiday_module.dto.HolidayBulkResult;
 import com.example.application.holiday_module.dto.HolidayRequest;
 import com.example.application.holiday_module.dto.HolidayResponse;
 import com.example.application.holiday_module.service.HolidayService;
@@ -39,6 +40,16 @@ public class HolidayController {
         HolidayResponse created = holidayService.create(request, principal.getId(), httpRequest);
         return ResponseEntity.status(201).body(ApiResponse.success(
                 "Holiday added - " + created.getEmployeesMarkedPresent() + " employee(s) auto-marked Present", created));
+    }
+
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAuthority('HOLIDAY_CREATE')")
+    public ResponseEntity<ApiResponse<HolidayBulkResult>> createBulk(@RequestBody List<HolidayRequest> requests,
+                                                                       @AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                       HttpServletRequest httpRequest) {
+        HolidayBulkResult result = holidayService.createBulk(requests, principal.getId(), httpRequest);
+        return ResponseEntity.status(201).body(ApiResponse.success(
+                result.getSuccessCount() + " of " + result.getTotalRequested() + " holiday(s) added", result));
     }
 
     @DeleteMapping("/{id}")
