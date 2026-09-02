@@ -18,7 +18,7 @@
     type="text"
     placeholder="Search by name, code or email..."
     [(ngModel)]="search"
-    (keyup.enter)="onFilterChange()" />
+    (input)="onSearchInput()" />
   <select [(ngModel)]="statusFilter" (change)="onFilterChange()">
     <option value="">All statuses</option>
     <option value="ACTIVE">Active</option>
@@ -29,7 +29,6 @@
     <option value="true">Login enabled</option>
     <option value="false">Login disabled</option>
   </select>
-  <button type="button" class="btn btn-secondary" (click)="onFilterChange()">Search</button>
 </div>
 
 <div class="card table-card">

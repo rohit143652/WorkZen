@@ -12,10 +12,7 @@
     <div class="form-grid">
       <div class="form-field">
         <label>Employee</label>
-        <select [(ngModel)]="newEmployeeId">
-          <option [ngValue]="null">Select employee...</option>
-          @for (e of activeEmployees(); track e.id) { <option [ngValue]="e.id">{{ e.employeeCode }} &middot; {{ e.firstName }} {{ e.lastName }}</option> }
-        </select>
+        <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
       </div>
       <div class="form-field">
         <label>Resignation Date</label>
@@ -40,6 +37,10 @@
   </div>
 }
 
+<div class="card filters" style="margin-bottom: 1rem;">
+  <input type="text" placeholder="Search by employee name or code..." [(ngModel)]="search" />
+</div>
+
 <div class="card table-card">
   @if (loading()) {
     <div style="padding: 1rem;">
@@ -47,12 +48,14 @@
     </div>
   } @else if (exits().length === 0) {
     <div class="empty-state">No resignations recorded yet.</div>
+  } @else if (filteredExits.length === 0) {
+    <div class="empty-state">No resignations match "{{ search }}".</div>
   } @else {
     <div class="table-scroll">
       <table>
         <thead><tr><th>Employee</th><th>Resignation Date</th><th>Last Working Day</th><th>Notice Days</th><th>Status</th><th>Net Settlement</th><th></th></tr></thead>
         <tbody>
-          @for (exit of exits(); track exit.id) {
+          @for (exit of filteredExits; track exit.id) {
             <tr>
               <td>{{ exit.employeeCode }} &middot; {{ exit.employeeName }}</td>
               <td>{{ exit.resignationDate }}</td>

@@ -114,7 +114,7 @@ table {
 
 th, td {
   text-align: left;
-  padding: 0.75rem 1.1rem;
+  padding: 0.7rem 0.65rem;
   border-bottom: 1px solid var(--border-color);
   font-size: 0.85rem;
   white-space: nowrap;
@@ -141,10 +141,28 @@ tbody tr:last-child td {
 }
 
 .actions {
+  /* Single row on laptop/desktop, where there's normally enough width for every action icon
+     side by side - no wrap needed at all there. Only switches to the compact 2-column grid
+     below on genuinely narrow (mobile) screens, where a single row really wouldn't fit. */
   display: flex;
+  flex-wrap: nowrap;
   gap: 0.4rem;
-  flex-wrap: wrap;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  .actions {
+    /* A CSS grid, always exactly 2 columns wide, instead of flex-wrap - with 3-4 icon buttons
+       in a table cell, flex-wrap was pushing the extras onto a second row with the SAME
+       vertical gap as the horizontal one, visibly growing every row's height just to fit
+       action icons. A fixed 2-column grid with a tighter row-gap keeps icons neatly aligned in
+       a compact block (at most 2 rows for up to 4 actions) instead of that taller, uneven wrap. */
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    column-gap: 0.25rem;
+    row-gap: 0.25rem;
+    justify-content: start;
+  }
 }
 
 .pagination {
@@ -460,15 +478,15 @@ tbody tr:last-child td {
   border: 1px solid var(--border-color);
   background: var(--surface-color);
   border-radius: 6px;
-  width: 30px;
-  height: 30px;
+  width: 27px;
+  height: 27px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text-color);
   transition: all 0.12s ease;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   text-decoration: none;
 }
 .btn-icon-sm:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--primary-color-soft); }
@@ -591,4 +609,9 @@ tbody tr:last-child td {
   .calendar-tag { font-size: 0.6rem; }
   .calendar-title { min-width: 0; font-size: 1rem; }
 }
+
+/* ---- Searchable employee-select dropdown (app-employee-search-select) ---- */
+.search-select-option { padding: 0.55rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.88rem; }
+.search-select-option:hover { background: var(--surface-alt-color); }
+.search-select-option.selected-option { background: var(--primary-color-soft); color: var(--primary-color); font-weight: 600; }
 

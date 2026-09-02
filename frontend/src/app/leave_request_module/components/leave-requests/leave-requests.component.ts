@@ -9,11 +9,12 @@ import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { EmployeeSearchSelectComponent } from '../../../employee_module/components/employee-search-select/employee-search-select.component';
 
 @Component({
   selector: 'app-leave-requests',
   standalone: true,
-  imports: [CommonModule, FormsModule, HasPermissionDirective, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, HasPermissionDirective, StatusBadgeComponent, EmployeeSearchSelectComponent],
   templateUrl: './leave-requests.component.html'
 })
 export class LeaveRequestsComponent {

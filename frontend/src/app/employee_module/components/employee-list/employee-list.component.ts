@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { EmployeeService } from '../../services/employee.service';
 import { EmployeeResponse } from '../../models/employee.model';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
@@ -28,11 +29,28 @@ export class EmployeeListComponent {
   readonly pageSize = 10;
 
   search = '';
-  statusFilter = '';
+  // Defaults to Active only - an employee whose Full & Final Settlement is done gets
+  // deactivated (see ExitService.settle()), so this keeps them out of the default view
+  // entirely rather than showing every ex-employee alongside the current team. Switching this
+  // dropdown to "Inactive" or "All statuses" still shows them when that's genuinely needed.
+  statusFilter = 'ACTIVE';
   loginFilter = '';
 
+  /** Typing triggers a search automatically (see onSearchInput()) instead of needing the
+      "Search" button - debounced so a fast typist doesn't fire an API call on every single
+      keystroke, only once they've paused for a moment. */
+  private readonly searchInput$ = new Subject<string>();
+
   constructor() {
+    this.searchInput$.pipe(debounceTime(350), distinctUntilChanged()).subscribe(() => {
+      this.page.set(0);
+      this.load();
+    });
     this.load();
+  }
+
+  onSearchInput(): void {
+    this.searchInput$.next(this.search);
   }
 
   load(): void {

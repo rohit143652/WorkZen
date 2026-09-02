@@ -13,10 +13,7 @@
     <div class="form-grid">
       <div class="form-field">
         <label>Employee</label>
-        <select [(ngModel)]="newEmployeeId">
-          <option [ngValue]="null">Select employee...</option>
-          @for (e of activeEmployees(); track e.id) { <option [ngValue]="e.id">{{ e.employeeCode }} &middot; {{ e.firstName }} {{ e.lastName }}</option> }
-        </select>
+        <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
       </div>
       <div class="form-field">
         <label>Start Date</label>

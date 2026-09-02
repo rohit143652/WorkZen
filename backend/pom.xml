@@ -28,6 +28,17 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- Interactive API documentation at /swagger-ui/index.html - auto-generates docs from
+             every @RestController already in the app, no per-endpoint annotations required to
+             get useful output (though they can be added later for richer descriptions). Version
+             2.6.0 is the springdoc-openapi 2.x line built for Spring Boot 3 / Jakarta EE, matching
+             this project's spring-boot-starter-parent version (3.3.4) - the 1.x line is for
+             Spring Boot 2 and would NOT work here (different servlet package namespace). -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
+        </dependency>
         <!-- Explicit, not just relying on it arriving transitively via spring-boot-starter-web
              (spring-boot-starter-json) - guarantees java.time types (Instant, LocalDate, etc.)
              serialize correctly everywhere, including ErrorResponse's Instant timestamp field

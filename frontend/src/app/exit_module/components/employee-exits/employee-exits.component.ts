@@ -9,11 +9,12 @@ import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { EmployeeSearchSelectComponent } from '../../../employee_module/components/employee-search-select/employee-search-select.component';
 
 @Component({
   selector: 'app-employee-exits',
   standalone: true,
-  imports: [CommonModule, FormsModule, HasPermissionDirective, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, HasPermissionDirective, StatusBadgeComponent, EmployeeSearchSelectComponent],
   templateUrl: './employee-exits.component.html'
 })
 export class EmployeeExitsComponent {
@@ -25,6 +26,16 @@ export class EmployeeExitsComponent {
   readonly exits = signal<EmployeeExitResponse[]>([]);
   readonly activeEmployees = signal<EmployeeResponse[]>([]);
   readonly loading = signal(true);
+  search = '';
+
+  get filteredExits(): EmployeeExitResponse[] {
+    const term = this.search.trim().toLowerCase();
+    if (!term) return this.exits();
+    return this.exits().filter(e =>
+      e.employeeCode.toLowerCase().includes(term) ||
+      e.employeeName.toLowerCase().includes(term)
+    );
+  }
 
   // ---- Record resignation form ----
   readonly showAddForm = signal(false);
