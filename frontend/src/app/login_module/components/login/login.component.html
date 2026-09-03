@@ -1,57 +1,59 @@
 <div class="login-page">
-  <div class="page-inner">
-    <div class="branding-side">
-      <div class="branding-inner">
-        <div class="brand-mark"><img src="assets/logo.png" alt="WORKZEN" /></div>
-        <h1 class="brand-name"><span class="brand-work">WORK</span><span class="brand-zen">ZEN</span></h1>
-        <p class="tagline">Secure access. Smart control.<br />Stronger together.</p>
-        <span class="tagline-rule"></span>
 
-        <svg class="illustration" viewBox="0 0 260 190" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="130" cy="90" r="86" class="illus-halo" />
+  <div class="bg-circle circle-1"></div>
+  <div class="bg-circle circle-2"></div>
+  <div class="bg-circle circle-3"></div>
 
-          <!-- leaf -->
-          <path d="M172 78c22-10 40 2 46 20-20 6-40-2-46-20Z" class="illus-leaf" />
-          <path d="M172 78c14 10 20 26 12 44-16-6-24-24-12-44Z" class="illus-leaf-dark" />
+  <div class="login-wrapper">
 
-          <!-- shield -->
-          <path
-            d="M118 30c14 6 26 8 38 8v34c0 30-16 50-38 58-22-8-38-28-38-58V38c12 0 24-2 38-8Z"
-            class="illus-shield" />
-          <rect x="103" y="82" width="30" height="24" rx="6" class="illus-lock-body" />
-          <path d="M109 82v-9a9 9 0 0 1 18 0v9" class="illus-lock-shackle" />
-          <circle cx="118" cy="93" r="3.2" class="illus-lock-dot" />
+    <!-- BRAND SECTION -->
+    <section class="brand-section">
+      <div class="brand-content">
 
-          <!-- id card -->
-          <rect x="52" y="118" width="76" height="46" rx="10" class="illus-card" />
-          <circle cx="72" cy="141" r="9" class="illus-card-avatar" />
-          <rect x="88" y="134" width="30" height="4.5" rx="2.25" class="illus-card-line" />
-          <rect x="88" y="144" width="22" height="4.5" rx="2.25" class="illus-card-line-soft" />
+        <div class="logo-wrapper">
+          <img src="assets/logo.png" alt="WORKZEN" class="logo-img" />
+        </div>
 
-          <!-- avatar chip -->
-          <circle cx="150" cy="150" r="22" class="illus-avatar-bg" />
-          <circle cx="150" cy="143" r="7" class="illus-avatar-head" />
-          <path d="M136 163c2-9 8-14 14-14s12 5 14 14" class="illus-avatar-body" />
-        </svg>
+        <h1><span class="brand-work">WORK</span><span class="brand-zen">ZEN</span></h1>
+
+        <p class="brand-tagline">
+          Secure access. Smart control.<br />
+          Stronger together.
+        </p>
+
+        <div class="brand-line"></div>
+
+        <div class="security-image-wrapper">
+          <img src="assets/security-image.png" alt="WORKZEN Security" class="security-image" />
+        </div>
+
       </div>
-    </div>
+    </section>
 
-    <div class="form-side">
+    <!-- LOGIN SECTION -->
+    <section class="form-section">
       <div class="login-card">
-        <h2>Sign in</h2>
-        <p class="subtitle">Welcome back! Please enter your details.</p>
+
+        <div class="login-header">
+          <h2>Sign in</h2>
+          <p>Welcome back! Please enter your details.</p>
+        </div>
 
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-          <div class="field">
+
+          <!-- Username -->
+          <div class="form-group">
             <label for="username">Username</label>
             <div class="input-wrapper">
-              <svg class="input-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <circle cx="10" cy="6.5" r="3.5" stroke="currentColor" stroke-width="1.5" />
-                <path d="M3 17c1.2-4 4-6 7-6s5.8 2 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              </svg>
+              <div class="input-icon">
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="6.5" r="3.5" stroke="currentColor" stroke-width="1.5" />
+                  <path d="M3 17c1.2-4 4-6 7-6s5.8 2 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+              </div>
               <input
-                id="username"
                 type="text"
+                id="username"
                 placeholder="Enter your username"
                 formControlName="username"
                 autocomplete="username"
@@ -62,22 +64,30 @@
             }
           </div>
 
-          <div class="field">
+          <!-- Password -->
+          <div class="form-group">
             <label for="password">Password</label>
             <div class="input-wrapper">
-              <svg class="input-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <rect x="4.5" y="9" width="11" height="8" rx="2" stroke="currentColor" stroke-width="1.5" />
-                <path d="M6.5 9V6.5a3.5 3.5 0 0 1 7 0V9" stroke="currentColor" stroke-width="1.5" />
-              </svg>
+              <div class="input-icon">
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <rect x="4.5" y="9" width="11" height="8" rx="2" stroke="currentColor" stroke-width="1.5" />
+                  <path d="M6.5 9V6.5a3.5 3.5 0 0 1 7 0V9" stroke="currentColor" stroke-width="1.5" />
+                </svg>
+              </div>
               <input
-                id="password"
                 [type]="showPassword() ? 'text' : 'password'"
+                id="password"
                 placeholder="Enter your password"
                 formControlName="password"
                 autocomplete="current-password"
                 [class.invalid]="form.controls.password.invalid && form.controls.password.touched" />
-              <button type="button" class="toggle-visibility" (click)="togglePasswordVisibility()">
-                {{ showPassword() ? 'Hide' : 'Show' }}
+              <button
+                type="button"
+                class="show-password"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                title="{{ showPassword() ? 'Hide password' : 'Show password' }}">
+                <i class="bi" [ngClass]="showPassword() ? 'bi-eye-slash' : 'bi-eye'"></i>
               </button>
             </div>
             @if (form.controls.password.invalid && form.controls.password.touched) {
@@ -85,12 +95,14 @@
             }
           </div>
 
-          <div class="field-row">
-            <label class="checkbox-label">
+          <!-- Remember / Forgot -->
+          <div class="login-options">
+            <label class="remember-me">
               <input type="checkbox" formControlName="rememberMe" />
-              Remember me
+              <span>Remember me</span>
             </label>
-            <a href="#" class="forgot-link" (click)="$event.preventDefault()">Forgot password?</a>
+
+            <a href="#" class="forgot-password" (click)="$event.preventDefault()">Forgot password?</a>
           </div>
 
           @if (errorMessage()) {
@@ -99,27 +111,26 @@
             </div>
           }
 
-          <button type="submit" class="submit-btn" [disabled]="loading()">
+          <!-- Sign In -->
+          <button type="submit" class="login-button" [disabled]="loading()">
             @if (loading()) {
               <span class="spinner" aria-hidden="true"></span>
               Signing in...
             } @else {
-              <span>Sign in</span>
-              <svg class="submit-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              Sign in
             }
           </button>
+
         </form>
+
+        <div class="secure-footer">
+          <div class="secure-icon"></div>
+          <span>Your data is protected and secure</span>
+        </div>
+
       </div>
-    </div>
+    </section>
+
   </div>
 
-  <p class="page-footer">
-    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M10 2.5 4 5v4.6c0 4 2.6 7.4 6 8.4 3.4-1 6-4.4 6-8.4V5l-6-2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-      <path d="M7.3 10 9.2 12l3.5-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-    </svg>
-    Secure. Simple. Seamless.
-  </p>
 </div>

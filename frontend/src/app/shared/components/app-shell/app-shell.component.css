@@ -44,6 +44,10 @@
 .brand-name {
   flex: 1;
 }
+/* Two-tone wordmark on the dark sidebar background - same WORK/ZEN split used on the login
+   page and the mobile topbar, just re-tinted (white / light blue) so it reads clearly here. */
+.brand-name-work { color: #ffffff; }
+.brand-name-zen { color: #7cc4ff; }
 
 .brand-mark {
   width: 34px;
@@ -302,11 +306,22 @@
   color: var(--text-color);
 }
 
-.app-title {
-  font-weight: 700;
-  color: var(--text-color);
-  font-size: 1.05rem;
+/* The sidebar already shows the WORKZEN brand at all times on desktop, so the topbar doesn't
+   repeat it there - this row only becomes visible on mobile/tablet (see media query below),
+   where the sidebar is a hidden drawer and the topbar is the only place the brand can show. */
+.topbar-brand {
+  display: none;
+  align-items: center;
+  gap: 0.55rem;
 }
+
+.topbar-brand-name {
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+.brand-name-dark-work { color: var(--text-color); }
+.brand-name-dark-zen { color: var(--primary-color); }
 
 .topbar-right {
   margin-left: auto;
@@ -404,6 +419,7 @@
   .sidebar-collapsed .sidebar { width: 0; padding: 0; overflow: hidden; }
   .collapse-btn { display: flex; }
   .mobile-toggle { display: block; }
+  .topbar-brand { display: flex; }
   .profile-name { display: none; }
   /* On mobile/tablet the sidebar is an overlay drawer (floats OVER content, doesn't push it
      aside) - .main never needs the desktop margin-left reserved for a permanently-visible
