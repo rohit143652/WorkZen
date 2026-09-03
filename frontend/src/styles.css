@@ -615,3 +615,9 @@ tbody tr:last-child td {
 .search-select-option:hover { background: var(--surface-alt-color); }
 .search-select-option.selected-option { background: var(--primary-color-soft); color: var(--primary-color); font-weight: 600; }
 
+/* ---- Employee Assignment board - two side-by-side panels on desktop, stacked on mobile ---- */
+.assignment-details-grid { display: grid; grid-template-columns: 1.2fr 1fr; }
+@media (max-width: 900px) {
+  .assignment-details-grid { grid-template-columns: 1fr; }
+}
+

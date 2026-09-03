@@ -10,6 +10,7 @@
   <form [formGroup]="form" (ngSubmit)="submit()" class="card form-card" novalidate>
 
     <div class="section-title">Personal Information</div>
+
     <div class="form-grid">
       <div class="form-field">
         <label>Employee Code <span class="muted" style="font-weight:400;">(auto-generated)</span></label>
@@ -88,6 +89,11 @@
           }
         }
       </div>
+    </div>
+
+    <div class="form-field">
+      <label>Photo</label>
+      <app-photo-capture [photoData]="photoData" (photoDataChange)="photoData = $event"></app-photo-capture>
     </div>
 
     <div class="section-title">Employment Information</div>

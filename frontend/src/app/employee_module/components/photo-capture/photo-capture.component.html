@@ -1,0 +1,32 @@
+<div class="photo-capture-wrap">
+  <div class="photo-preview">
+    @if (photoData) {
+      <img [src]="photoData" alt="Employee photo" />
+      <button type="button" class="photo-remove-btn" (click)="removePhoto()" title="Remove photo"><i class="bi bi-x-lg"></i></button>
+    } @else {
+      <i class="bi bi-person-fill photo-placeholder-icon"></i>
+    }
+  </div>
+
+  <div class="photo-actions">
+    <button type="button" class="btn btn-secondary" (click)="triggerUpload()"><i class="bi bi-upload"></i> Upload</button>
+    <button type="button" class="btn btn-secondary" (click)="openCamera()"><i class="bi bi-camera-fill"></i> Capture</button>
+  </div>
+
+  <input #fileInput type="file" accept="image/*" style="display: none;" (change)="onFileSelected($event)" />
+</div>
+
+@if (showCamera()) {
+  <div class="modal-overlay" (click)="closeCamera()">
+    <div class="modal-box card" style="max-width: 420px; text-align: center;" (click)="$event.stopPropagation()">
+      <div class="section-title" style="margin-top: 0;">Take a Photo</div>
+      <video #videoEl autoplay playsinline [class.mirrored]="isFrontCamera"
+             style="width: 100%; border-radius: var(--radius-sm); background: #000;"></video>
+      <div class="form-actions" style="justify-content: center; margin-top: 1rem;">
+        <button type="button" class="btn btn-secondary" (click)="closeCamera()">Cancel</button>
+        <button type="button" class="btn btn-secondary" (click)="switchCamera()" title="Switch Camera"><i class="bi bi-arrow-repeat"></i> Switch Camera</button>
+        <button type="button" class="btn btn-primary" (click)="capturePhoto()"><i class="bi bi-camera-fill"></i> Take Photo</button>
+      </div>
+    </div>
+  </div>
+}

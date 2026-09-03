@@ -1,6 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, from, map, of, switchMap, tap } from 'rxjs';
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 import { environment } from '../../../environments/environment';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { AuthenticatedUser } from '../../core/models/user.model';
@@ -18,7 +20,12 @@ interface RefreshData {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
+  refreshToken?: string;
 }
+
+/** Key under which the native app persists its refresh token (see AuthService javadoc-style
+    comments below for why this only applies to the packaged app, never the web version). */
+const NATIVE_REFRESH_TOKEN_KEY = 'workzen_refresh_token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -33,6 +40,13 @@ export class AuthService {
    * (in reactive state). The refresh token is set by the server as an
    * HttpOnly cookie - withCredentials must stay true so the browser
    * accepts and later sends it automatically.
+   *
+   * On the packaged native app ONLY, the response also carries the raw refresh token in the
+   * JSON body (see backend LoginResponse.refreshToken javadoc) - a cross-origin HttpOnly cookie
+   * over plain HTTP is unreliable inside a Capacitor WebView (SameSite=None needs HTTPS, which
+   * this deployment doesn't have), so the native app persists it itself via Capacitor
+   * Preferences instead, surviving a full app close/reopen. The web version never reads or
+   * stores this field - it keeps relying purely on the cookie, unchanged.
    */
   login(request: LoginRequest): Observable<LoginResponse> {
     return this.http
@@ -42,6 +56,7 @@ export class AuthService {
         tap(data => {
           this.tokenService.setAccessToken(data.accessToken, data.expiresIn);
           this.authState.setUser(data.user);
+          this.persistNativeRefreshToken(data.refreshToken);
         })
       );
   }
@@ -62,17 +77,23 @@ export class AuthService {
   }
 
   /**
-   * Silently refreshes the access token using the HttpOnly refresh-token
-   * cookie. Used on app bootstrap to restore a session after a full page
-   * reload, and by the HTTP interceptor when a request gets a 401.
+   * Silently refreshes the access token. On the web, this relies purely on the HttpOnly
+   * refresh-token cookie (unchanged from before). On the native app, it explicitly sends the
+   * refresh token it persisted at login (or from a previous refresh - the backend rotates the
+   * refresh token on every use, so the newly-returned one is re-persisted each time too).
    */
   refresh(): Observable<RefreshData> {
-    return this.http
-      .post<ApiEnvelope<RefreshData>>(`${this.baseUrl}/refresh`, {}, { withCredentials: true })
-      .pipe(
-        map(envelope => envelope.data),
-        tap(data => this.tokenService.setAccessToken(data.accessToken, data.expiresIn))
-      );
+    return from(this.getNativeRefreshTokenIfAny()).pipe(
+      switchMap(nativeToken => {
+        const body = nativeToken ? { refreshToken: nativeToken } : {};
+        return this.http.post<ApiEnvelope<RefreshData>>(`${this.baseUrl}/refresh`, body, { withCredentials: true });
+      }),
+      map(envelope => envelope.data),
+      tap(data => {
+        this.tokenService.setAccessToken(data.accessToken, data.expiresIn);
+        this.persistNativeRefreshToken(data.refreshToken);
+      })
+    );
   }
 
   fetchCurrentUser(): Observable<AuthenticatedUser> {
@@ -112,5 +133,21 @@ export class AuthService {
   clearLocalSession(): void {
     this.tokenService.clearTokens();
     this.authState.clearUser();
+    if (Capacitor.isNativePlatform()) {
+      Preferences.remove({ key: NATIVE_REFRESH_TOKEN_KEY });
+    }
+  }
+
+  /** No-op on the web - only the native app persists a refresh token at all (see login()/refresh() javadoc for why). */
+  private persistNativeRefreshToken(refreshToken: string | undefined): void {
+    if (!refreshToken || !Capacitor.isNativePlatform()) return;
+    Preferences.set({ key: NATIVE_REFRESH_TOKEN_KEY, value: refreshToken });
+  }
+
+  /** Resolves to null on the web (and on native, before any login has ever persisted one) - either way, refresh() then falls back to the HttpOnly cookie exactly as before. */
+  private async getNativeRefreshTokenIfAny(): Promise<string | null> {
+    if (!Capacitor.isNativePlatform()) return null;
+    const result = await Preferences.get({ key: NATIVE_REFRESH_TOKEN_KEY });
+    return result.value;
   }
 }

@@ -7,6 +7,7 @@ import { EmployeeService } from '../../../employee_module/services/employee.serv
 import { EmployeeResponse } from '../../../employee_module/models/employee.model';
 import { StatusBadgeComponent, BadgeKind } from '../../../shared/components/status-badge/status-badge.component';
 import { ToastService } from '../../../shared/services/toast.service';
+import { EmployeeSearchSelectComponent } from '../../../employee_module/components/employee-search-select/employee-search-select.component';
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
@@ -17,7 +18,7 @@ function isoDaysAgo(days: number): string {
 @Component({
   selector: 'app-attendance-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, EmployeeSearchSelectComponent],
   templateUrl: './attendance-history.component.html'
 })
 export class AttendanceHistoryComponent {

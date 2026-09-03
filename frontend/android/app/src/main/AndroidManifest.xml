@@ -46,4 +46,11 @@
          alone is not accurate enough for a site geofence check, so FINE is required too. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Required for the "Capture" option on Employee Photo (app-photo-capture) - without this,
+         the WebView's navigator.mediaDevices.getUserMedia() call for the live camera silently
+         fails inside the packaged APK, even though the exact same code works fine in a regular
+         mobile browser. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>

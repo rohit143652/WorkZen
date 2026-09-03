@@ -70,3 +70,16 @@
    without changing spacing anywhere else in the app (scoped to this component only). */
 :host ::ng-deep .form-field { margin-bottom: 0.85rem; }
 :host ::ng-deep .section-title { margin: 1rem 0 0.6rem; }
+
+/* Start Date+Time and End Date+Time are meant to be read as one pair ("this moment") - the
+   app-wide .form-grid collapses to a single column below 720px (sensible for most forms, where
+   fields are unrelated to each other), but for THIS pair specifically that scatters a date and
+   its own time across two separate rows, which reads as confusing rather than clearer on a
+   phone. Keeping 2 columns even on narrow screens keeps each date with its own time. */
+:host ::ng-deep .cal-datetime-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 0 0.6rem;
+}
+@media (max-width: 420px) {
+  :host ::ng-deep .cal-datetime-grid input { font-size: 0.82rem; padding: 0.55rem 0.5rem; }
+}

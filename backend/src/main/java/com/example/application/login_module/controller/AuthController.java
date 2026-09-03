@@ -54,6 +54,7 @@ public class AuthController {
                                                               HttpServletResponse httpResponse) {
         AuthResult<LoginResponse> result = authService.login(request, httpRequest);
         setRefreshCookie(httpResponse, result.getRawRefreshToken());
+        result.getBody().setRefreshToken(result.getRawRefreshToken());
         return ResponseEntity.ok(ApiResponse.success("Login successful", result.getBody()));
     }
 
@@ -71,6 +72,7 @@ public class AuthController {
 
         AuthResult<RefreshTokenResponse> result = authService.refresh(rawToken);
         setRefreshCookie(httpResponse, result.getRawRefreshToken());
+        result.getBody().setRefreshToken(result.getRawRefreshToken());
         return ResponseEntity.ok(ApiResponse.success("Token refreshed", result.getBody()));
     }
 

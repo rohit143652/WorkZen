@@ -46,6 +46,8 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-bottom: 2px;
 }
 .cal-chip-holiday { background: var(--warning-bg); color: var(--warning-color); }
@@ -72,6 +74,14 @@
 }
 .cal-month-cell {
   min-height: 100px;
+  /* min-width: 0 overrides CSS Grid's default min-width:auto (= content's natural width) on
+     grid items - without it, a long event/holiday title with white-space:nowrap forces this
+     cell (and so the whole grid, and so the page) wider than its 1fr share, breaking layout on
+     both desktop and mobile once enough items are on one date. overflow:hidden is the second
+     half of the fix - it's what actually clips/ellipsizes long chip text instead of letting it
+     spill out of the cell once min-width:0 stops it from growing the cell itself. */
+  min-width: 0;
+  overflow: hidden;
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   padding: 0.3rem;
@@ -105,13 +115,13 @@
 .cal-today-col-header .cal-day-num { color: var(--primary-color); }
 
 .cal-allday-label { font-size: 0.68rem; color: var(--muted-color); padding: 0.3rem; }
-.cal-allday-cell { border-left: 1px solid var(--border-color); padding: 0.2rem; min-height: 24px; }
+.cal-allday-cell { border-left: 1px solid var(--border-color); padding: 0.2rem; min-height: 24px; min-width: 0; overflow: hidden; }
 
 .cal-timegrid-scroll { max-height: 600px; overflow-y: auto; }
 .cal-timegrid-body { display: grid; position: relative; }
 .cal-hour-col { border-right: 1px solid var(--border-color); }
 .cal-hour-label { font-size: 0.68rem; color: var(--muted-color); text-align: right; padding-right: 0.4rem; box-sizing: border-box; transform: translateY(-0.5em); }
-.cal-day-col { position: relative; border-left: 1px solid var(--border-color); cursor: pointer; }
+.cal-day-col { position: relative; border-left: 1px solid var(--border-color); cursor: pointer; min-width: 0; overflow: hidden; }
 .cal-hour-slot { border-bottom: 1px solid var(--border-color); box-sizing: border-box; }
 
 .cal-current-time-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger-color); z-index: 5; }

@@ -26,6 +26,8 @@ export interface EmployeeRequest {
   pincode?: string;
   aadharNumber: string;
   panNumber: string;
+  /** Optional - base64 data-URI string (e.g. "data:image/jpeg;base64,..."). */
+  photoData?: string | null;
   /** PF/ESI/PT deduction applicability for this specific employee - independent of Salary Structure type. Both this AND the tenant's Payroll Settings must be enabled for a deduction to apply. Omit to keep the default (true). */
   pfApplicable?: boolean;
   esiApplicable?: boolean;
@@ -62,6 +64,7 @@ export interface EmployeeResponse {
   pincode?: string;
   aadharNumber?: string;
   panNumber?: string;
+  photoData?: string | null;
   pfApplicable: boolean;
   esiApplicable: boolean;
   ptApplicable: boolean;

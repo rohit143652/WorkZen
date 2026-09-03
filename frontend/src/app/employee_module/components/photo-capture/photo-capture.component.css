@@ -1,0 +1,52 @@
+.photo-capture-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.photo-preview {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--surface-alt-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.photo-placeholder-icon { font-size: 2.2rem; color: var(--muted-color); }
+
+.photo-remove-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger-color);
+  color: #fff;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Mirrors the live preview for the front/selfie camera only - feels natural while framing a
+   shot (like looking in a mirror). The actual captured photo is flipped back to non-mirrored in
+   capturePhoto() itself, so what gets saved always reads correctly to anyone else looking at it
+   - text, badges, hair parting, etc. all appear the way they actually are, not reversed. */
+.mirrored {
+  transform: scaleX(-1);
+}

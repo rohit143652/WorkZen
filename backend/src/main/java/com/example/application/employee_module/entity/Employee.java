@@ -85,6 +85,10 @@ public class Employee {
     /** 10-character Income Tax PAN (format ABCDE1234F, always stored upper-case) - unique per tenant, mandatory for new employees (see EmployeeRequest). Nullable here only so pre-existing rows from before this field don't break. */
     private String panNumber;
 
+    /** Base64 data-URI string (e.g. "data:image/jpeg;base64,...") - see V95 migration javadoc for why this isn't a file-on-disk reference instead. */
+    @Column(columnDefinition = "LONGTEXT")
+    private String photoData;
+
     /** ACTIVE or INACTIVE. Deliberately independent of the linked User's login status. */
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
@@ -166,6 +170,8 @@ public class Employee {
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }
     public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+    public String getPhotoData() { return photoData; }
+    public void setPhotoData(String photoData) { this.photoData = photoData; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public boolean isPfApplicable() { return pfApplicable; }

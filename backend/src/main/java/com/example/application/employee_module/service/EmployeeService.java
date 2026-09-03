@@ -89,7 +89,7 @@ public class EmployeeService {
                 .and(EmployeeSpecifications.hasDepartment(department))
                 .and(EmployeeSpecifications.loginEnabled(loginEnabled))
                 .and(EmployeeSpecifications.belongsToCompany(effectiveTenantFilter));
-        return employeeRepository.findAll(spec, pageable).map(this::toResponse);
+        return employeeRepository.findAll(spec, pageable).map(e -> toResponse(e, false));
     }
 
     @Transactional(readOnly = true)
@@ -151,6 +151,7 @@ public class EmployeeService {
                 request.getDateOfBirth(), request.getGender(), request.getJoiningDate(), request.getDepartment(),
                 request.getDesignation(), request.getEmploymentType(), request.getAddress(), request.getCity(),
                 request.getState(), request.getCountry(), request.getPincode(), request.getAadharNumber(), request.getPanNumber());
+        employee.setPhotoData(request.getPhotoData());
         employee.setStatus("ACTIVE");
         if (request.getPfApplicable() != null) employee.setPfApplicable(request.getPfApplicable());
         if (request.getEsiApplicable() != null) employee.setEsiApplicable(request.getEsiApplicable());
@@ -222,6 +223,10 @@ public class EmployeeService {
         employee.setPincode(request.getPincode());
         employee.setAadharNumber(request.getAadharNumber());
         employee.setPanNumber(newPan);
+        // Only overwritten when the request actually sends something - allows an edit that
+        // doesn't touch the photo at all (most edits) to leave the existing one alone, while
+        // still letting a request explicitly clear it by sending an empty string.
+        if (request.getPhotoData() != null) employee.setPhotoData(request.getPhotoData());
         if (request.getPfApplicable() != null) employee.setPfApplicable(request.getPfApplicable());
         if (request.getEsiApplicable() != null) employee.setEsiApplicable(request.getEsiApplicable());
         if (request.getPtApplicable() != null) employee.setPtApplicable(request.getPtApplicable());
@@ -524,6 +529,17 @@ public class EmployeeService {
     }
 
     private EmployeeResponse toResponse(Employee e) {
+        return toResponse(e, true);
+    }
+
+    /**
+     * includePhoto=false is used ONLY by the paginated list/search endpoint - a base64 photo on
+     * every row of a list of (potentially hundreds of) employees would bloat that response far
+     * more than the list actually needs, since the list view doesn't even display photos today.
+     * Every single-employee operation (get, create, update, activate, etc.) still gets the
+     * photo, since those genuinely might need it (e.g. showing it on the details/edit page).
+     */
+    private EmployeeResponse toResponse(Employee e, boolean includePhoto) {
         EmployeeResponse r = new EmployeeResponse();
         r.setId(e.getId());
         r.setEmployeeCode(e.getEmployeeCode());
@@ -546,6 +562,7 @@ public class EmployeeService {
         r.setPincode(e.getPincode());
         r.setAadharNumber(e.getAadharNumber());
         r.setPanNumber(e.getPanNumber());
+        r.setPhotoData(includePhoto ? e.getPhotoData() : null);
         r.setPfApplicable(e.isPfApplicable());
         r.setEsiApplicable(e.isEsiApplicable());
         r.setPtApplicable(e.isPtApplicable());

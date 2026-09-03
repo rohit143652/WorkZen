@@ -15,7 +15,7 @@
       </label>
     </div>
 
-    <div class="form-grid">
+    <div class="form-grid cal-datetime-grid">
       <div class="form-field">
         <label>Start Date</label>
         <input type="date" [(ngModel)]="startDate" />
@@ -77,7 +77,7 @@
 
         <div style="position: relative;">
           <input type="text" placeholder="Type a name or code to add..." [ngModel]="participantSearch()"
-                 (ngModelChange)="participantSearch.set($event)" (focus)="onParticipantSearchFocus()" (blur)="onParticipantSearchBlur()" autocomplete="off" />
+                 (ngModelChange)="participantSearch.set($event)" (focus)="onParticipantSearchFocus()" (blur)="onParticipantSearchBlur()" autocomplete="off" style="width: 100%; box-sizing: border-box;" />
 
           @if (showParticipantDropdown()) {
             <div class="card cal-participant-dropdown">

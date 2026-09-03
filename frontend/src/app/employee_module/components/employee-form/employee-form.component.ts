@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, Validati
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { debounceTime } from 'rxjs';
 import { EmployeeService } from '../../services/employee.service';
+import { PhotoCaptureComponent } from '../photo-capture/photo-capture.component';
 import { RoleService } from '../../../role_module/services/role.service';
 import { RoleOption } from '../../../role_module/models/role.model';
 import { DepartmentService } from '../../../department_module/services/department.service';
@@ -28,7 +29,7 @@ function passwordsMatchValidator(control: AbstractControl): ValidationErrors | n
 @Component({
   selector: 'app-employee-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, PhotoCaptureComponent],
   templateUrl: './employee-form.component.html',
   styleUrl: './employee-form.component.css'
 })
@@ -68,6 +69,10 @@ export class EmployeeFormComponent {
     },
     { validators: passwordsMatchValidator }
   );
+
+  /** Not part of the reactive form group - managed directly via app-photo-capture's
+      [(photoData)] two-way binding, then merged into the payload manually in submit(). */
+  photoData: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
     employeeCode: [''],
@@ -219,6 +224,7 @@ export class EmployeeFormComponent {
       });
     }
 
+    this.photoData = emp.photoData ?? null;
     this.form.patchValue({
       employeeCode: emp.employeeCode,
       firstName: emp.firstName,
@@ -280,16 +286,17 @@ export class EmployeeFormComponent {
     // for readability while typing - the backend only ever wants the plain 12 digits, so this is
     // the one place that strips them back out again, right before either payload is built below.
     raw.aadharNumber = (raw.aadharNumber || '').replace(/\s+/g, '');
+    const rawWithPhoto = { ...raw, photoData: this.photoData };
 
     if (this.isEditMode()) {
-      const { employeeCode, enableLogin, loginAccess, ...updatePayload } = raw;
+      const { employeeCode, enableLogin, loginAccess, ...updatePayload } = rawWithPhoto;
       this.employeeService.update(this.employeeId()!, updatePayload).subscribe({
         next: () => { this.toast.success('Employee updated successfully.'); this.saving.set(false); this.router.navigateByUrl('/employees'); },
         error: (err: HttpErrorResponse) => { this.saving.set(false); this.toast.error(err.error?.message ?? 'Unable to save employee.'); }
       });
     } else {
       const payload = {
-        ...raw,
+        ...rawWithPhoto,
         loginAccess: raw.enableLogin
           ? { username: raw.loginAccess.username, password: raw.loginAccess.password,
               confirmPassword: raw.loginAccess.confirmPassword, roleId: raw.loginAccess.roleId }

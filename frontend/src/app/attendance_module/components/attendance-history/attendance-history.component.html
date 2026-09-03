@@ -8,10 +8,7 @@
 <div class="card filters" style="align-items: flex-end;">
   <div class="form-field" style="margin: 0; min-width: 240px;">
     <label>Employee</label>
-    <select [(ngModel)]="selectedEmployeeId">
-      <option [ngValue]="null">Select an employee</option>
-      @for (e of employees(); track e.id) { <option [ngValue]="e.id">{{ e.employeeCode }} &middot; {{ e.firstName }} {{ e.lastName }}</option> }
-    </select>
+    <app-employee-search-select [employees]="employees()" [(selectedId)]="selectedEmployeeId"></app-employee-search-select>
   </div>
   <div class="form-field" style="margin: 0;">
     <label>From</label>

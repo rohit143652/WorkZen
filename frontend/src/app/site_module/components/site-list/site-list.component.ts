@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SiteService } from '../../services/site.service';
 import { SiteResponse } from '../../models/site.model';
@@ -11,7 +12,7 @@ import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.se
 @Component({
   selector: 'app-site-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent, HasPermissionDirective],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, HasPermissionDirective],
   templateUrl: './site-list.component.html'
 })
 export class SiteListComponent {
@@ -21,6 +22,15 @@ export class SiteListComponent {
 
   readonly sites = signal<SiteResponse[]>([]);
   readonly loading = signal(true);
+  search = '';
+
+  get filteredSites(): SiteResponse[] {
+    const term = this.search.trim().toLowerCase();
+    if (!term) return this.sites();
+    return this.sites().filter(s =>
+      s.siteName.toLowerCase().includes(term) || s.siteCode.toLowerCase().includes(term)
+    );
+  }
 
   constructor() {
     this.load();

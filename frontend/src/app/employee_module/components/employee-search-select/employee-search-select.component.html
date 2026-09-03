@@ -8,7 +8,7 @@
       </button>
     </div>
   } @else {
-    <input type="text" [placeholder]="placeholder" [(ngModel)]="searchTerm" (focus)="onFocus()" (blur)="onBlur()" autocomplete="off" />
+    <input type="text" [placeholder]="placeholder" [(ngModel)]="searchTerm" (focus)="onFocus()" (blur)="onBlur()" autocomplete="off" style="width: 100%; box-sizing: border-box;" />
   }
 
   @if (showDropdown) {

@@ -7,4 +7,6 @@ export interface LoginResponse {
   tokenType: string;
   expiresIn: number;
   user: AuthenticatedUser;
+  /** Only present/used by the packaged native app - see AuthService.login() for why. Web ignores this entirely. */
+  refreshToken?: string;
 }

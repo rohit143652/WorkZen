@@ -41,6 +41,9 @@ public class EmployeeResponse {
     private String pincode;
     private String aadharNumber;
     private String panNumber;
+
+    /** Optional - base64 data-URI string. Omit or send null to leave unchanged (update) or blank (create). */
+    private String photoData;
     private boolean pfApplicable;
     private boolean esiApplicable;
     private boolean ptApplicable;
@@ -113,6 +116,8 @@ public class EmployeeResponse {
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }
     public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+    public String getPhotoData() { return photoData; }
+    public void setPhotoData(String photoData) { this.photoData = photoData; }
     public boolean isPfApplicable() { return pfApplicable; }
     public void setPfApplicable(boolean pfApplicable) { this.pfApplicable = pfApplicable; }
     public boolean isEsiApplicable() { return esiApplicable; }

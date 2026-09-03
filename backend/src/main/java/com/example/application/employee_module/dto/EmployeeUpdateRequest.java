@@ -65,6 +65,9 @@ public class EmployeeUpdateRequest {
     @Pattern(regexp = "^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$", message = "PAN number must be in the format ABCDE1234F")
     private String panNumber;
 
+    /** Optional - base64 data-URI string. Omit or send null to leave unchanged (update) or blank (create). */
+    private String photoData;
+
     /** See EmployeeRequest's own doc comment - same semantics for updates. */
     private Boolean pfApplicable;
     private Boolean esiApplicable;
@@ -112,6 +115,8 @@ public class EmployeeUpdateRequest {
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }
     public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+    public String getPhotoData() { return photoData; }
+    public void setPhotoData(String photoData) { this.photoData = photoData; }
     public Boolean getPfApplicable() { return pfApplicable; }
     public void setPfApplicable(Boolean pfApplicable) { this.pfApplicable = pfApplicable; }
     public Boolean getEsiApplicable() { return esiApplicable; }
