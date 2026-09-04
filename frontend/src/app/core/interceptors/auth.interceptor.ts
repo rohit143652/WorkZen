@@ -44,7 +44,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           catchError(refreshError => {
             isRefreshing = false;
             authService.clearLocalSession();
-            router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+            router.navigate(['/login'], { queryParams: { returnUrl: router.url }, replaceUrl: true });
             return throwError(() => refreshError);
           })
         );
