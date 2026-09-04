@@ -276,6 +276,15 @@ body { font-family: var(--font-family); }
 /* ---- Forms ---- */
 .form-field { margin-bottom: 1.15rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .form-field label { font-size: 0.82rem; font-weight: 600; color: var(--text-color); }
+/* Add class="required" to a <label> for any field with a Validators.required control, e.g.
+   <label class="required">First Name</label> - renders a red asterisk after the label text so
+   mandatory fields are visually obvious before the user hits submit and sees a validation error. */
+.form-field label.required::after,
+label.required::after {
+  content: ' *';
+  color: var(--danger-color);
+  font-weight: 700;
+}
 .form-field input,
 .form-field select,
 .form-field textarea {

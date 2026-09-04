@@ -231,6 +231,41 @@ public class EmployeeAssignmentService {
         return toResponse(saved);
     }
 
+    /**
+     * Ends every currently-active site assignment for one employee (there can be more than one
+     * concurrent assignment - e.g. a primary plus a secondary/temporary one). Called from
+     * EmployeeService.deactivate() so a deactivated employee is automatically freed up from
+     * whatever site(s) they were on instead of silently still counting against that site's
+     * headcount. Returns 0 (no-op) if the employee had no active assignment - deactivating
+     * someone who was already unassigned isn't an error.
+     *
+     * Deliberately does NOT touch anything on reactivation (see EmployeeService.activate()/
+     * rejoin()) - a reactivated employee comes back as Unassigned and it's an admin's explicit
+     * decision which site (if any) to put them on next, never an automatic guess.
+     */
+    @Transactional
+    public int endAllActiveForEmployee(Long employeeId, Long actorId, HttpServletRequest httpRequest) {
+        Long tenantId = tenantContext.requireCurrentTenantId();
+        List<EmployeeSiteAssignment> active =
+                assignmentRepository.findAllByEmployeeIdAndClientCompanyIdAndStatus(employeeId, tenantId, "ACTIVE");
+        if (active.isEmpty()) {
+            return 0;
+        }
+        LocalDate today = LocalDate.now();
+        for (EmployeeSiteAssignment assignment : active) {
+            assignment.setStatus("ENDED");
+            if (assignment.getEndDate() == null) {
+                assignment.setEndDate(today);
+            }
+            assignment.setUpdatedBy(actorId);
+        }
+        assignmentRepository.saveAll(active);
+        auditService.log(actorId, "EMPLOYEE_UNASSIGNED",
+                "Ended " + active.size() + " active site assignment(s) for employee " + employeeId
+                        + " as a result of deactivation", httpRequest);
+        return active.size();
+    }
+
     @Transactional(readOnly = true)
     public List<EmployeeAssignmentResponse> findActiveForTenant() {
         Long tenantId = tenantContext.requireCurrentTenantId();

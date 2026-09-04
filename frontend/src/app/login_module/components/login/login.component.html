@@ -57,6 +57,7 @@
                 placeholder="Enter your username"
                 formControlName="username"
                 autocomplete="username"
+                (focus)="onFieldFocus($event)"
                 [class.invalid]="form.controls.username.invalid && form.controls.username.touched" />
             </div>
             @if (form.controls.username.invalid && form.controls.username.touched) {
@@ -80,6 +81,7 @@
                 placeholder="Enter your password"
                 formControlName="password"
                 autocomplete="current-password"
+                (focus)="onFieldFocus($event)"
                 [class.invalid]="form.controls.password.invalid && form.controls.password.touched" />
               <button
                 type="button"
@@ -102,8 +104,14 @@
               <span>Remember me</span>
             </label>
 
-            <a href="#" class="forgot-password" (click)="$event.preventDefault()">Forgot password?</a>
+            <a href="#" class="forgot-password" (click)="$event.preventDefault(); onForgotPasswordClick()">Forgot password?</a>
           </div>
+
+          @if (showForgotPasswordNotice()) {
+            <div class="alert alert-info">
+              Password reset isn't self-service yet - please contact your administrator to reset it.
+            </div>
+          }
 
           @if (errorMessage()) {
             <div class="alert" [class.alert-locked]="accountLocked()">
@@ -117,7 +125,10 @@
               <span class="spinner" aria-hidden="true"></span>
               Signing in...
             } @else {
-              Sign in
+              <span>Sign in</span>
+              <svg class="btn-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             }
           </button>
 
@@ -132,5 +143,9 @@
     </section>
 
   </div>
+
+  <!-- Mobile-only closing tagline, shown beneath the card once there's room (see CSS) - kept out
+       of the desktop layout entirely via display:none by default. -->
+  <p class="page-tagline">People&nbsp;&bull;&nbsp;Process&nbsp;&bull;&nbsp;Progress</p>
 
 </div>

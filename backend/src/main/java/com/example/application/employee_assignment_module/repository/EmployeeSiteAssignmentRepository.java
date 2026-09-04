@@ -23,6 +23,8 @@ public interface EmployeeSiteAssignmentRepository extends JpaRepository<Employee
 
     long countBySiteIdAndClientCompanyIdAndStatus(Long siteId, Long clientCompanyId, String status);
 
+    List<EmployeeSiteAssignment> findAllByEmployeeIdAndClientCompanyIdAndStatus(Long employeeId, Long clientCompanyId, String status);
+
     List<EmployeeSiteAssignment> findAllByClientCompanyIdAndStatus(Long clientCompanyId, String status);
 
     /** Active assignment count per site, for the manpower allocation dashboard - one query for all sites. */

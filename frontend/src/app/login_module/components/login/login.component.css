@@ -227,6 +227,7 @@
   margin-bottom: 16px;
 }
 .alert-locked { background: var(--warning-bg); color: var(--warning-color); border-color: #fde68a; }
+.alert-info { background: var(--info-bg); color: var(--info-color); border-color: #bae6fd; }
 
 /* Sign in button */
 .login-button {
@@ -249,6 +250,8 @@
 .login-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 13px 28px rgba(var(--bs-primary-rgb), 0.28); }
 .login-button:active:not(:disabled) { transform: translateY(0); }
 .login-button:disabled { opacity: 0.7; cursor: not-allowed; }
+/* Hidden on desktop (unchanged look) - only shown on mobile, see media query below. */
+.btn-arrow { display: none; width: 17px; height: 17px; }
 
 .spinner {
   width: 14px;
@@ -276,6 +279,9 @@
   border-radius: 8px 8px 0 0;
 }
 
+/* Hidden on desktop entirely (unchanged look) - only shown on mobile, see media query below. */
+.page-tagline { display: none; }
+
 /* =========================================
    TABLET
 ========================================= */
@@ -289,81 +295,138 @@
 
 /* =========================================
    MOBILE
+   Every size below uses clamp() instead of a fixed px value, tuned so the low end of the
+   clamp roughly matches a 320px-wide phone and the high end matches a 430px+ phone/short
+   tablet - the design (spacing ratios, proportions, what's visible) is IDENTICAL across that
+   whole range, it just scales smoothly with screen width instead of jumping between different
+   fixed sizes at breakpoints (which is what made small and large phones look like different
+   designs before). A short/tall viewport is handled by .login-wrapper's own scroll - see
+   below - rather than by shrinking things differently, so the design itself never changes,
+   only whether it needs to scroll a little.
 ========================================= */
 @media (max-width: 768px) {
-  .login-page { overflow-x: hidden; overflow-y: auto; }
+  /* Pinning the page to the viewport with position: fixed + inset: 0 (rather than relying on
+     100vh/100dvh alone) guarantees it always covers the real screen exactly, with no gap - on a
+     packaged Android app the WebView's own viewport-height calculation can come out shorter
+     than the physical screen, and any leftover gap below would show whatever native view sits
+     behind the WebView (e.g. the app's splash background) instead of this page's own content. */
+  .login-page {
+    position: fixed;
+    inset: 0;
+    /* Overflow is hidden HERE (not on the scrolling element below) specifically so the
+       decorative background circles - deliberately positioned partly outside this box - are
+       clipped at the true screen edge instead of being included in a scrollable area, which is
+       what previously produced a large empty scrollable region below the visible card. */
+    overflow: hidden;
+  }
 
-  .login-wrapper { min-height: 100dvh; display: flex; flex-direction: column; }
+  /* .login-wrapper is the actual scroll container now - only genuine content (brand section +
+     card) can ever make it taller than the screen, so this only scrolls on a short device where
+     the two sections genuinely don't both fit, never because of decorative elements. */
+  .login-wrapper {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+  }
 
-  .brand-section { flex: none; padding: 22px 20px 0; align-items: flex-start; }
+  .brand-section { flex: none; padding: clamp(9px, 3.2vw, 14px) clamp(16px, 5vw, 22px) 0; align-items: flex-start; }
   .brand-content { width: 100%; }
 
-  .logo-wrapper { width: 62px; height: 62px; padding: 9px; margin-bottom: 9px; border-radius: var(--radius-md); }
+  .logo-wrapper {
+    width: clamp(40px, 11.5vw, 48px);
+    height: clamp(40px, 11.5vw, 48px);
+    padding: clamp(5px, 1.6vw, 7px);
+    margin-bottom: clamp(5px, 1.6vw, 7px);
+    border-radius: var(--radius-md);
+  }
 
-  .brand-content h1 { font-size: 28px; letter-spacing: -0.8px; }
-  .brand-tagline { font-size: 11.5px; line-height: 1.45; margin-top: 4px; }
-  .brand-line { width: 55px; height: 3px; margin: 9px auto 5px; }
+  .brand-content h1 { font-size: clamp(19px, 5.6vw, 23px); letter-spacing: -0.6px; }
+  .brand-tagline { font-size: clamp(10px, 2.7vw, 11px); line-height: 1.35; margin-top: 2px; }
+  .brand-line { width: clamp(40px, 11vw, 46px); height: 3px; margin: clamp(5px, 1.6vw, 7px) auto 4px; }
 
-  .security-image-wrapper { height: 120px; margin-top: 0; overflow: visible; }
-  .security-image { width: 190px; max-width: 65vw; height: 120px; object-fit: contain; }
+  /* Sized to the illustration's real ~1.2:1 aspect ratio (240x200 viewBox) instead of a
+     mismatched box - object-fit: contain was letterboxing it awkwardly before. */
+  .security-image-wrapper { height: clamp(78px, 24vw, 112px); margin-top: 0; overflow: visible; }
+  .security-image { width: clamp(94px, 29vw, 135px); max-width: 50vw; height: clamp(78px, 24vw, 112px); object-fit: contain; }
 
-  .form-section { flex: 1; align-items: flex-start; padding: 7px 15px 22px; }
+  .form-section { flex: none; align-items: flex-start; padding: clamp(2px, 1vw, 4px) clamp(13px, 4vw, 15px) clamp(12px, 4vw, 16px); }
 
-  .login-card { width: 100%; max-width: 500px; padding: 24px 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+  /* Slightly larger top radius + a hairline border on top of the shadow reads as a deliberately
+     "lifted sheet" rather than just a shadow, and separates the white card from the light-blue
+     page background more clearly than shadow alone. */
+  .login-card {
+    width: 100%;
+    max-width: 500px;
+    padding: clamp(15px, 4.5vw, 19px) clamp(14px, 4.2vw, 18px);
+    border-radius: 22px;
+    border: 1px solid rgba(15, 23, 42, 0.04);
+    box-shadow: 0 -6px 0 rgba(255, 255, 255, 0.4), 0 18px 40px rgba(15, 23, 42, 0.14);
+  }
 
-  .login-header h2 { font-size: 26px; }
-  .login-header p { font-size: 12px; margin-top: 5px; margin-bottom: 22px; }
+  .login-header h2 { font-size: clamp(19px, 5.4vw, 22px); }
+  .login-header p { font-size: clamp(11px, 2.9vw, 12px); margin-top: 3px; margin-bottom: clamp(12px, 3.6vw, 15px); }
 
-  .form-group { margin-bottom: 17px; }
-  .form-group label { font-size: 12px; margin-bottom: 7px; }
+  .form-group { margin-bottom: clamp(10px, 3vw, 13px); }
+  .form-group label { font-size: clamp(11px, 2.9vw, 12px); margin-bottom: 6px; }
 
-  .input-wrapper { height: 48px; border-radius: var(--radius-sm); }
-  .input-icon { width: 42px; }
+  /* Cleaner = a faint tinted fill instead of a plain white box on a plain white card, so the
+     field boundary reads clearly without needing a harder border color. */
+  .input-wrapper {
+    height: clamp(42px, 11.5vw, 45px);
+    border-radius: 11px;
+    background: var(--surface-alt-color, #f6f9fc);
+    border-color: rgba(15, 23, 42, 0.08);
+  }
+  .input-wrapper:focus-within { background: var(--surface-color); }
+  .input-icon { width: 38px; }
   .input-wrapper input { font-size: 13px; }
-  .show-password { width: 40px; font-size: 15px; }
 
-  .login-options { margin-bottom: 20px; font-size: 11px; }
+  /* A real icon button now (rounded hit target + subtle pressed background) instead of a bare
+     icon sitting in the field. */
+  .show-password {
+    width: 40px;
+    margin: 0 4px;
+    height: 34px;
+    font-size: 15px;
+    border-left: none;
+    border-radius: 9px;
+  }
+  .show-password:active { background: rgba(15, 23, 42, 0.06); }
 
-  .login-button { height: 49px; border-radius: var(--radius-sm); font-size: 13px; }
+  .login-options { margin: 2px 0 clamp(12px, 3.6vw, 15px); font-size: clamp(11px, 2.9vw, 11.5px); align-items: center; }
+  .remember-me { gap: 6px; }
+  .forgot-password { font-weight: 600; }
 
-  .secure-footer { margin-top: 19px; font-size: 10px; }
-}
+  /* Premium = a touch more shadow/lift + letter-spacing + the arrow icon (hidden on desktop,
+     see .btn-arrow's default display:none above) rather than a flat filled rectangle. */
+  .login-button {
+    height: clamp(44px, 12vw, 48px);
+    border-radius: 12px;
+    font-size: 13.5px;
+    letter-spacing: 0.02em;
+    box-shadow: 0 10px 24px rgba(var(--bs-primary-rgb), 0.3);
+  }
+  .btn-arrow { display: inline-block; }
 
-/* =========================================
-   SMALL MOBILE
-========================================= */
-@media (max-width: 380px) {
-  .brand-section { padding-top: 14px; }
-  .logo-wrapper { width: 55px; height: 55px; padding: 8px; }
-  .brand-content h1 { font-size: 25px; }
-  .brand-tagline { font-size: 10.5px; }
+  /* Subtle = smaller and softer, so it reads as fine print under the button rather than
+     competing with it. */
+  .secure-footer { margin-top: clamp(10px, 3.2vw, 13px); font-size: 9.5px; opacity: 0.85; }
+  .secure-icon { width: 13px; height: 13px; }
+  .secure-icon::before { width: 5.5px; height: 5.5px; left: 2px; top: -5.5px; }
 
-  .security-image-wrapper { height: 100px; }
-  .security-image { width: 165px; height: 100px; }
+  .forgot-password-notice { margin-top: 10px; font-size: 11px; }
 
-  .form-section { padding-top: 5px; }
-  .login-card { padding: 21px 17px; }
-  .login-header h2 { font-size: 23px; }
-  .login-header p { font-size: 11px; margin-bottom: 19px; }
-
-  .input-wrapper { height: 46px; }
-  .login-button { height: 47px; }
-}
-
-/* =========================================
-   VERY SMALL HEIGHT MOBILE
-========================================= */
-@media (max-width: 768px) and (max-height: 700px) {
-  .brand-section { padding-top: 10px; }
-  .logo-wrapper { width: 50px; height: 50px; padding: 7px; margin-bottom: 5px; }
-  .brand-content h1 { font-size: 24px; }
-  .brand-tagline { display: none; }
-  .brand-line { margin: 6px auto; }
-
-  .security-image-wrapper { height: 85px; }
-  .security-image { width: 145px; height: 85px; }
-
-  .login-card { padding: 19px 17px; }
-  .login-header p { margin-bottom: 16px; }
-  .form-group { margin-bottom: 13px; }
+  .page-tagline {
+    display: block;
+    flex: none;
+    text-align: center;
+    margin: clamp(8px, 2.6vw, 11px) 0 clamp(10px, 3.2vw, 14px);
+    padding: 0 20px;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--muted-color);
+    opacity: 0.75;
+  }
 }

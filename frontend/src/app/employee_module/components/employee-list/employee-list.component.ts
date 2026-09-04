@@ -63,7 +63,7 @@ export class EmployeeListComponent {
         loginEnabled: this.loginFilter === '' ? undefined : this.loginFilter === 'true',
         page: this.page(),
         size: this.pageSize,
-        sort: 'lastName,asc'
+        sort: 'createdAt,desc'
       })
       .subscribe({
         next: res => {

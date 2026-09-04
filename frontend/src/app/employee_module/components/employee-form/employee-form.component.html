@@ -20,7 +20,7 @@
         }
       </div>
       <div class="form-field">
-        <label>First Name</label>
+        <label class="required">First Name</label>
         <input type="text" formControlName="firstName" [class.invalid]="form.controls.firstName.invalid && form.controls.firstName.touched" />
         @if (form.controls.firstName.invalid && form.controls.firstName.touched) {
           <span class="field-error">First name is required</span>
@@ -31,7 +31,7 @@
         <input type="text" formControlName="middleName" />
       </div>
       <div class="form-field">
-        <label>Last Name</label>
+        <label class="required">Last Name</label>
         <input type="text" formControlName="lastName" [class.invalid]="form.controls.lastName.invalid && form.controls.lastName.touched" />
         @if (form.controls.lastName.invalid && form.controls.lastName.touched) {
           <span class="field-error">Last name is required</span>
@@ -59,14 +59,14 @@
         <input type="text" formControlName="alternateMobileNumber" />
       </div>
       <div class="form-field">
-        <label>Email</label>
+        <label class="required">Email</label>
         <input type="email" formControlName="email" [class.invalid]="form.controls.email.invalid && form.controls.email.touched" />
         @if (form.controls.email.invalid && form.controls.email.touched) {
           <span class="field-error">A valid email is required</span>
         }
       </div>
       <div class="form-field">
-        <label>Aadhar Number</label>
+        <label class="required">Aadhar Number</label>
         <input type="text" formControlName="aadharNumber" placeholder="1234 5678 9012" maxlength="14" (input)="onAadharInput($event)"
                [class.invalid]="form.controls.aadharNumber.invalid && form.controls.aadharNumber.touched" />
         @if (form.controls.aadharNumber.invalid && form.controls.aadharNumber.touched) {
@@ -78,8 +78,8 @@
         }
       </div>
       <div class="form-field">
-        <label>PAN Number</label>
-        <input type="text" formControlName="panNumber" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform: uppercase;"
+        <label class="required">PAN Number</label>
+        <input type="text" formControlName="panNumber" placeholder="e.g. ABCDE1234F" maxlength="10" style="text-transform: uppercase;" (input)="onPanInput($event)"
                [class.invalid]="form.controls.panNumber.invalid && form.controls.panNumber.touched" />
         @if (form.controls.panNumber.invalid && form.controls.panNumber.touched) {
           @if (form.controls.panNumber.errors?.['required']) {
@@ -99,14 +99,14 @@
     <div class="section-title">Employment Information</div>
     <div class="form-grid">
       <div class="form-field">
-        <label>Joining Date</label>
+        <label class="required">Joining Date</label>
         <input type="date" formControlName="joiningDate" [class.invalid]="form.controls.joiningDate.invalid && form.controls.joiningDate.touched" />
         @if (form.controls.joiningDate.invalid && form.controls.joiningDate.touched) {
           <span class="field-error">Joining date is required</span>
         }
       </div>
       <div class="form-field">
-        <label>Department</label>
+        <label class="required">Department</label>
         <select formControlName="department" [class.invalid]="form.controls.department.invalid && form.controls.department.touched">
           <option value="">Select a department</option>
           @for (d of departments(); track d.id) {
@@ -121,7 +121,7 @@
         </span>
       </div>
       <div class="form-field">
-        <label>Designation</label>
+        <label class="required">Designation</label>
         <select formControlName="designation" [class.invalid]="form.controls.designation.invalid && form.controls.designation.touched">
           <option value="">Select a designation</option>
           @for (d of designations(); track d.id) {
@@ -256,7 +256,7 @@
               }
             </div>
             <div class="form-field">
-              <label>Role</label>
+              <label class="required">Role</label>
               <select formControlName="roleId">
                 <option [ngValue]="null">Select a role</option>
                 @for (role of roles(); track role.id) {
@@ -265,14 +265,14 @@
               </select>
             </div>
             <div class="form-field">
-              <label>Password</label>
+              <label class="required">Password</label>
               <input type="password" formControlName="password" />
               @if (form.controls.loginAccess.controls.password.invalid && form.controls.loginAccess.controls.password.touched) {
                 <span class="field-error">Minimum 8 characters</span>
               }
             </div>
             <div class="form-field">
-              <label>Confirm Password</label>
+              <label class="required">Confirm Password</label>
               <input type="password" formControlName="confirmPassword" />
               @if (form.controls.loginAccess.errors?.['passwordMismatch'] && form.controls.loginAccess.controls.confirmPassword.touched) {
                 <span class="field-error">Passwords do not match</span>
@@ -303,28 +303,28 @@
         @if (showEnableLoginForm()) {
           <div class="form-grid" [formGroup]="enableLoginForm" style="margin-top: 1rem;">
             <div class="form-field">
-              <label>Username</label>
+              <label class="required">Username</label>
               <input type="text" formControlName="username" [class.invalid]="enableLoginForm.controls.username.invalid && enableLoginForm.controls.username.touched" />
               @if (enableLoginForm.controls.username.invalid && enableLoginForm.controls.username.touched) {
                 <span class="field-error">Username is required</span>
               }
             </div>
             <div class="form-field">
-              <label>Role</label>
+              <label class="required">Role</label>
               <select formControlName="roleId">
                 <option [ngValue]="null">Select a role</option>
                 @for (role of roles(); track role.id) { <option [ngValue]="role.id">{{ role.name }}</option> }
               </select>
             </div>
             <div class="form-field">
-              <label>Password</label>
+              <label class="required">Password</label>
               <input type="password" formControlName="password" [class.invalid]="enableLoginForm.controls.password.invalid && enableLoginForm.controls.password.touched" />
               @if (enableLoginForm.controls.password.invalid && enableLoginForm.controls.password.touched) {
                 <span class="field-error">Minimum 8 characters</span>
               }
             </div>
             <div class="form-field">
-              <label>Confirm Password</label>
+              <label class="required">Confirm Password</label>
               <input type="password" formControlName="confirmPassword" [class.invalid]="enableLoginForm.errors?.['passwordMismatch'] && enableLoginForm.controls.confirmPassword.touched" />
               @if (enableLoginForm.errors?.['passwordMismatch'] && enableLoginForm.controls.confirmPassword.touched) {
                 <span class="field-error">Passwords do not match</span>

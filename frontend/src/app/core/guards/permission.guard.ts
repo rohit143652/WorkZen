@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthStateService } from '../services/auth-state.service';
+import { ToastService } from '../../shared/services/toast.service';
 
 /**
  * Reads a required permission from route data, e.g.:
@@ -12,6 +13,7 @@ import { AuthStateService } from '../services/auth-state.service';
 export const permissionGuard: CanActivateFn = (route) => {
   const authState = inject(AuthStateService);
   const router = inject(Router);
+  const toast = inject(ToastService);
 
   const requiredPermission: string | string[] | undefined = route.data?.['permission'];
   if (!requiredPermission) return true;
@@ -21,5 +23,9 @@ export const permissionGuard: CanActivateFn = (route) => {
     return true;
   }
 
+  // Previously this redirected silently, so a user who followed a stale link/bookmark (or typed
+  // the URL directly) into a page they lack permission for just landed back on the dashboard
+  // with no explanation at all. Now they get a clear reason instead of a mystery bounce.
+  toast.error("You don't have permission to access this page. Please contact your administrator.");
   return router.createUrlTree(['/dashboard']);
 };

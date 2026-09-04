@@ -7,6 +7,7 @@ import com.example.application.common.exception.ResourceNotFoundException;
 import com.example.application.common.util.SecurePasswordGenerator;
 import com.example.application.department_module.service.DepartmentService;
 import com.example.application.designation_module.service.DesignationService;
+import com.example.application.employee_assignment_module.service.EmployeeAssignmentService;
 import com.example.application.employee_module.dto.*;
 import com.example.application.employee_module.entity.Employee;
 import com.example.application.employee_module.repository.EmployeeRepository;
@@ -54,13 +55,15 @@ public class EmployeeService {
     private final DepartmentService departmentService;
     private final DesignationService designationService;
     private final EmployeeSalaryStructureService employeeSalaryStructureService;
+    private final EmployeeAssignmentService employeeAssignmentService;
 
     public EmployeeService(EmployeeRepository employeeRepository, UserRepository userRepository,
                             RoleService roleService, PasswordEncoder passwordEncoder,
                             RefreshTokenService refreshTokenService, AuditService auditService,
                             TenantContextService tenantContextService, DepartmentService departmentService,
                             DesignationService designationService,
-                            EmployeeSalaryStructureService employeeSalaryStructureService) {
+                            EmployeeSalaryStructureService employeeSalaryStructureService,
+                            EmployeeAssignmentService employeeAssignmentService) {
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.roleService = roleService;
@@ -71,6 +74,7 @@ public class EmployeeService {
         this.departmentService = departmentService;
         this.designationService = designationService;
         this.employeeSalaryStructureService = employeeSalaryStructureService;
+        this.employeeAssignmentService = employeeAssignmentService;
     }
 
     @Transactional(readOnly = true)
@@ -304,7 +308,10 @@ public class EmployeeService {
         return toResponse(saved);
     }
 
-    /** Deactivating an employee also disables (never deletes) any linked login and revokes its refresh tokens. */
+    /** Deactivating an employee also disables (never deletes) any linked login and revokes its
+        refresh tokens, and ends any active site assignment(s) so they stop counting against that
+        site's headcount - see EmployeeAssignmentService.endAllActiveForEmployee() for why
+        reactivation deliberately does NOT auto-restore any of them. */
     @Transactional
     public EmployeeResponse deactivate(Long id, Long actorId, HttpServletRequest httpRequest) {
         Employee employee = getEntity(id);
@@ -317,6 +324,7 @@ public class EmployeeService {
             auditService.log(actorId, "LOGIN_DISABLED",
                     "Login disabled as a result of deactivating employee " + employee.getEmployeeCode(), httpRequest);
         }
+        employeeAssignmentService.endAllActiveForEmployee(id, actorId, httpRequest);
         Employee saved = employeeRepository.save(employee);
         auditService.log(actorId, "EMPLOYEE_DEACTIVATED", "Deactivated employee " + saved.getEmployeeCode(), httpRequest);
         return toResponse(saved);

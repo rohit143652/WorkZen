@@ -94,7 +94,7 @@ export class EmployeeFormComponent {
     country: [''],
     pincode: [''],
     aadharNumber: ['', [Validators.required, Validators.pattern(/^\d{4} ?\d{4} ?\d{4}$/)]],
-    panNumber: ['', [Validators.required, Validators.pattern(/^[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}$/)]],
+    panNumber: ['', [Validators.required, Validators.pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/)]],
     pfApplicable: [false],
     esiApplicable: [false],
     ptApplicable: [false],
@@ -272,6 +272,20 @@ export class EmployeeFormComponent {
     const formatted = this.formatAadhar(input.value);
     this.form.controls.aadharNumber.setValue(formatted, { emitEvent: false });
     input.value = formatted;
+  }
+
+  /** The input previously only *displayed* uppercase via CSS (text-transform), while the
+      control's real value - and what the pattern validator checked - could still be lowercase.
+      That's harmless data-wise (the backend uppercases it before saving anyway), but it meant a
+      user could type "abcde1234f", see it rendered as "ABCDE1234F", yet have the validator
+      silently pass or fail based on the untouched lowercase value underneath. Uppercasing the
+      actual control value here (and tightening the pattern to A-Z only) keeps what's stored,
+      what's shown, and what's validated all in sync. */
+  onPanInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const upper = input.value.toUpperCase();
+    this.form.controls.panNumber.setValue(upper, { emitEvent: false });
+    input.value = upper;
   }
 
   submit(): void {

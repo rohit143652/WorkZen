@@ -22,6 +22,7 @@ export class LoginComponent {
   readonly showPassword = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly accountLocked = signal(false);
+  readonly showForgotPasswordNotice = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     username: ['', [Validators.required]],
@@ -31,6 +32,19 @@ export class LoginComponent {
 
   togglePasswordVisibility(): void {
     this.showPassword.update(v => !v);
+  }
+
+  onForgotPasswordClick(): void {
+    this.showForgotPasswordNotice.set(true);
+  }
+
+  /** On a short mobile viewport, the on-screen keyboard can cover the field the user just
+      tapped (or the button below it) before the browser/WebView gets around to scrolling it
+      into view on its own. Nudging it into view immediately keeps the field - and enough of the
+      form below it - visible above the keyboard. */
+  onFieldFocus(event: FocusEvent): void {
+    const target = event.target as HTMLElement;
+    setTimeout(() => target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 100);
   }
 
   submit(): void {
@@ -47,11 +61,11 @@ export class LoginComponent {
       next: response => {
         this.loading.set(false);
         if (response.user.mustChangePassword) {
-          this.router.navigateByUrl('/change-password');
+          this.router.navigateByUrl('/change-password', { replaceUrl: true });
           return;
         }
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
-        this.router.navigateByUrl(returnUrl);
+        this.router.navigateByUrl(returnUrl, { replaceUrl: true });
       },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
