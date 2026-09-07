@@ -69,25 +69,50 @@
         <div class="section-title">Login Information</div>
 
         @if (!emp.loginEnabled) {
-          <p class="muted">Login Disabled — this employee has no active login access.</p>
-          @if (!showEnableLoginForm()) {
+          @if (emp.username) {
+            <!-- Previously had login, now disabled - the account (and its username) still exists,
+                 just deactivated (see EmployeeService.disableLogin() - it never deletes the User
+                 row). Re-enabling should be one click reusing that same username, not a brand-new
+                 signup form; the backend's EnableLoginRequest already treats every field as
+                 optional for exactly this case (see its own javadoc) - the old form here just
+                 never took advantage of that and made all three required. -->
+            <p class="muted">Login Disabled for <strong>{{ emp.username }}</strong> — this employee has no active login access.</p>
+            <div class="actions">
+              <button type="button" *appHasPermission="'EMPLOYEE_ENABLE_LOGIN'" class="btn btn-primary" [disabled]="savingLogin()" (click)="reactivateLogin()">
+                {{ savingLogin() ? 'Enabling...' : 'Enable Login (same username)' }}
+              </button>
+              <button type="button" *appHasPermission="'EMPLOYEE_ENABLE_LOGIN'" class="btn btn-secondary btn-sm" (click)="openEnableLoginForm()">
+                Enable with different username/role...
+              </button>
+            </div>
+            @if (lastTempPassword(); as temp) {
+              <div class="temp-password-box">
+                <strong>Temporary password (shown once):</strong>
+                <code>{{ temp }}</code>
+                <p class="muted">Share this securely with the employee. It will not be shown again.</p>
+              </div>
+            }
+          } @else if (!showEnableLoginForm()) {
+            <p class="muted">Login Disabled — this employee has no active login access.</p>
             <button type="button" *appHasPermission="'EMPLOYEE_ENABLE_LOGIN'" class="btn btn-primary" (click)="openEnableLoginForm()">
               Enable Login
             </button>
-          } @else {
+          }
+          @if (emp.username || showEnableLoginForm()) {
+          @if (showEnableLoginForm()) {
             <form [formGroup]="enableLoginForm" (ngSubmit)="submitEnableLogin()" class="login-access-section enabled" novalidate>
               <div class="form-field">
-                <label>Username</label>
+                <label>{{ emp.username ? 'New Username (optional - leave blank to keep ' + emp.username + ')' : 'Username' }}</label>
                 <input type="text" formControlName="username" />
               </div>
               <div class="form-field">
-                <label>Password</label>
+                <label>{{ emp.username ? 'New Password (optional - leave blank to auto-generate)' : 'Password' }}</label>
                 <input type="password" formControlName="password" />
               </div>
               <div class="form-field">
-                <label>Role</label>
+                <label>{{ emp.username ? 'New Role (optional - leave blank to keep current)' : 'Role' }}</label>
                 <select formControlName="roleId">
-                  <option [ngValue]="null">Select a role</option>
+                  <option [ngValue]="null">{{ emp.username ? 'Keep current role' : 'Select a role' }}</option>
                   @for (role of roles(); track role.id) { <option [ngValue]="role.id">{{ role.name }}</option> }
                 </select>
               </div>
@@ -99,6 +124,7 @@
               </div>
             </form>
           }
+          }
         } @else {
           <dl>
             <dt>Username</dt><dd>{{ emp.username }}</dd>
@@ -109,10 +135,13 @@
             </dd>
             <dt>Role</dt>
             <dd>
-              <select (change)="changeRole($any($event.target).value)" *appHasPermission="'EMPLOYEE_ASSIGN_ROLE'">
-                <option value="">{{ emp.roles?.join(', ') }}</option>
-                @for (role of roles(); track role.id) { <option [value]="role.id">{{ role.name }}</option> }
-              </select>
+              <span>{{ emp.roles && emp.roles.length > 0 ? emp.roles.join(', ') : 'No role assigned' }}</span>
+              @if (authState.hasPermission('EMPLOYEE_ASSIGN_ROLE')) {
+                <select (change)="changeRole($any($event.target).value)" style="margin-left: 0.6rem; width: auto; display: inline-block;">
+                  <option value="">Change role...</option>
+                  @for (role of roles(); track role.id) { <option [value]="role.id">{{ role.name }}</option> }
+                </select>
+              }
             </dd>
             <dt>Last Login</dt><dd>{{ emp.lastLoginAt || 'Never' }}</dd>
           </dl>
@@ -144,28 +173,30 @@
           <p class="muted">Not currently assigned to any site.</p>
         }
 
-        @if (!showTransferForm()) {
-          <button type="button" class="btn btn-secondary btn-sm" (click)="showTransferForm.set(true)">
-            {{ currentAssignment() ? 'Transfer to Another Site' : 'Assign to a Site' }}
-          </button>
-        } @else {
-          <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()" class="login-access-section enabled" novalidate>
-            <div class="form-field">
-              <label>Transfer To</label>
-              <select formControlName="toSiteId">
-                <option [ngValue]="null">Select a site</option>
-                @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.siteName }} ({{ s.siteCode }})</option> }
-              </select>
-            </div>
-            <div class="form-field"><label>Effective Date</label><input type="date" formControlName="effectiveDate" /></div>
-            <div class="form-field"><label>Reason</label><input type="text" formControlName="reason" placeholder="e.g. Staff rotation" /></div>
-            <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
-              <button type="button" class="btn btn-secondary" (click)="showTransferForm.set(false)">Cancel</button>
-              <button type="submit" class="btn btn-primary" [disabled]="transferring()">
-                {{ transferring() ? 'Transferring...' : 'Transfer Employee' }}
-              </button>
-            </div>
-          </form>
+        @if (authState.hasPermission('EMPLOYEE_ASSIGN') || authState.hasPermission('EMPLOYEE_TRANSFER')) {
+          @if (!showTransferForm()) {
+            <button type="button" class="btn btn-secondary btn-sm" (click)="showTransferForm.set(true)">
+              {{ currentAssignment() ? 'Transfer to Another Site' : 'Assign to a Site' }}
+            </button>
+          } @else {
+            <form [formGroup]="transferForm" (ngSubmit)="submitTransfer()" class="login-access-section enabled" novalidate>
+              <div class="form-field">
+                <label>Transfer To</label>
+                <select formControlName="toSiteId">
+                  <option [ngValue]="null">Select a site</option>
+                  @for (s of sites(); track s.id) { <option [ngValue]="s.id">{{ s.siteName }} ({{ s.siteCode }})</option> }
+                </select>
+              </div>
+              <div class="form-field"><label>Effective Date</label><input type="date" formControlName="effectiveDate" /></div>
+              <div class="form-field"><label>Reason</label><input type="text" formControlName="reason" placeholder="e.g. Staff rotation" /></div>
+              <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">
+                <button type="button" class="btn btn-secondary" (click)="showTransferForm.set(false)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="transferring()">
+                  {{ transferring() ? 'Transferring...' : 'Transfer Employee' }}
+                </button>
+              </div>
+            </form>
+          }
         }
 
         @if (assignmentHistory().length > 0) {
@@ -238,13 +269,15 @@
         </div>
       }
 
-      <app-employee-paid-leave [employeeId]="emp.id"></app-employee-paid-leave>
-      <div *appHasPermission="'ADVANCE_READ'">
+      <div>
+        <app-employee-paid-leave [employeeId]="emp.id"></app-employee-paid-leave>
+      </div>
+      <div class="detail-card-full" *appHasPermission="'ADVANCE_READ'">
         <app-employee-advances [employeeId]="emp.id"></app-employee-advances>
       </div>
 
       @if (authState.hasPermission('PAYROLL_RUN_READ')) {
-        <div class="card" style="padding: 1.25rem; margin-top: 1.25rem;">
+        <div class="card" style="padding: 1.25rem;">
           <div class="section-title" style="margin-top: 0;">Payslip</div>
           <p class="muted" style="margin-top: -0.5rem;">Download this employee's payslip for any month - available once that month's payroll has been approved.</p>
           <div class="form-grid" style="align-items: flex-end;">

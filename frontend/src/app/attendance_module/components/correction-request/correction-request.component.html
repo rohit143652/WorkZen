@@ -1,0 +1,94 @@
+<div class="page-header">
+  <div>
+    <h1>Attendance Correction Request</h1>
+    <p class="muted">Missing a check-in, checked out at the wrong time, or something else off with a day? Request a fix here - an admin reviews every request before anything changes.</p>
+  </div>
+</div>
+
+<div class="card" style="padding: 1.5rem; max-width: 640px; margin-bottom: 1.5rem;">
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="form-field">
+      <label class="required">Attendance Date</label>
+      <input type="date" formControlName="attendanceDate" [class.invalid]="form.controls.attendanceDate.invalid && form.controls.attendanceDate.touched" />
+    </div>
+
+    <div class="form-field">
+      <label class="required">Request Type</label>
+      <select formControlName="requestType">
+        @for (t of requestTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+      </select>
+    </div>
+
+    @if (needsCheckIn(form.controls.requestType.value)) {
+      <div class="form-field">
+        <label>Correct Check-In Time</label>
+        <input type="time" formControlName="requestedCheckIn" />
+      </div>
+    }
+    @if (needsCheckOut(form.controls.requestType.value)) {
+      <div class="form-field">
+        <label>Correct Check-Out Time</label>
+        <input type="time" formControlName="requestedCheckOut" />
+      </div>
+    }
+
+    <div class="form-field">
+      <label class="required">Reason</label>
+      <textarea formControlName="reason" rows="3" placeholder="What happened?" [class.invalid]="form.controls.reason.invalid && form.controls.reason.touched"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+      @if (submitting()) { <span class="btn-spinner"></span> }
+      {{ submitting() ? 'Submitting...' : 'Submit Request' }}
+    </button>
+  </form>
+</div>
+
+<div class="card table-card">
+  <h3 style="margin: 1.25rem 0 0.5rem 1.5rem;">Your Requests</h3>
+
+  @if (loadingHistory()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 40px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (!history() || history()!.content.length === 0) {
+    <div class="empty-state">No correction requests yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Requested Check-In</th>
+            <th>Requested Check-Out</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Reviewed By</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of history()!.content; track r.id) {
+            <tr>
+              <td>{{ r.attendanceDate }}</td>
+              <td>{{ r.requestType }}</td>
+              <td>{{ r.requestedCheckIn ? (r.requestedCheckIn | date:'short') : '-' }}</td>
+              <td>{{ r.requestedCheckOut ? (r.requestedCheckOut | date:'short') : '-' }}</td>
+              <td>{{ r.reason }}</td>
+              <td><app-status-badge [label]="r.status" [kind]="statusBadgeKind(r.status)"></app-status-badge></td>
+              <td>{{ r.reviewedByUsername || '-' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (history()!.totalPages > 1) {
+      <div class="pagination">
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() === 0" (click)="goToPage(page() - 1)">Previous</button>
+        <span>Page {{ page() + 1 }} of {{ history()!.totalPages }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() + 1 >= history()!.totalPages" (click)="goToPage(page() + 1)">Next</button>
+      </div>
+    }
+  }
+</div>

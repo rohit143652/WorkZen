@@ -1,35 +1,179 @@
 <div class="page-header">
   <div>
-    <h1>My Attendance</h1>
-    <p class="muted">One click to check yourself in for today. If your site requires it, you'll need to be within range - your device's location is only used for that check.</p>
+    <h1>Today's Attendance</h1>
+    <p class="muted">Check in when you start, check out when you're done - working hours, late-coming, and early-exit are all calculated automatically.</p>
   </div>
 </div>
 
-<div class="card" style="padding: 2rem; text-align: center; max-width: 480px; margin: 0 auto;">
+<div class="card" style="padding: 2rem; max-width: 560px; margin: 0 auto;">
   @if (loading()) {
-    <div class="skeleton" style="height: 120px;"></div>
+    <div class="skeleton" style="height: 160px;"></div>
   } @else {
-    @if (todayStatus(); as status) {
-      <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: var(--success-color);"></i>
-      <h2 style="margin: 0.75rem 0 0.25rem;">You're marked {{ status.status === 'PRESENT' ? 'Present' : status.status }} today</h2>
-      <p class="muted">{{ status.attendanceDate }}</p>
-      <p class="muted" style="font-size: 0.8rem;">Attendance can't be changed once marked - contact a Client Admin if this needs correcting.</p>
-    } @else {
-      <i class="bi bi-geo-alt" style="font-size: 3rem; color: var(--primary-color);"></i>
-      <h2 style="margin: 0.75rem 0 0.25rem;">You haven't checked in today</h2>
-      <p class="muted">Tap below to mark yourself Present for today.</p>
 
-      @if (locationError()) {
-        <p style="color: var(--warning-color); font-size: 0.82rem; margin-top: 0.5rem;">
-          <i class="bi bi-exclamation-triangle"></i> {{ locationError() }}
+    @if (!selfAttendanceEnabled()) {
+      <!-- Company Feature Configuration: Employee Self Attendance is OFF for this company - no
+           Check-In/Check-Out anywhere here, per spec ("Employees must not see Check In/Check Out
+           buttons"). The backend independently rejects checkIn()/checkOut()/markMine() too -
+           this is purely so the UI never even offers something that would be rejected anyway. -->
+      <div style="text-align: center;">
+        <i class="bi bi-slash-circle" style="font-size: 3rem; color: var(--muted-color);"></i>
+        <h2 style="margin: 0.75rem 0 0.25rem;">Self attendance isn't enabled</h2>
+        <p class="muted">Your company has this turned off - an Admin or Supervisor marks attendance for you.</p>
+      </div>
+
+    } @else if (isLegacyMarked()) {
+      <!-- Marked via the old one-click flow (no check-in/out times) -->
+      <div style="text-align: center;">
+        <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: var(--success-color);"></i>
+        <h2 style="margin: 0.75rem 0 0.25rem;">You're marked {{ todayStatus()!.status === 'PRESENT' ? 'Present' : todayStatus()!.status }} today</h2>
+        <p class="muted">{{ todayStatus()!.attendanceDate }}</p>
+        <p class="muted" style="font-size: 0.8rem;">Marked without check-in/check-out times - contact a Client Admin if this needs correcting.</p>
+      </div>
+
+    } @else if (!todayStatus()) {
+      <!-- Nothing recorded yet - offer check-in -->
+      <div style="text-align: center;">
+        <i class="bi bi-geo-alt" style="font-size: 3rem; color: var(--primary-color);"></i>
+        <h2 style="margin: 0.75rem 0 0.25rem;">You haven't checked in today</h2>
+        <p class="muted">Pick your work mode and check in to get started.</p>
+
+        <div class="form-field" style="max-width: 260px; margin: 1rem auto 0; text-align: left;">
+          <label>Work Mode</label>
+          <select [ngModel]="selectedWorkMode()" (ngModelChange)="selectedWorkMode.set($event)" name="workMode">
+            @for (m of workModes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
+          </select>
+        </div>
+
+        @if (locationError()) {
+          <p style="color: var(--warning-color); font-size: 0.82rem; margin-top: 0.75rem;">
+            <i class="bi bi-exclamation-triangle"></i> {{ locationError() }}
+          </p>
+        }
+
+        <button type="button" class="btn btn-primary" style="margin-top: 1.25rem; padding: 0.85rem 2rem; font-size: 1rem;"
+                [disabled]="working()" (click)="checkIn()">
+          @if (working()) { <span class="btn-spinner"></span> }
+          <i class="bi bi-box-arrow-in-right"></i> {{ working() ? 'Checking in...' : 'Check In' }}
+        </button>
+
+        <div style="margin-top: 1rem;">
+          <button type="button" class="btn btn-ghost" style="font-size: 0.82rem;" [disabled]="working()" (click)="markMineOldFlow()">
+            Just mark me Present today (no time-tracking)
+          </button>
+        </div>
+      </div>
+
+    } @else {
+      <!-- Checked in (working or completed) - the full status card -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <div>
+          <span class="badge" [class.badge-info]="isCheckedIn()" [class.badge-success]="isCompleted()">
+            {{ isCheckedIn() ? 'Working' : todayStatus()!.status }}
+          </span>
+          @if (todayStatus()!.late) {
+            <span class="badge badge-warning" style="margin-left: 0.4rem;">Late by {{ formatMinutes(todayStatus()!.lateMinutes) }}</span>
+          }
+          @if (todayStatus()!.earlyExit) {
+            <span class="badge badge-warning" style="margin-left: 0.4rem;">Early exit by {{ formatMinutes(todayStatus()!.earlyExitMinutes) }}</span>
+          }
+        </div>
+        <span class="muted" style="font-size: 0.82rem;">{{ todayStatus()!.attendanceDate }}</span>
+      </div>
+
+      <div class="stat-grid">
+        <div>
+          <div class="muted" style="font-size: 0.78rem;">Check-In</div>
+          <div style="font-weight: 600;">{{ todayStatus()!.checkInTime ? (todayStatus()!.checkInTime | date:'shortTime') : '-' }}</div>
+        </div>
+        <div>
+          <div class="muted" style="font-size: 0.78rem;">Check-Out</div>
+          <div style="font-weight: 600;">{{ todayStatus()!.checkOutTime ? (todayStatus()!.checkOutTime | date:'shortTime') : '-' }}</div>
+        </div>
+        <div>
+          <div class="muted" style="font-size: 0.78rem;">{{ isCheckedIn() ? 'Working Duration' : 'Gross Duration' }}</div>
+          <div style="font-weight: 600;">{{ isCheckedIn() ? liveWorkingDuration() : formatMinutes(todayStatus()!.grossWorkMinutes) }}</div>
+        </div>
+        <div>
+          <div class="muted" style="font-size: 0.78rem;">Break Duration</div>
+          <div style="font-weight: 600;">{{ formatMinutes(todayStatus()!.breakMinutes) }}</div>
+        </div>
+        @if (isCompleted()) {
+          <div>
+            <div class="muted" style="font-size: 0.78rem;">Net Working Duration</div>
+            <div style="font-weight: 600;">{{ formatMinutes(todayStatus()!.netWorkMinutes) }}</div>
+          </div>
+        }
+        <div>
+          <div class="muted" style="font-size: 0.78rem;">Work Mode</div>
+          <div style="font-weight: 600;">{{ todayStatus()!.workMode || '-' }}</div>
+        </div>
+        <div>
+          <div class="muted" style="font-size: 0.78rem;">Source</div>
+          <div style="font-weight: 600;">{{ todayStatus()!.attendanceSource || '-' }}</div>
+        </div>
+      </div>
+
+      @if (isCheckedIn()) {
+        @if (locationError()) {
+          <p style="color: var(--warning-color); font-size: 0.82rem;">
+            <i class="bi bi-exclamation-triangle"></i> {{ locationError() }}
+          </p>
+        }
+        <button type="button" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;"
+                [disabled]="working()" (click)="checkOut()">
+          @if (working()) { <span class="btn-spinner"></span> }
+          <i class="bi bi-box-arrow-right"></i> {{ working() ? 'Checking out...' : 'Check Out' }}
+        </button>
+      } @else {
+        <p class="muted" style="font-size: 0.82rem; text-align: center;">
+          Day complete. Spot something wrong? Use "Request a Correction" from the attendance history page.
         </p>
       }
+    }
+  }
+</div>
 
-      <button type="button" class="btn btn-primary" style="margin-top: 1.25rem; padding: 0.85rem 2rem; font-size: 1rem;"
-              [disabled]="marking()" (click)="markMyAttendance()">
-        @if (marking()) { <span class="btn-spinner"></span> }
-        <i class="bi bi-geo-alt-fill"></i> {{ marking() ? 'Checking your location...' : 'Mark My Attendance' }}
-      </button>
+<!-- History: if this account can also reach the full admin Attendance History page (needs
+     ATTENDANCE_READ), point there instead of duplicating it. Otherwise - the common case for a
+     plain self-service employee - show it right here, since they'd otherwise have no way to see
+     their own past attendance at all. -->
+<div class="card" style="max-width: 560px; margin: 1rem auto 0; padding: 1.25rem 1.5rem;">
+  @if (hasSeparateHistoryPage()) {
+    <a routerLink="/attendance/history" class="btn btn-secondary btn-sm">
+      <i class="bi bi-clock-history"></i> View Full Attendance History
+    </a>
+  } @else {
+    <button type="button" class="btn btn-secondary btn-sm" (click)="toggleHistory()">
+      <i class="bi bi-clock-history"></i> {{ showHistory() ? 'Hide' : 'View' }} My Attendance History (last 30 days)
+    </button>
+
+    @if (showHistory()) {
+      <div style="margin-top: 1rem;">
+        @if (loadingHistory()) {
+          <div class="skeleton" style="height: 140px;"></div>
+        } @else if (history().length === 0) {
+          <p class="muted" style="font-size: 0.85rem;">No attendance recorded in the last 30 days.</p>
+        } @else {
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Status</th><th>Check-In</th><th>Check-Out</th><th>Net Hours</th></tr>
+              </thead>
+              <tbody>
+                @for (h of history(); track h.id) {
+                  <tr>
+                    <td>{{ h.attendanceDate }}</td>
+                    <td><app-status-badge [label]="h.status" [kind]="historyBadgeKind(h.status)"></app-status-badge></td>
+                    <td>{{ h.checkInTime ? (h.checkInTime | date:'shortTime') : '-' }}</td>
+                    <td>{{ h.checkOutTime ? (h.checkOutTime | date:'shortTime') : '-' }}</td>
+                    <td>{{ h.netWorkMinutes != null ? formatMinutes(h.netWorkMinutes) : '-' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
     }
   }
 </div>

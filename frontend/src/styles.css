@@ -175,12 +175,21 @@ tbody tr:last-child td {
   color: var(--muted-color);
 }
 
-/* ---- Detail pages ---- */
+/* ---- Detail pages ----
+   Fixed 2-column grid (not auto-fit - see earlier note on why auto-fit caused inconsistent
+   widths). Everything pairs up two-per-row except .detail-card-full sections (currently just
+   Employee Advances), which span the full row. */
 .details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   align-items: start;
+}
+
+.detail-card-full { grid-column: 1 / -1; }
+
+@media (max-width: 860px) {
+  .details-grid { grid-template-columns: 1fr; }
 }
 
 .detail-card { padding: 1.5rem; }

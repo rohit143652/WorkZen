@@ -11,6 +11,7 @@ import { EmployeeAssignmentResponse } from '../../models/employee-assignment.mod
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
+import { AuthStateService } from '../../../core/services/auth-state.service';
 
 interface SelectableEmployee {
   employee: EmployeeResponse;
@@ -31,6 +32,7 @@ export class AssignmentBoardComponent {
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly route = inject(ActivatedRoute);
+  readonly authState = inject(AuthStateService);
 
   readonly sites = signal<SiteResponse[]>([]);
   /** Only ACTIVE sites are selectable for assignment - a deactivated site (and its

@@ -109,10 +109,14 @@ export class EmployeeDetailsComponent {
   readonly savingLogin = signal(false);
   readonly lastTempPassword = signal<string | null>(null);
 
+  /** minLength still applies IF something is typed, but nothing here is Validators.required at
+      the form level any more - required-ness depends on context (brand-new login setup needs
+      all three; reactivating an existing-but-disabled login needs none of them, see
+      submitEnableLogin()/reactivateLogin() below and the template's two branches). */
   readonly enableLoginForm = this.fb.nonNullable.group({
-    username: ['', [Validators.required, Validators.minLength(3)]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
-    roleId: [null as number | null, Validators.required]
+    username: ['', [Validators.minLength(3)]],
+    password: ['', [Validators.minLength(8)]],
+    roleId: [null as number | null]
   });
 
   private id!: number;
@@ -222,17 +226,66 @@ export class EmployeeDetailsComponent {
     this.showEnableLoginForm.set(true);
   }
 
+  /** One click for the common case: login was previously disabled, the User row (and its
+      username) still exists - just flip it back on. Sends an empty request; the backend
+      (EmployeeService.enableLogin(), when employee.hasLogin() is true) reactivates the existing
+      user, keeping the same username and role untouched, and also issues a fresh temporary
+      password automatically so re-enabling always comes with a password the employee actually
+      knows, exactly the "reuse old username, reset password" behavior that was asked for. */
+  reactivateLogin(): void {
+    this.savingLogin.set(true);
+    this.lastTempPassword.set(null);
+    this.employeeService.enableLogin(this.id, {}).subscribe({
+      next: emp => {
+        const username = emp.username;
+        this.employeeService.resetPassword(this.id).subscribe({
+          next: temp => {
+            this.employee.set(emp);
+            this.lastTempPassword.set(temp);
+            this.savingLogin.set(false);
+            this.toast.success(`Login re-enabled for ${username} with a new temporary password.`);
+          },
+          error: () => {
+            // Reactivation itself succeeded even if the follow-up password reset call failed -
+            // don't report the whole action as failed, just note the one part that didn't happen.
+            this.employee.set(emp);
+            this.savingLogin.set(false);
+            this.toast.warning('Login re-enabled, but the automatic password reset failed - use "Reset Password" separately.');
+          }
+        });
+      },
+      error: err => {
+        this.savingLogin.set(false);
+        this.toast.error(err.error?.message ?? 'Unable to enable login access.');
+      }
+    });
+  }
+
   submitEnableLogin(): void {
-    if (this.enableLoginForm.invalid) {
+    const raw = this.enableLoginForm.getRawValue();
+    const isBrandNewLogin = !this.employee()?.username;
+
+    // Required-ness depends on context: a genuinely new login setup (this employee never had
+    // one) needs all three; overriding credentials while reactivating an existing one does not
+    // (see the template's "Enable with different username/role..." path) - the form itself no
+    // longer enforces Validators.required since the SAME form serves both cases.
+    if (isBrandNewLogin && (!raw.username || !raw.password || !raw.roleId)) {
       this.enableLoginForm.markAllAsTouched();
+      this.toast.error('Username, password, and role are all required to set up a new login.');
       return;
     }
+
     this.savingLogin.set(true);
-    this.employeeService.enableLogin(this.id, this.enableLoginForm.getRawValue()).subscribe({
+    this.employeeService.enableLogin(this.id, {
+      username: raw.username || undefined,
+      password: raw.password || undefined,
+      roleId: raw.roleId || undefined
+    }).subscribe({
       next: emp => {
         this.employee.set(emp);
         this.showEnableLoginForm.set(false);
         this.savingLogin.set(false);
+        this.enableLoginForm.reset({ username: '', password: '', roleId: null });
         this.toast.success('Login access enabled successfully.');
       },
       error: err => {

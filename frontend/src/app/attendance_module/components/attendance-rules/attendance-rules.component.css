@@ -1,0 +1,9 @@
+.rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.25rem;
+}
+
+@media (max-width: 420px) {
+  .rules-grid { grid-template-columns: 1fr; }
+}

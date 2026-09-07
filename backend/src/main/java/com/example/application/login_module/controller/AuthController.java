@@ -107,12 +107,7 @@ public class AuthController {
     @GetMapping("/me")
     @Operation(summary = "Get the current authenticated user's profile")
     public ResponseEntity<ApiResponse<UserInfoResponse>> me(@AuthenticationPrincipal CustomUserPrincipal principal) {
-        UserInfoResponse info = new UserInfoResponse(
-                principal.getId(), principal.getUsername(), principal.getUser().getEmail(),
-                principal.getUser().getFirstName(), principal.getUser().getLastName(),
-                principal.getRoleNames().stream().toList(), principal.getPermissionNames().stream().toList(),
-                principal.getUser().isMustChangePassword());
-        return ResponseEntity.ok(ApiResponse.success("OK", info));
+        return ResponseEntity.ok(ApiResponse.success("OK", authService.toUserInfo(principal)));
     }
 
     private void setRefreshCookie(HttpServletResponse response, String token) {

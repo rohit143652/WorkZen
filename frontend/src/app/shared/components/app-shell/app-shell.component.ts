@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../../login_module/services/auth.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
+import { FeatureStateService } from '../../../core/services/feature-state.service';
 import { ToastContainerComponent } from '../toast/toast.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
-import { AttendanceService } from '../../../attendance_module/services/attendance.service';
+import { ToastService } from '../../services/toast.service';
 
 interface NavLeaf {
   label: string;
@@ -17,6 +18,14 @@ interface NavLeaf {
       like Leave that merge into one menu entry regardless of whether someone has the
       self-service permission, the manage permission, or (commonly) both. */
   permission?: string | string[];
+  /** Company Feature Configuration (see FeatureAccessService on the backend) - one code, or a
+      list where ALL must be enabled (AND, not OR - features are hierarchical: a sub-feature
+      like "Today's Attendance" needs both the parent module AND that specific capability on,
+      e.g. ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE']). Requires BOTH this AND
+      `permission` to pass - the company-level restriction is the upper bound, permission is the
+      role-level one, exactly matching how the backend combines the two (see AttendanceService
+      javadoc). */
+  feature?: string | string[];
 }
 
 interface NavGroup {
@@ -61,9 +70,13 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Attendance', icon: 'clock-history',
     children: [
-      { label: 'Mark Attendance', path: '/attendance', icon: 'check2-square', permission: 'ATTENDANCE_CREATE' },
-      { label: 'Attendance History', path: '/attendance/history', icon: 'clock-history', permission: 'ATTENDANCE_READ' },
-      { label: 'Monthly Attendance Report', path: '/attendance/monthly-report', icon: 'file-earmark-excel', permission: 'MONTHLY_PAYMENT_REPORT_EXPORT' },
+      { label: 'Mark Attendance', path: '/attendance', icon: 'check2-square', permission: 'ATTENDANCE_CREATE', feature: 'ATTENDANCE_MANAGEMENT' },
+      { label: "Today's Attendance", path: '/attendance/my', icon: 'geo-alt', permission: 'ATTENDANCE_SELF_MARK', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
+      { label: 'Attendance History', path: '/attendance/history', icon: 'clock-history', permission: 'ATTENDANCE_READ', feature: 'ATTENDANCE_MANAGEMENT' },
+      { label: 'Correction Requests', path: '/attendance/correction-requests', icon: 'pencil-square', permission: 'ATTENDANCE_CORRECTION_REQUEST', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
+      { label: 'Review Corrections', path: '/attendance/correction-review', icon: 'clipboard-check', permission: 'ATTENDANCE_CORRECTION_REVIEW', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
+      { label: 'Attendance Rules', path: '/attendance/rules', icon: 'sliders', permission: 'ATTENDANCE_RULES_MANAGE', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
+      { label: 'Monthly Attendance Report', path: '/attendance/monthly-report', icon: 'file-earmark-excel', permission: 'MONTHLY_PAYMENT_REPORT_EXPORT', feature: 'ATTENDANCE_MANAGEMENT' },
       { label: 'Calendar', path: '/calendar', icon: 'calendar-heart', permission: ['EVENT_READ', 'HOLIDAY_READ'] },
       { label: 'Leave Requests', path: '/leave-requests', icon: 'calendar-week', permission: ['LEAVE_REQUEST_READ', 'LEAVE_REQUEST_SELF_CREATE'] },
       { label: 'Paid Leave Settings', path: '/paid-leave/settings', icon: 'calendar2-check', permission: 'PAID_LEAVE_CONFIG_UPDATE' }
@@ -115,10 +128,11 @@ const DASHBOARD_ITEM: NavLeaf = { label: 'Dashboard', path: '/dashboard', icon: 
 })
 export class AppShellComponent {
   private readonly authService = inject(AuthService);
-  private readonly attendanceService = inject(AttendanceService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly authState = inject(AuthStateService);
+  private readonly featureState = inject(FeatureStateService);
   /** Defaults closed on narrow (tablet/mobile) screens so the drawer doesn't cover the whole
       page on first load - always effectively "open" on desktop since there's no way to close it
       there (the toggle button is hidden entirely above 900px, see the component CSS). */
@@ -161,68 +175,18 @@ export class AppShellComponent {
           this.sidebarOpen.set(false);
         }
       });
-
-    // Re-checks EVERY time the logged-in user changes (not just once, at component
-    // construction) - AppShellComponent is the root authenticated layout, so it can easily
-    // stay alive across a logout/login cycle if that transition doesn't fully tear the
-    // component down. Without this being reactive, "already marked today" from the PREVIOUS
-    // user's session could keep showing for whoever logs in next, even though they personally
-    // haven't marked anything - a stale-state bug, not a real cross-employee data leak (the
-    // backend always scopes strictly to whichever user's token made the request).
-    effect(() => {
-      const user = this.authState.currentUser();
-      if (!user || !this.authState.hasPermission('ATTENDANCE_SELF_MARK')) {
-        this.todayAttendanceMarked.set(false);
-        return;
-      }
-      this.attendanceService.myTodayStatus().subscribe({
-        next: status => this.todayAttendanceMarked.set(status !== null),
-        error: () => this.todayAttendanceMarked.set(false)
-      });
-    });
   }
 
-  // ---- "Mark My Attendance" - lives in the profile dropdown (see template) rather than its
-  // own page, since a one-click self check-in is exactly the kind of thing someone wants
-  // available from anywhere, not a destination you navigate to. ----
-  readonly todayAttendanceMarked = signal(false);
-  readonly showAttendanceConfirm = signal(false);
-  readonly markingAttendance = signal(false);
-  readonly attendanceMarkError = signal<string | null>(null);
-
-  openMarkAttendanceConfirm(): void {
-    this.profileMenuOpen.set(false);
-    this.attendanceMarkError.set(null);
-    this.showAttendanceConfirm.set(true);
+  /** Profile dropdown info card - see template. Falls back sensibly if first/last name aren't set (some accounts only ever had a username). */
+  fullName(user: { firstName?: string; lastName?: string; username: string }): string {
+    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+    return name || user.username;
   }
 
-  closeAttendanceConfirm(): void {
-    this.showAttendanceConfirm.set(false);
-  }
-
-  confirmMarkAttendance(): void {
-    this.markingAttendance.set(true);
-    this.attendanceMarkError.set(null);
-
-    const submit = (latitude?: number, longitude?: number) => {
-      this.attendanceService.markMine(latitude, longitude).subscribe({
-        next: () => {
-          this.markingAttendance.set(false);
-          this.todayAttendanceMarked.set(true);
-          this.showAttendanceConfirm.set(false);
-        },
-        error: err => {
-          this.markingAttendance.set(false);
-          this.attendanceMarkError.set(err.error?.message ?? 'Unable to mark your attendance.');
-        }
-      });
-    };
-
-    if (!navigator.geolocation) { submit(); return; }
-    navigator.geolocation.getCurrentPosition(
-      position => submit(position.coords.latitude, position.coords.longitude),
-      () => submit(),
-      { enableHighAccuracy: true, timeout: 8000 }
+  copyUserId(id: string | number): void {
+    navigator.clipboard?.writeText(String(id)).then(
+      () => this.toast.success('Copied to clipboard.'),
+      () => this.toast.error('Unable to copy - please copy it manually.')
     );
   }
 
@@ -242,9 +206,15 @@ export class AppShellComponent {
   }
 
   isVisible(item: NavLeaf): boolean {
-    if (!item.permission) return true;
-    const permissions = Array.isArray(item.permission) ? item.permission : [item.permission];
-    return permissions.some(p => this.authState.hasPermission(p));
+    if (item.permission) {
+      const permissions = Array.isArray(item.permission) ? item.permission : [item.permission];
+      if (!permissions.some(p => this.authState.hasPermission(p))) return false;
+    }
+    if (item.feature) {
+      const features = Array.isArray(item.feature) ? item.feature : [item.feature];
+      if (!features.every(f => this.featureState.isEnabled(f))) return false;
+    }
+    return true;
   }
 
   isExpanded(label: string): boolean {

@@ -1,7 +1,7 @@
 <div class="page-header">
   <div>
     <h1>Mark Attendance</h1>
-    <p class="muted">Mark today's or a previous date's attendance for actively-assigned employees. Once saved, a marked day cannot be changed except by a Client Admin.</p>
+    <p class="muted">Mark today's or a previous date's attendance for actively-assigned employees. Fill in both Check-In and Check-Out to auto-calculate working hours, late-coming, and status - leave them blank to just record the status you pick. Once saved, a marked day cannot be changed except by a Client Admin.</p>
   </div>
 </div>
 
@@ -46,7 +46,7 @@
       <!-- Desktop/tablet: full detail (Employee, Site, Status, Remarks, Marked By) - hidden below 768px. -->
       <table class="attendance-table-desktop">
         <thead>
-          <tr><th>Employee</th><th>Site</th><th>Status</th><th>Remarks</th><th>Marked By</th></tr>
+          <tr><th>Employee</th><th>Site</th><th>Status</th><th>Check-In</th><th>Check-Out</th><th>Remarks</th><th>Marked By</th></tr>
         </thead>
         <tbody>
           @for (row of filteredRows(); track row.employeeId) {
@@ -65,6 +65,24 @@
                     <option value="">Not marked</option>
                     @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
                   </select>
+                }
+              </td>
+              <td>
+                @if (row.existingRecord) {
+                  {{ row.existingRecord.checkInTime ? (row.existingRecord.checkInTime | date:'shortTime') : '-' }}
+                } @else {
+                  <input type="time" title="Optional - fill both Check-In and Check-Out to auto-calculate hours/late/status"
+                         [ngModel]="checkInByEmployee.get(row.employeeId) ?? ''"
+                         (ngModelChange)="checkInByEmployee.set(row.employeeId, $event)" class="time-input" />
+                }
+              </td>
+              <td>
+                @if (row.existingRecord) {
+                  {{ row.existingRecord.checkOutTime ? (row.existingRecord.checkOutTime | date:'shortTime') : '-' }}
+                } @else {
+                  <input type="time" title="Optional - fill both Check-In and Check-Out to auto-calculate hours/late/status"
+                         [ngModel]="checkOutByEmployee.get(row.employeeId) ?? ''"
+                         (ngModelChange)="checkOutByEmployee.set(row.employeeId, $event)" class="time-input" />
                 }
               </td>
               <td>

@@ -1,0 +1,27 @@
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.feature-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.feature-row:last-child { border-bottom: none; }
+
+.feature-row-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.feature-row-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+}

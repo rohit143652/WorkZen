@@ -5,6 +5,7 @@ import com.example.application.client_company_module.dto.ClientAdminLoginRequest
 import com.example.application.client_company_module.dto.ClientCompanyRequest;
 import com.example.application.client_company_module.dto.ClientCompanyResponse;
 import com.example.application.client_company_module.entity.ClientCompany;
+import com.example.application.client_company_module.feature.FeatureAccessService;
 import com.example.application.client_company_module.repository.ClientCompanyRepository;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
@@ -50,12 +51,14 @@ public class ClientCompanyService {
     private final RefreshTokenService refreshTokenService;
     private final AuditService auditService;
     private final StarterRoleSeederService starterRoleSeederService;
+    private final FeatureAccessService featureAccessService;
 
     public ClientCompanyService(ClientCompanyRepository clientCompanyRepository, UserRepository userRepository,
                                  RoleRepository roleRepository, EmployeeRepository employeeRepository,
                                  SiteRepository siteRepository,
                                  PasswordEncoder passwordEncoder, RefreshTokenService refreshTokenService,
-                                 AuditService auditService, StarterRoleSeederService starterRoleSeederService) {
+                                 AuditService auditService, StarterRoleSeederService starterRoleSeederService,
+                                 FeatureAccessService featureAccessService) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -65,6 +68,7 @@ public class ClientCompanyService {
         this.refreshTokenService = refreshTokenService;
         this.auditService = auditService;
         this.starterRoleSeederService = starterRoleSeederService;
+        this.featureAccessService = featureAccessService;
     }
 
     @Transactional(readOnly = true)
@@ -119,6 +123,7 @@ public class ClientCompanyService {
         // StarterRoleSeederService for exactly what each one gets, and why - all of it can be
         // renamed, re-permissioned, or deleted afterward like any other custom role.
         starterRoleSeederService.seedStandardRoles(saved.getId());
+        featureAccessService.seedDefaultsForNewCompany(saved.getId());
 
         if (request.isCreateClientAdminLogin()) {
             if (request.getClientAdminLogin() == null) {

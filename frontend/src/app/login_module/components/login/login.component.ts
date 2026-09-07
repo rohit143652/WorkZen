@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
+import { FeatureStateService } from '../../../core/services/feature-state.service';
 
 @Component({
   selector: 'app-login',
@@ -15,6 +16,7 @@ import { AuthService } from '../../services/auth.service';
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly featureState = inject(FeatureStateService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -60,6 +62,7 @@ export class LoginComponent {
     this.authService.login(this.form.getRawValue()).subscribe({
       next: response => {
         this.loading.set(false);
+        this.featureState.load();
         if (response.user.mustChangePassword) {
           this.router.navigateByUrl('/change-password', { replaceUrl: true });
           return;

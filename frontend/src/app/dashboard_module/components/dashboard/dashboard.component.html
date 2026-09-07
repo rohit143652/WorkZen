@@ -5,38 +5,132 @@
   </div>
 </div>
 
-@if (!hasAnalyticsPermission) {
-  <div class="card" style="padding: 1.5rem;">
-    <p class="muted" style="margin: 0;">
-      You're signed in. Ask an administrator for the DASHBOARD_ANALYTICS (or CLIENT_DASHBOARD_VIEW)
-      permission to see summary statistics here.
-    </p>
-  </div>
-} @else if (loading()) {
-  <div class="summary-grid">
-    @for (i of [1,2,3,4,5]; track i) {
-      <div class="card summary-card"><div class="skeleton" style="height: 60px;"></div></div>
+@if (canSelfMark() || hasEventReadPermission) {
+  <div class="dashboard-top-row">
+    @if (canSelfMark()) {
+      <div class="card checkin-card">
+        @if (loadingToday()) {
+          <div class="skeleton" style="height: 60px;"></div>
+        } @else if (!todayStatus() || !todayStatus()!.checkInTime) {
+          <div class="checkin-row">
+            <div>
+              <div class="section-title" style="margin: 0;"><i class="bi bi-geo-alt"></i> You haven't checked in today</div>
+              <p class="muted" style="margin: 0.2rem 0 0;">Tap Check In to get started.</p>
+            </div>
+            <button type="button" class="btn btn-primary" [disabled]="checkingInOut()" (click)="quickCheckIn()">
+              @if (checkingInOut()) { <span class="btn-spinner"></span> }
+              <i class="bi bi-box-arrow-in-right"></i> {{ checkingInOut() ? 'Checking in...' : 'Check In' }}
+            </button>
+          </div>
+        } @else if (!todayStatus()!.checkOutTime) {
+          <div class="checkin-row">
+            <div>
+              <span class="badge badge-info">Working</span>
+              <span class="muted" style="margin-left: 0.5rem;">since {{ todayStatus()!.checkInTime | date:'shortTime' }}</span>
+            </div>
+            <button type="button" class="btn btn-primary" [disabled]="checkingInOut()" (click)="quickCheckOut()">
+              @if (checkingInOut()) { <span class="btn-spinner"></span> }
+              <i class="bi bi-box-arrow-right"></i> {{ checkingInOut() ? 'Checking out...' : 'Check Out' }}
+            </button>
+          </div>
+        } @else {
+          <div class="checkin-row">
+            <div>
+              <span class="badge badge-success">{{ todayStatus()!.status }}</span>
+              <span class="muted" style="margin-left: 0.5rem;">
+                {{ todayStatus()!.checkInTime | date:'shortTime' }} - {{ todayStatus()!.checkOutTime | date:'shortTime' }}
+              </span>
+            </div>
+            <a routerLink="/attendance/my" class="btn btn-secondary btn-sm">View Details</a>
+          </div>
+        }
+      </div>
     }
-  </div>
-} @else if (error()) {
-  <div class="card error-state">Unable to load dashboard summary. Please try again.</div>
-} @else {
-  <div class="summary-grid">
-    @for (card of cards(); track card.label) {
-      <div class="card summary-card" [class]="'accent-' + card.kind">
-        <span class="summary-icon" [class]="'icon-' + card.kind"><i class="bi" [ngClass]="'bi-' + card.icon"></i></span>
-        <div class="summary-text">
-          <span class="summary-value">{{ card.value }}</span>
-          <span class="summary-label">{{ card.label }}</span>
-        </div>
+
+    @if (hasEventReadPermission) {
+      <div class="card meetings-card">
+        <div class="section-title" style="margin: 0 0 0.5rem;"><i class="bi bi-calendar-event"></i> Today's Meetings</div>
+        @if (loadingMeetings()) {
+          <div class="skeleton" style="height: 50px;"></div>
+        } @else if (todaysMeetings().length === 0) {
+          <p class="muted" style="margin: 0;">No meetings scheduled for today. Enjoy the quiet!</p>
+        } @else {
+          <ul class="meetings-list">
+            @for (m of todaysMeetings(); track m.id) {
+              <li>
+                <span class="meeting-time">{{ m.allDay ? 'All day' : (m.startAt | date:'shortTime') }}</span>
+                <span class="meeting-title">{{ m.title }}</span>
+                @if (m.location) { <span class="muted meeting-location"><i class="bi bi-geo-alt"></i> {{ m.location }}</span> }
+              </li>
+            }
+          </ul>
+        }
       </div>
     }
   </div>
 }
 
+@if (canSeeAttendanceOverview()) {
+  <div class="card dashboard-section">
+    <div class="section-title" style="margin-top: 0;"><i class="bi bi-people"></i> Today's Attendance Overview</div>
+    @if (loadingOverview()) {
+      <div class="skeleton" style="height: 100px;"></div>
+    } @else {
+      @if (overview(); as o) {
+      <div class="overview-counts">
+        <div class="overview-count"><span class="overview-value" style="color: var(--success-color);">{{ o.checkedInCount }}</span><span class="muted">Checked In</span></div>
+        <div class="overview-count"><span class="overview-value" style="color: var(--danger-color);">{{ o.notCheckedInCount }}</span><span class="muted">Not Checked In</span></div>
+        <div class="overview-count"><span class="overview-value" style="color: var(--info-color);">{{ o.onLeaveCount }}</span><span class="muted">On Leave</span></div>
+        <div class="overview-count"><span class="overview-value">{{ o.totalActiveEmployees }}</span><span class="muted">Total Active</span></div>
+      </div>
+
+      <div class="overview-lists">
+        <div>
+          <div class="overview-list-title">Checked In ({{ o.checkedInCount }})</div>
+          @if (o.checkedIn.length === 0) {
+            <p class="muted" style="font-size: 0.85rem;">No one has checked in yet.</p>
+          } @else {
+            <ul class="overview-list">
+              @for (e of o.checkedIn; track e.employeeId) {
+                <li>
+                  <div class="overview-employee">
+                    <span>{{ e.employeeCode }} - {{ e.employeeName }}</span>
+                    @if (e.late) { <span class="badge badge-warning" style="font-size: 0.68rem;">Late</span> }
+                  </div>
+                  <div class="overview-times">
+                    <span class="muted">In {{ e.checkInTime | date:'shortTime' }}</span>
+                    @if (e.checkOutTime) {
+                      <span class="muted">Out {{ e.checkOutTime | date:'shortTime' }}</span>
+                    } @else {
+                      <span class="badge badge-info working-badge"><span class="pulse-dot"></span> Working</span>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+        <div>
+          <div class="overview-list-title">Not Checked In ({{ o.notCheckedInCount }})</div>
+          @if (o.notCheckedIn.length === 0) {
+            <p class="muted" style="font-size: 0.85rem;">Everyone has checked in.</p>
+          } @else {
+            <ul class="overview-list">
+              @for (e of o.notCheckedIn; track e.employeeId) {
+                <li><span>{{ e.employeeCode }} - {{ e.employeeName }}</span></li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+      }
+    }
+  </div>
+}
+
 @if (hasSiteReadPermission) {
-  <div class="card" style="padding: 1.25rem; margin-top: 1.5rem;">
-    <div class="section-title" style="margin-top: 0;">Site Manpower Allocation</div>
+  <div class="card dashboard-section">
+    <div class="section-title" style="margin-top: 0;"><i class="bi bi-geo-alt"></i> Site Manpower Allocation</div>
     @if (loadingSites()) {
       <div class="skeleton" style="height: 120px;"></div>
     } @else if (sites().length === 0) {
@@ -61,5 +155,12 @@
         </table>
       </div>
     }
+  </div>
+}
+
+@if (hasNoWidgets()) {
+  <div class="card dashboard-empty-state">
+    <i class="bi bi-emoji-smile"></i>
+    <p>You're all signed in and ready to go. Use the menu on the left to get started.</p>
   </div>
 }

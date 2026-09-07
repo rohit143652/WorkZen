@@ -44,10 +44,23 @@ public class EventService {
         this.auditService = auditService;
     }
 
-    /** The employee's own visible events in a date/time range - used by the unified Calendar (day/week/month all just vary the range). */
+    /** The employee's own visible events in a date/time range - used by the unified Calendar (day/week/month all just vary the range).
+        Anyone holding EVENT_MANAGE_ALL (Client Admin, by default grant - see V100; deliberately
+        NOT the same as EVENT_CREATE, which almost every role holds) sees EVERY event in the
+        tenant here, including SELECTED_USERS meetings they created for other people but aren't
+        themselves a participant on - otherwise the person who scheduled a meeting couldn't see
+        their own meeting on the calendar afterward, which is the exact bug this exists to avoid.
+        Anyone without that permission still only sees ALL_USERS events plus SELECTED_USERS ones
+        they're personally invited to, unchanged - this never widens what a regular employee can see. */
     @Transactional(readOnly = true)
     public List<EventResponse> findVisibleInRange(Long viewerUserId, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
         Long tenantId = tenantContext.requireCurrentTenantId();
+
+        if (tenantContext.currentPermissionNames().contains("EVENT_MANAGE_ALL")) {
+            return eventRepository.findAllInRange(tenantId, rangeStart, rangeEnd).stream()
+                    .map(this::toResponse).toList();
+        }
+
         // A login without a linked Employee profile (e.g. an admin-only account) still gets a
         // working Calendar - they just never match a SELECTED_USERS participant list, since
         // there's no employee identity to check against. They still see every ALL_USERS event

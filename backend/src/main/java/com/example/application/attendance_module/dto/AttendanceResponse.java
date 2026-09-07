@@ -19,6 +19,50 @@ public class AttendanceResponse {
     private LocalDateTime updatedAt;
     /** Whether the CURRENT caller is allowed to edit this row (has ATTENDANCE_UPDATE) - lets the UI show/hide an Edit action without a second round trip. */
     private boolean editable;
+    private LocalDateTime checkInTime;
+    private LocalDateTime checkOutTime;
+    private Integer grossWorkMinutes;
+    private Integer breakMinutes;
+    private Integer netWorkMinutes;
+    private String workMode;
+    private String attendanceSource;
+    private boolean late;
+    private Integer lateMinutes;
+    private boolean earlyExit;
+    private Integer earlyExitMinutes;
+    private String createdByRole;
+    private String modifiedByRole;
+    private String modificationReason;
+
+    public String getCreatedByRole() { return createdByRole; }
+    public void setCreatedByRole(String createdByRole) { this.createdByRole = createdByRole; }
+    public String getModifiedByRole() { return modifiedByRole; }
+    public void setModifiedByRole(String modifiedByRole) { this.modifiedByRole = modifiedByRole; }
+    public String getModificationReason() { return modificationReason; }
+    public void setModificationReason(String modificationReason) { this.modificationReason = modificationReason; }
+
+    public LocalDateTime getCheckInTime() { return checkInTime; }
+    public void setCheckInTime(LocalDateTime checkInTime) { this.checkInTime = checkInTime; }
+    public LocalDateTime getCheckOutTime() { return checkOutTime; }
+    public void setCheckOutTime(LocalDateTime checkOutTime) { this.checkOutTime = checkOutTime; }
+    public Integer getGrossWorkMinutes() { return grossWorkMinutes; }
+    public void setGrossWorkMinutes(Integer grossWorkMinutes) { this.grossWorkMinutes = grossWorkMinutes; }
+    public Integer getBreakMinutes() { return breakMinutes; }
+    public void setBreakMinutes(Integer breakMinutes) { this.breakMinutes = breakMinutes; }
+    public Integer getNetWorkMinutes() { return netWorkMinutes; }
+    public void setNetWorkMinutes(Integer netWorkMinutes) { this.netWorkMinutes = netWorkMinutes; }
+    public String getWorkMode() { return workMode; }
+    public void setWorkMode(String workMode) { this.workMode = workMode; }
+    public String getAttendanceSource() { return attendanceSource; }
+    public void setAttendanceSource(String attendanceSource) { this.attendanceSource = attendanceSource; }
+    public boolean isLate() { return late; }
+    public void setLate(boolean late) { this.late = late; }
+    public Integer getLateMinutes() { return lateMinutes; }
+    public void setLateMinutes(Integer lateMinutes) { this.lateMinutes = lateMinutes; }
+    public boolean isEarlyExit() { return earlyExit; }
+    public void setEarlyExit(boolean earlyExit) { this.earlyExit = earlyExit; }
+    public Integer getEarlyExitMinutes() { return earlyExitMinutes; }
+    public void setEarlyExitMinutes(Integer earlyExitMinutes) { this.earlyExitMinutes = earlyExitMinutes; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

@@ -5,6 +5,12 @@
   </div>
 </div>
 
+@if (!authState.hasPermission('EMPLOYEE_ASSIGN')) {
+  <p class="muted" style="margin-top: -0.5rem; margin-bottom: 1rem;">
+    <i class="bi bi-info-circle"></i> You have view-only access here - contact an Admin to assign or end an assignment.
+  </p>
+}
+
 <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
   <div class="form-field" style="max-width: 400px;">
     <label>Site</label>
@@ -27,6 +33,7 @@
 
 @if (selectedSiteId()) {
   <div class="details-grid assignment-details-grid" style="gap: 1rem;">
+    @if (authState.hasPermission('EMPLOYEE_ASSIGN')) {
     <div class="card" style="padding: 1.25rem;">
       <div class="section-title">Select Employees to Assign</div>
       <input type="text" placeholder="Search employees..." [(ngModel)]="employeeSearch" (keyup.enter)="onSiteChange()" style="width:100%; margin-bottom: 0.75rem; padding:0.5rem 0.7rem; border:1px solid var(--border-color); border-radius:6px;" />
@@ -70,11 +77,12 @@
         </button>
       </div>
     </div>
+    }
 
-    <div class="card" style="padding: 1.25rem;">
+    <div class="card" [class.detail-card-full]="!authState.hasPermission('EMPLOYEE_ASSIGN')" style="padding: 1.25rem;">
       <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
         <span>Currently Assigned</span>
-        @if (assignedAtSite().length > 0) {
+        @if (assignedAtSite().length > 0 && authState.hasPermission('EMPLOYEE_ASSIGN')) {
           <label style="font-weight:400; font-size:0.8rem; display:flex; align-items:center; gap:0.35rem;">
             <input type="checkbox" (change)="toggleSelectAllAssigned($any($event.target).checked)" />
             Select all
@@ -86,25 +94,36 @@
         <div class="empty-state">No employees currently assigned.</div>
       } @else {
         @for (a of assignedAtSite(); track a.id) {
-          <label style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; cursor:pointer;">
-            <span style="display:flex; align-items:center; gap:0.6rem;">
-              <input type="checkbox" [checked]="isAssignmentSelected(a.id)" (change)="toggleAssignmentSelection(a.id)" />
+          @if (authState.hasPermission('EMPLOYEE_ASSIGN')) {
+            <label style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; cursor:pointer;">
+              <span style="display:flex; align-items:center; gap:0.6rem;">
+                <input type="checkbox" [checked]="isAssignmentSelected(a.id)" (change)="toggleAssignmentSelection(a.id)" />
+                {{ a.employeeCode }} &middot; {{ a.employeeName }}
+              </span>
+              <button type="button" class="btn btn-danger btn-sm" (click)="endAssignment(a.id)">End</button>
+            </label>
+          } @else {
+            <!-- Read-only viewer (e.g. Accountant, granted EMPLOYEE_ASSIGNMENT_READ but not
+                 EMPLOYEE_ASSIGN) - sees who's assigned, no selection checkbox or End action
+                 that would just fail against the backend anyway. -->
+            <div style="padding: 0.5rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem;">
               {{ a.employeeCode }} &middot; {{ a.employeeName }}
-            </span>
-            <button type="button" class="btn btn-danger btn-sm" (click)="endAssignment(a.id)">End</button>
-          </label>
+            </div>
+          }
         }
 
-        <div class="form-actions" style="justify-content: flex-start;">
-          <span class="muted">{{ selectedAssignmentIds().size }} selected</span>
-          <button
-            type="button"
-            class="btn btn-danger btn-sm"
-            [disabled]="selectedAssignmentIds().size === 0 || endingSelected()"
-            (click)="endSelectedAssignments()">
-            {{ endingSelected() ? 'Ending...' : 'End Selected' }}
-          </button>
-        </div>
+        @if (authState.hasPermission('EMPLOYEE_ASSIGN')) {
+          <div class="form-actions" style="justify-content: flex-start;">
+            <span class="muted">{{ selectedAssignmentIds().size }} selected</span>
+            <button
+              type="button"
+              class="btn btn-danger btn-sm"
+              [disabled]="selectedAssignmentIds().size === 0 || endingSelected()"
+              (click)="endSelectedAssignments()">
+              {{ endingSelected() ? 'Ending...' : 'End Selected' }}
+            </button>
+          </div>
+        }
       }
     </div>
   </div>

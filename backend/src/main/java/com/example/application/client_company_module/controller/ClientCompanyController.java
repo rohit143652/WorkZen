@@ -2,6 +2,10 @@ package com.example.application.client_company_module.controller;
 
 import com.example.application.client_company_module.dto.ClientCompanyRequest;
 import com.example.application.client_company_module.dto.ClientCompanyResponse;
+import com.example.application.client_company_module.dto.CompanyFeatureResponse;
+import com.example.application.client_company_module.dto.UpdateCompanyFeaturesRequest;
+import com.example.application.client_company_module.feature.FeatureAccessService;
+import com.example.application.client_company_module.feature.FeatureCode;
 import com.example.application.client_company_module.service.ClientCompanyService;
 import com.example.application.common.response.ApiResponse;
 import com.example.application.login_module.security.CustomUserPrincipal;
@@ -14,6 +18,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * SUPER_ADMIN-only tenant management. Every write here is the one place in
  * the system that legitimately creates/changes a Client Company - everything
@@ -25,9 +31,11 @@ import org.springframework.web.bind.annotation.*;
 public class ClientCompanyController {
 
     private final ClientCompanyService clientCompanyService;
+    private final FeatureAccessService featureAccessService;
 
-    public ClientCompanyController(ClientCompanyService clientCompanyService) {
+    public ClientCompanyController(ClientCompanyService clientCompanyService, FeatureAccessService featureAccessService) {
         this.clientCompanyService = clientCompanyService;
+        this.featureAccessService = featureAccessService;
     }
 
     @GetMapping
@@ -84,5 +92,27 @@ public class ClientCompanyController {
                                                                            HttpServletRequest httpRequest) {
         return ResponseEntity.ok(ApiResponse.success("Client company deactivated successfully",
                 clientCompanyService.setStatus(id, "INACTIVE", principal.getId(), httpRequest)));
+    }
+
+    /** Super Admin "Manage Features" screen - current on/off state for every known feature code, grouped by category. */
+    @GetMapping("/{id}/features")
+    @PreAuthorize("hasAuthority('CLIENT_COMPANY_READ')")
+    public ResponseEntity<ApiResponse<CompanyFeatureResponse>> getFeatures(@PathVariable Long id) {
+        CompanyFeatureResponse response = new CompanyFeatureResponse();
+        response.setFeatures(featureAccessService.getFeatureMap(id));
+        response.setCategories(FeatureCode.CATALOG.stream()
+                .map(c -> new CompanyFeatureResponse.CategoryDto(c.label(), c.codes()))
+                .toList());
+        response.setEnforcedCodes(FeatureCode.ENFORCED);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    @PutMapping("/{id}/features")
+    @PreAuthorize("hasAuthority('CLIENT_COMPANY_UPDATE')")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> updateFeatures(
+            @PathVariable Long id, @Valid @RequestBody UpdateCompanyFeaturesRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("Company features updated successfully",
+                featureAccessService.updateFeatures(id, request.getFeatures(), principal.getId())));
     }
 }

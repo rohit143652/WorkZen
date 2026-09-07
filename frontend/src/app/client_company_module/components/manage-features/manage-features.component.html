@@ -1,0 +1,50 @@
+<div class="page-header">
+  <div>
+    <h1>Manage Features{{ company() ? ' - ' + company()!.companyName : '' }}</h1>
+    <p class="muted">
+      This is the <strong>company-wide master switch</strong> - it decides what this company can use at all.
+      Turning something off here hides it and blocks its APIs for <em>every</em> role in the company, no exceptions.
+    </p>
+    <p class="muted">
+      It works together with <strong>Roles</strong> (inside the company, under Administration): Roles decide
+      <em>who</em> can use a feature; this page decides <em>whether the feature exists for the company at all</em>.
+      Both must say yes - if a feature is off here, no role's permission can turn it back on.
+    </p>
+  </div>
+  <a routerLink="/clients" class="btn btn-secondary">Back to Client Companies</a>
+</div>
+
+@if (loading()) {
+  <div class="card" style="padding: 1.5rem;"><div class="skeleton" style="height: 320px;"></div></div>
+} @else {
+  @if (data(); as d) {
+  @for (category of d.categories; track category.label) {
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.25rem;">
+      <div class="section-title" style="margin-top: 0;">{{ category.label }}</div>
+      <div class="feature-list">
+        @for (code of category.codes; track code) {
+          <div class="feature-row">
+            <label class="toggle-switch">
+              <input type="checkbox" [checked]="isChecked(code)" (change)="toggle(code)" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div class="feature-row-text">
+              <span class="feature-row-label">{{ label(code) }}</span>
+              @if (!isEnforced(code)) {
+                <span class="badge badge-muted" style="font-size: 0.68rem;" title="Toggleable and stored, but no part of the app currently checks this flag yet.">Not yet enforced</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="form-actions" style="border: none; padding: 0;">
+    <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">
+      @if (saving()) { <span class="btn-spinner"></span> }
+      {{ saving() ? 'Saving...' : 'Save Changes' }}
+    </button>
+  </div>
+  }
+}

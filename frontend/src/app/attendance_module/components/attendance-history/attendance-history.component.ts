@@ -52,6 +52,7 @@ export class AttendanceHistoryComponent {
       case 'ABSENT': return 'danger';
       case 'HALF_DAY': return 'warning';
       case 'ON_LEAVE': return 'info';
+      case 'WORKING': return 'info';
     }
   }
 

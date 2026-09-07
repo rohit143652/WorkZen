@@ -4,8 +4,10 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResult } from '../../core/models/page.model';
 import {
-  AttendanceResponse, BulkMarkAttendanceRequest, BulkMarkAttendanceResult,
-  EmployeeAttendanceOption, MarkAttendanceRequest, MonthlyAttendanceReportResponse, UpdateAttendanceRequest
+  AttendanceResponse, AttendanceRuleConfigResponse, BulkMarkAttendanceRequest, BulkMarkAttendanceResult,
+  CheckInRequest, CheckOutRequest, CorrectionRequestCreateRequest, CorrectionRequestResponse,
+  CorrectionReviewRequest, EmployeeAttendanceOption, MarkAttendanceRequest, MonthlyAttendanceReportResponse,
+  TodayAttendanceOverviewResponse, UpdateAttendanceRequest, UpdateAttendanceRuleConfigRequest
 } from '../models/attendance.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
@@ -39,6 +41,69 @@ export class AttendanceService {
     return this.http.post<ApiEnvelope<AttendanceResponse>>(`${this.baseUrl}/mine`, { latitude, longitude }).pipe(map(e => e.data));
   }
 
+  /** Today's centralized attendance record for the logged-in employee - check-in/out times,
+      working duration, late/early-exit, work mode, source. Null (as data) if nothing recorded yet. */
+  today(): Observable<AttendanceResponse | null> {
+    return this.http.get<ApiEnvelope<AttendanceResponse | null>>(`${this.baseUrl}/today`).pipe(map(e => e.data));
+  }
+
+  checkIn(request: CheckInRequest): Observable<AttendanceResponse> {
+    return this.http.post<ApiEnvelope<AttendanceResponse>>(`${this.baseUrl}/check-in`, request).pipe(map(e => e.data));
+  }
+
+  checkOut(request: CheckOutRequest): Observable<AttendanceResponse> {
+    return this.http.post<ApiEnvelope<AttendanceResponse>>(`${this.baseUrl}/check-out`, request).pipe(map(e => e.data));
+  }
+
+  /** Company-wide "who's checked in today" snapshot for the admin dashboard widget. */
+  todayOverview(): Observable<TodayAttendanceOverviewResponse> {
+    return this.http.get<ApiEnvelope<TodayAttendanceOverviewResponse>>(`${this.baseUrl}/today-overview`).pipe(map(e => e.data));
+  }
+
+  /** Company attendance rules (office hours, grace period, thresholds, weekly off) - readable by anyone who can see attendance. */
+  getRuleConfig(): Observable<AttendanceRuleConfigResponse> {
+    return this.http.get<ApiEnvelope<AttendanceRuleConfigResponse>>(`${this.baseUrl}/rules`).pipe(map(e => e.data));
+  }
+
+  updateRuleConfig(request: UpdateAttendanceRuleConfigRequest): Observable<AttendanceRuleConfigResponse> {
+    return this.http.put<ApiEnvelope<AttendanceRuleConfigResponse>>(`${this.baseUrl}/rules`, request).pipe(map(e => e.data));
+  }
+
+  /** Employee requesting a fix to their own attendance for a given date. */
+  createCorrectionRequest(request: CorrectionRequestCreateRequest): Observable<CorrectionRequestResponse> {
+    return this.http
+      .post<ApiEnvelope<CorrectionRequestResponse>>(`${this.baseUrl}/correction-requests`, request)
+      .pipe(map(e => e.data));
+  }
+
+  myCorrectionRequests(page: number, size: number): Observable<PageResult<CorrectionRequestResponse>> {
+    const params = new HttpParams().set('page', page).set('size', size).set('sort', 'createdAt,desc');
+    return this.http
+      .get<ApiEnvelope<PageResult<CorrectionRequestResponse>>>(`${this.baseUrl}/correction-requests/mine`, { params })
+      .pipe(map(e => e.data));
+  }
+
+  /** Admin/HR review queue - status: 'PENDING' | 'APPROVED' | 'REJECTED' | undefined (all). */
+  allCorrectionRequests(status: string | undefined, page: number, size: number): Observable<PageResult<CorrectionRequestResponse>> {
+    let params = new HttpParams().set('page', page).set('size', size).set('sort', 'createdAt,desc');
+    if (status) params = params.set('status', status);
+    return this.http
+      .get<ApiEnvelope<PageResult<CorrectionRequestResponse>>>(`${this.baseUrl}/correction-requests`, { params })
+      .pipe(map(e => e.data));
+  }
+
+  approveCorrectionRequest(id: number, request: CorrectionReviewRequest): Observable<CorrectionRequestResponse> {
+    return this.http
+      .post<ApiEnvelope<CorrectionRequestResponse>>(`${this.baseUrl}/correction-requests/${id}/approve`, request)
+      .pipe(map(e => e.data));
+  }
+
+  rejectCorrectionRequest(id: number, request: CorrectionReviewRequest): Observable<CorrectionRequestResponse> {
+    return this.http
+      .post<ApiEnvelope<CorrectionRequestResponse>>(`${this.baseUrl}/correction-requests/${id}/reject`, request)
+      .pipe(map(e => e.data));
+  }
+
   update(id: number, request: UpdateAttendanceRequest): Observable<AttendanceResponse> {
     return this.http.put<ApiEnvelope<AttendanceResponse>>(`${this.baseUrl}/${id}`, request).pipe(map(e => e.data));
   }
@@ -47,6 +112,14 @@ export class AttendanceService {
     const params = new HttpParams().set('from', from).set('to', to);
     return this.http
       .get<ApiEnvelope<AttendanceResponse[]>>(`${this.baseUrl}/employee/${employeeId}`, { params })
+      .pipe(map(e => e.data));
+  }
+
+  /** "My Attendance History" - for anyone with ATTENDANCE_SELF_MARK, even without ATTENDANCE_READ. Always the caller's own records. */
+  myHistory(from: string, to: string): Observable<AttendanceResponse[]> {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http
+      .get<ApiEnvelope<AttendanceResponse[]>>(`${this.baseUrl}/mine/history`, { params })
       .pipe(map(e => e.data));
   }
 

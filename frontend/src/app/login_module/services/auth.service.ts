@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { AuthStateService } from '../../core/services/auth-state.service';
 import { AuthenticatedUser } from '../../core/models/user.model';
 import { TokenService } from '../../core/services/token.service';
+import { FeatureStateService } from '../../core/services/feature-state.service';
 import { LoginRequest } from '../models/login-request.model';
 import { LoginResponse } from '../models/login-response.model';
 
@@ -32,6 +33,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenService = inject(TokenService);
   private readonly authState = inject(AuthStateService);
+  private readonly featureState = inject(FeatureStateService);
 
   private readonly baseUrl = `${environment.apiUrl}/auth`;
 
@@ -133,6 +135,7 @@ export class AuthService {
   clearLocalSession(): void {
     this.tokenService.clearTokens();
     this.authState.clearUser();
+    this.featureState.clear();
     if (Capacitor.isNativePlatform()) {
       Preferences.remove({ key: NATIVE_REFRESH_TOKEN_KEY });
     }

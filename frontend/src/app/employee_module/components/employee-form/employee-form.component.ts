@@ -18,6 +18,7 @@ import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { EmployeeResponse } from '../../models/employee.model';
 import { UserManagementService } from '../../../user_module/services/user-management.service';
+import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
 
 function passwordsMatchValidator(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password')?.value;
@@ -42,6 +43,7 @@ export class EmployeeFormComponent {
   private readonly salaryStructureService = inject(SalaryStructureService);
   private readonly toast = inject(ToastService);
   private readonly userManagementService = inject(UserManagementService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -55,7 +57,15 @@ export class EmployeeFormComponent {
   readonly loading = signal(false);
   readonly isEditMode = signal(false);
   readonly employeeId = signal<number | null>(null);
-  readonly existingLoginEnabled = signal(false);
+  /** True whenever a User row exists for this employee, active or not (backend sets userId
+      whenever hasLogin() is true, regardless of the active flag - see EmployeeService.toResponse()).
+      Kept separate from loginIsActive below because "has an account" and "that account is
+      currently switched on" are genuinely different questions - conflating them into one
+      boolean previously hid the ability to re-enable a disabled login from this page entirely. */
+  readonly hasLoginAccount = signal(false);
+  readonly loginIsActive = signal(false);
+  readonly existingUsername = signal<string | null>(null);
+  readonly togglingLogin = signal(false);
 
   // Only used in edit mode, when the employee has no login yet - see openEnableLoginForm().
   readonly showEnableLoginForm = signal(false);
@@ -203,7 +213,9 @@ export class EmployeeFormComponent {
   }
 
   private patchForm(emp: EmployeeResponse): void {
-    this.existingLoginEnabled.set(!!emp.userId);
+    this.hasLoginAccount.set(!!emp.userId);
+    this.loginIsActive.set(emp.loginEnabled);
+    this.existingUsername.set(emp.username ?? null);
 
     // If this employee's current department/designation was since deactivated (or is a
     // legacy free-text value predating the master lists), it won't be in the active-only
@@ -336,13 +348,82 @@ export class EmployeeFormComponent {
     this.autoGenerateUsername(this.enableLoginForm.controls.username);
   }
 
-  onLoginToggle(checked: boolean): void {
-    if (checked) {
-      this.openEnableLoginForm();
-    } else {
-      this.showEnableLoginForm.set(false);
-      this.enableLoginForm.reset({ roleId: null });
+  /**
+   * The one toggle switch now has to cover three real states instead of two:
+   *  - never had a login at all -> flipping on opens the full new-account form (username/
+   *    password/confirm/role, same as before).
+   *  - has one, currently disabled -> flipping on reactivates it (see reactivateLogin()) -
+   *    exactly the same "reuse the old username" fix just made on the Employee Details page,
+   *    now also reachable from here instead of only from there.
+   *  - has one, currently active -> flipping off disables it (with a confirmation, since this
+   *    immediately signs the employee out).
+   */
+  async onLoginToggle(checked: boolean): Promise<void> {
+    if (!this.hasLoginAccount()) {
+      if (checked) {
+        this.openEnableLoginForm();
+      } else {
+        this.showEnableLoginForm.set(false);
+        this.enableLoginForm.reset({ roleId: null });
+      }
+      return;
     }
+
+    if (checked && !this.loginIsActive()) {
+      await this.reactivateLogin();
+      return;
+    }
+
+    if (!checked && this.loginIsActive()) {
+      const id = this.employeeId();
+      if (!id) return;
+      const ok = await this.confirmDialog.ask({
+        title: 'Disable login access?',
+        message: 'This will immediately sign the employee out and prevent further logins. Continue?',
+        confirmLabel: 'Disable',
+        danger: true
+      });
+      if (!ok) return;
+      this.togglingLogin.set(true);
+      this.employeeService.disableLogin(id).subscribe({
+        next: () => {
+          this.loginIsActive.set(false);
+          this.togglingLogin.set(false);
+          this.toast.success('Login access disabled successfully.');
+        },
+        error: err => {
+          this.togglingLogin.set(false);
+          this.toast.error(err.error?.message ?? 'Unable to disable login access.');
+        }
+      });
+    }
+  }
+
+  /** Reuses the old username, reactivates the existing account, and immediately issues a fresh
+      temporary password - same behavior as Employee Details' "Enable Login (same username)". */
+  private async reactivateLogin(): Promise<void> {
+    const id = this.employeeId();
+    if (!id) return;
+    this.togglingLogin.set(true);
+    this.employeeService.enableLogin(id, {}).subscribe({
+      next: () => {
+        this.loginIsActive.set(true);
+        this.employeeService.resetPassword(id).subscribe({
+          next: temp => {
+            this.togglingLogin.set(false);
+            this.toast.success(`Login re-enabled for ${this.existingUsername()}. Temporary password: ${temp} (shown once - share it securely).`);
+          },
+          error: () => {
+            this.togglingLogin.set(false);
+            this.toast.warning('Login re-enabled, but the automatic password reset failed - use the Employee Details page to reset it.');
+          }
+        });
+      },
+      error: err => {
+        this.togglingLogin.set(false);
+        this.toast.error(err.error?.message ?? 'Unable to enable login access.');
+      }
+    });
   }
 
   submitEnableLogin(): void {
@@ -357,9 +438,11 @@ export class EmployeeFormComponent {
 
     this.savingLogin.set(true);
     this.employeeService.enableLogin(id, payload).subscribe({
-      next: () => {
+      next: emp => {
         this.toast.success('Login access enabled successfully.');
-        this.existingLoginEnabled.set(true);
+        this.hasLoginAccount.set(true);
+        this.loginIsActive.set(true);
+        this.existingUsername.set(emp.username ?? payload.username ?? null);
         this.showEnableLoginForm.set(false);
         this.savingLogin.set(false);
       },

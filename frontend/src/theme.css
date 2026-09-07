@@ -273,6 +273,15 @@ body { font-family: var(--font-family); }
   width: 140px;
 }
 
+/* Optional Check-In/Check-Out time inputs on the Mark Attendance table - narrower than
+   .remarks-input since a time value is always a fixed short shape (HH:MM). */
+.time-input {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  width: 100px;
+}
+
 /* ---- Forms ---- */
 .form-field { margin-bottom: 1.15rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .form-field label { font-size: 0.82rem; font-weight: 600; color: var(--text-color); }

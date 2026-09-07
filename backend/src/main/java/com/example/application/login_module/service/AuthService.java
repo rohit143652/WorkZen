@@ -3,6 +3,7 @@ package com.example.application.login_module.service;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.AccountLockedException;
 import com.example.application.common.exception.BadRequestException;
+import com.example.application.employee_module.repository.EmployeeRepository;
 import com.example.application.login_module.dto.*;
 import com.example.application.login_module.entity.RefreshToken;
 import com.example.application.login_module.entity.User;
@@ -36,6 +37,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
     private final AuditService auditService;
+    private final EmployeeRepository employeeRepository;
 
     public AuthService(AuthenticationManager authenticationManager,
                         UserRepository userRepository,
@@ -43,7 +45,8 @@ public class AuthService {
                         JwtService jwtService,
                         RefreshTokenService refreshTokenService,
                         LoginAttemptService loginAttemptService,
-                        AuditService auditService) {
+                        AuditService auditService,
+                        EmployeeRepository employeeRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -51,6 +54,7 @@ public class AuthService {
         this.refreshTokenService = refreshTokenService;
         this.loginAttemptService = loginAttemptService;
         this.auditService = auditService;
+        this.employeeRepository = employeeRepository;
     }
 
     @Transactional
@@ -155,11 +159,14 @@ public class AuthService {
         auditService.log(userId, "PASSWORD_CHANGED", "Password changed successfully", httpRequest);
     }
 
-    private UserInfoResponse toUserInfo(CustomUserPrincipal principal) {
+    public UserInfoResponse toUserInfo(CustomUserPrincipal principal) {
         User user = principal.getUser();
+        String employeeCode = employeeRepository.findByUserId(user.getId())
+                .map(e -> e.getEmployeeCode())
+                .orElse(null);
         return new UserInfoResponse(
                 user.getId(), user.getUsername(), user.getEmail(), user.getFirstName(), user.getLastName(),
                 List.copyOf(principal.getRoleNames()), List.copyOf(principal.getPermissionNames()),
-                user.isMustChangePassword());
+                user.isMustChangePassword(), employeeCode);
     }
 }

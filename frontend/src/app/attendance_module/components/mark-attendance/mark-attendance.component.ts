@@ -40,6 +40,12 @@ export class MarkAttendanceComponent {
   /** Per-row selection while marking - keyed by employeeId, reset whenever the date/site filter changes. */
   selections = new Map<number, AttendanceStatus>();
   remarksByEmployee = new Map<number, string>();
+  /** Optional - supplying BOTH for a row computes hours/late/early-exit/status via the same
+      engine a self check-out uses (see AttendanceService.markOne()), instead of just storing
+      the hand-picked status with no times at all. Leave either blank for the old "status only,
+      no times" behavior - nothing forces these to be filled in. */
+  checkInByEmployee = new Map<number, string>();
+  checkOutByEmployee = new Map<number, string>();
 
   constructor() {
     this.siteService.list().subscribe(res => this.sites.set(res.content));
@@ -61,6 +67,8 @@ export class MarkAttendanceComponent {
     this.loading.set(true);
     this.selections.clear();
     this.remarksByEmployee.clear();
+    this.checkInByEmployee.clear();
+    this.checkOutByEmployee.clear();
     this.attendanceService.markable(this.selectedDate, this.selectedSiteId).subscribe({
       next: rows => { this.rows.set(rows); this.loading.set(false); },
       error: () => { this.loading.set(false); this.toast.error('Unable to load employees.'); }
@@ -90,6 +98,7 @@ export class MarkAttendanceComponent {
       case 'ABSENT': return 'danger';
       case 'HALF_DAY': return 'warning';
       case 'ON_LEAVE': return 'info';
+      case 'WORKING': return 'info';
     }
   }
 
@@ -138,11 +147,17 @@ export class MarkAttendanceComponent {
   async saveAll(): Promise<void> {
     const entries = this.rows()
       .filter(row => !row.existingRecord && this.selections.has(row.employeeId))
-      .map(row => ({
-        employeeId: row.employeeId,
-        status: this.selections.get(row.employeeId)!,
-        remarks: this.remarksByEmployee.get(row.employeeId) || undefined
-      }));
+      .map(row => {
+        const checkIn = this.checkInByEmployee.get(row.employeeId);
+        const checkOut = this.checkOutByEmployee.get(row.employeeId);
+        return {
+          employeeId: row.employeeId,
+          status: this.selections.get(row.employeeId)!,
+          remarks: this.remarksByEmployee.get(row.employeeId) || undefined,
+          checkInTime: checkIn ? `${this.selectedDate}T${checkIn}:00` : undefined,
+          checkOutTime: checkOut ? `${this.selectedDate}T${checkOut}:00` : undefined
+        };
+      });
 
     if (entries.length === 0) {
       this.toast.warning('Select a status for at least one employee first.');

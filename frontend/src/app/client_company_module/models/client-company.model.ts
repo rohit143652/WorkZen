@@ -3,6 +3,21 @@ export interface ClientAdminLoginRequest {
   password: string;
 }
 
+export interface FeatureCategory {
+  label: string;
+  codes: string[];
+}
+
+export interface CompanyFeatureResponse {
+  features: Record<string, boolean>;
+  categories: FeatureCategory[];
+  enforcedCodes: string[];
+}
+
+export interface UpdateCompanyFeaturesRequest {
+  features: Record<string, boolean>;
+}
+
 export interface ClientCompanyRequest {
   companyCode: string;
   companyName: string;

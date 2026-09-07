@@ -9,6 +9,7 @@ import { groupPermissionsByCategory } from '../../../permission_module/utils/per
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { ToastService } from '../../../shared/services/toast.service';
+import { FeatureStateService } from '../../../core/services/feature-state.service';
 
 /** Mirrors RoleService.UNRESTRICTED_PERMISSIONS on the backend exactly - permissions any ROLE_UPDATE holder can freely grant/revoke on ANY role, including their own, regardless of holding it themselves. */
 const UNRESTRICTED_PERMISSIONS = new Set<string>(['PAYSLIP_SELF_VIEW']);
@@ -25,6 +26,59 @@ export class RoleListComponent {
   private readonly permissionService = inject(PermissionService);
   private readonly toast = inject(ToastService);
   readonly authState = inject(AuthStateService);
+  readonly featureState = inject(FeatureStateService);
+
+  /**
+   * Company Feature Configuration (Super Admin, "Manage Features") is the upper-level control -
+   * a role can hold ATTENDANCE_SELF_MARK, but that's meaningless if the company itself has
+   * Employee Self Attendance switched off. This maps the permissions where that distinction
+   * actually matters to the company feature code(s) they depend on, purely so this screen can
+   * show a Client Admin (who usually can't see the Manage Features screen at all) WHY a
+   * permission they've granted doesn't seem to do anything - not a security boundary, just a
+   * "here's the other half of the picture" hint. */
+  private readonly PERMISSION_FEATURE_DEPENDENCIES: Record<string, { codes: string[]; note: string }> = {
+    ATTENDANCE_SELF_MARK: {
+      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+      note: 'Check-in/check-out only works if your company has Attendance Management AND Employee Self Attendance turned on.'
+    },
+    ATTENDANCE_CREATE: {
+      codes: ['ATTENDANCE_MANAGEMENT'],
+      note: 'Manually marking attendance only works if your company has Attendance Management turned on.'
+    },
+    ATTENDANCE_CORRECTION_REQUEST: {
+      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+      note: 'Correction requests only work if Employee Self Attendance is on (there is nothing self-service to correct otherwise).'
+    },
+    ATTENDANCE_CORRECTION_REVIEW: {
+      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+      note: 'Reviewing correction requests only matters if Employee Self Attendance is on.'
+    },
+    ATTENDANCE_RULES_MANAGE: {
+      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+      note: 'Attendance rules (office hours, grace period, etc.) only apply if Employee Self Attendance is on.'
+    }
+  };
+
+  /** Helper for the template - featureWarningsForGroup() takes plain names, not the group's {id, name, ...} objects. */
+  groupPermissionNames(group: { permissions: { name: string }[] }): string[] {
+    return group.permissions.map(p => p.name);
+  }
+
+  /** Any dependency notes relevant to a permission GROUP (called once per category header, not per checkbox, so this doesn't repeat itself once per row). Returns only the ones where the underlying company feature is currently OFF - a permission whose feature is already on has nothing worth flagging. */
+  featureWarningsForGroup(permissionNames: string[]): string[] {
+    const seen = new Set<string>();
+    const warnings: string[] = [];
+    for (const name of permissionNames) {
+      const dep = this.PERMISSION_FEATURE_DEPENDENCIES[name];
+      if (!dep) continue;
+      const anyOff = dep.codes.some(code => !this.featureState.isEnabled(code));
+      if (anyOff && !seen.has(dep.note)) {
+        seen.add(dep.note);
+        warnings.push(dep.note);
+      }
+    }
+    return warnings;
+  }
 
   readonly roles = signal<RoleOption[]>([]);
   readonly loading = signal(true);

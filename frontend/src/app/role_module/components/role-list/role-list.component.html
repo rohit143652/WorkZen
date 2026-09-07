@@ -2,6 +2,11 @@
   <div>
     <h1>Roles</h1>
     <p class="muted">Roles bundle permissions together and are assigned to employee logins.</p>
+    <p class="muted" style="font-size: 0.82rem;">
+      Granting a permission here controls <em>who</em> can use it. Whether that feature exists for your company
+      at all is a separate, company-wide setting controlled by your Super Admin - if a permission doesn't seem
+      to do anything after you grant it, that's usually why (a warning appears below when this applies).
+    </p>
   </div>
   <button type="button" *appHasPermission="'ROLE_CREATE'" class="btn btn-primary" (click)="openAddForm()">+ Add Role</button>
 </div>
@@ -29,6 +34,12 @@
         @for (group of groupedSelectablePermissions; track group.category) {
           <div style="margin-bottom: 0.75rem;">
             <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-color); margin-bottom: 0.35rem;">{{ group.category }}</div>
+            @for (warning of featureWarningsForGroup(groupPermissionNames(group)); track warning) {
+              <p style="font-size: 0.76rem; color: var(--warning-color); margin: 0 0 0.4rem; display: flex; align-items: flex-start; gap: 0.3rem;">
+                <i class="bi bi-exclamation-triangle-fill" style="flex-shrink: 0; margin-top: 0.1rem;"></i>
+                <span>{{ warning }}</span>
+              </p>
+            }
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem;">
               @for (p of group.permissions; track p.id) {
                 <label style="display:flex; align-items:center; gap:0.4rem; font-size: 0.82rem; font-weight: 400;" [title]="p.description || p.name">
@@ -74,6 +85,12 @@
         @for (group of groupedSelectablePermissions; track group.category) {
           <div style="margin-bottom: 0.75rem;">
             <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted-color); margin-bottom: 0.35rem;">{{ group.category }}</div>
+            @for (warning of featureWarningsForGroup(groupPermissionNames(group)); track warning) {
+              <p style="font-size: 0.76rem; color: var(--warning-color); margin: 0 0 0.4rem; display: flex; align-items: flex-start; gap: 0.3rem;">
+                <i class="bi bi-exclamation-triangle-fill" style="flex-shrink: 0; margin-top: 0.1rem;"></i>
+                <span>{{ warning }}</span>
+              </p>
+            }
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem;">
               @for (p of group.permissions; track p.id) {
                 <label style="display:flex; align-items:center; gap:0.4rem; font-size: 0.82rem; font-weight: 400;" [style.opacity]="isPermissionLocked(p.id) ? 0.6 : 1" [title]="p.description || p.name">

@@ -1,0 +1,87 @@
+<div class="page-header">
+  <div>
+    <h1>Attendance Correction Requests</h1>
+    <p class="muted">Review and approve or reject employee requests to fix their attendance. Approving updates the actual attendance record automatically.</p>
+  </div>
+</div>
+
+<div class="card filters" style="align-items: flex-end;">
+  <div class="form-field" style="margin: 0; min-width: 200px;">
+    <label>Status</label>
+    <select [ngModel]="statusFilter()" (ngModelChange)="onFilterChange($event)">
+      <option value="PENDING">Pending</option>
+      <option value="APPROVED">Approved</option>
+      <option value="REJECTED">Rejected</option>
+      <option value="">All</option>
+    </select>
+  </div>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div style="padding: 1rem;">
+      @for (i of [1,2,3]; track i) { <div class="skeleton" style="height: 60px; margin-bottom: 8px;"></div> }
+    </div>
+  } @else if (!result() || result()!.content.length === 0) {
+    <div class="empty-state">No correction requests found.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Requested Check-In</th>
+            <th>Requested Check-Out</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of result()!.content; track r.id) {
+            <tr>
+              <td>{{ r.employeeCode }} - {{ r.employeeName }}</td>
+              <td>{{ r.attendanceDate }}</td>
+              <td>{{ r.requestType }}</td>
+              <td>{{ r.requestedCheckIn ? (r.requestedCheckIn | date:'short') : '-' }}</td>
+              <td>{{ r.requestedCheckOut ? (r.requestedCheckOut | date:'short') : '-' }}</td>
+              <td>{{ r.reason }}</td>
+              <td><app-status-badge [label]="r.status" [kind]="statusBadgeKind(r.status)"></app-status-badge></td>
+              <td>
+                @if (r.status === 'PENDING') {
+                  <input type="text" [ngModel]="remarksFor(r.id)" (ngModelChange)="setRemarks(r.id, $event)"
+                         placeholder="Optional remarks"
+                         style="padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: 6px; width: 140px;" />
+                } @else {
+                  {{ r.reviewRemarks || '-' }}
+                  <div class="muted" style="font-size: 0.75rem;">by {{ r.reviewedByUsername }}</div>
+                }
+              </td>
+              <td>
+                @if (r.status === 'PENDING') {
+                  <div class="actions">
+                    <button type="button" class="btn btn-secondary btn-sm" [disabled]="actingOnId() === r.id" (click)="reject(r)">Reject</button>
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="actingOnId() === r.id" (click)="approve(r)">
+                      {{ actingOnId() === r.id ? 'Working...' : 'Approve' }}
+                    </button>
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (result()!.totalPages > 1) {
+      <div class="pagination">
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() === 0" (click)="goToPage(page() - 1)">Previous</button>
+        <span>Page {{ page() + 1 }} of {{ result()!.totalPages }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page() + 1 >= result()!.totalPages" (click)="goToPage(page() + 1)">Next</button>
+      </div>
+    }
+  }
+</div>

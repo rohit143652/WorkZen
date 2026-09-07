@@ -281,12 +281,38 @@
           </div>
         }
       </div>
-    } @else if (existingLoginEnabled()) {
+    } @else if (hasLoginAccount() && loginIsActive()) {
       <div class="section-title">Login Access</div>
-      <p class="muted">
-        This employee has a login account. Use the Employee Details page to disable login,
-        change role or reset the password.
-      </p>
+      <div class="login-access-section enabled">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" [checked]="true" [disabled]="togglingLogin()" (change)="onLoginToggle($any($event.target).checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">
+            {{ togglingLogin() ? 'Working...' : 'Login Enabled (' + existingUsername() + ')' }}
+          </span>
+        </div>
+        <p class="muted" style="margin-top: 0.5rem; margin-bottom: 0;">
+          Turn this off to disable login immediately. To change the role or reset the password without disabling, use the Employee Details page.
+        </p>
+      </div>
+    } @else if (hasLoginAccount() && !loginIsActive()) {
+      <div class="section-title">Login Access</div>
+      <div class="login-access-section">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" [checked]="false" [disabled]="togglingLogin()" (change)="onLoginToggle($any($event.target).checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">
+            {{ togglingLogin() ? 'Working...' : 'Login Disabled (' + existingUsername() + ')' }}
+          </span>
+        </div>
+        <p class="muted" style="margin-top: 0.5rem; margin-bottom: 0;">
+          Turn this on to re-enable login for <strong>{{ existingUsername() }}</strong> - the same username comes back, and a new temporary password is issued automatically.
+        </p>
+      </div>
     } @else {
       <div class="section-title">Login Access</div>
       <div class="login-access-section" [class.enabled]="showEnableLoginForm()">

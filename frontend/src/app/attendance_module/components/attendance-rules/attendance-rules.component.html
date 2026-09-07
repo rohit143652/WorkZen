@@ -1,0 +1,69 @@
+<div class="page-header">
+  <div>
+    <h1>Attendance Rules</h1>
+    <p class="muted">Company-wide policy used to calculate late-coming, early-exit, and half/full-day status automatically for every check-in/check-out.</p>
+  </div>
+</div>
+
+<div class="card" style="padding: 1.5rem; max-width: 640px;">
+  @if (loading()) {
+    <div class="skeleton" style="height: 320px;"></div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="rules-grid">
+        <div class="form-field">
+          <label class="required">Office Start Time</label>
+          <input type="time" formControlName="officeStartTime" />
+        </div>
+        <div class="form-field">
+          <label class="required">Office End Time</label>
+          <input type="time" formControlName="officeEndTime" />
+        </div>
+        <div class="form-field">
+          <label class="required">Late Grace Period (minutes)</label>
+          <input type="number" min="0" formControlName="lateGraceMinutes" />
+        </div>
+        <div class="form-field">
+          <label class="required">Default Break (minutes)</label>
+          <input type="number" min="0" formControlName="defaultBreakMinutes" />
+        </div>
+        <div class="form-field">
+          <label class="required">Half Day Minimum (minutes)</label>
+          <input type="number" min="0" formControlName="halfDayMinMinutes" />
+        </div>
+        <div class="form-field">
+          <label class="required">Full Day Minimum (minutes)</label>
+          <input type="number" min="0" formControlName="fullDayMinMinutes" />
+        </div>
+        <div class="form-field">
+          <label class="required">Required Working Minutes / Day</label>
+          <input type="number" min="0" formControlName="requiredWorkingMinutes" />
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400;">
+          <input type="checkbox" formControlName="allowMultipleCheckin" />
+          Allow multiple check-ins per day
+        </label>
+      </div>
+
+      <div class="form-field">
+        <label>Weekly Off Days</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          @for (day of allDays; track day) {
+            <button type="button" class="btn btn-sm" [class.btn-primary]="isDaySelected(day)" [class.btn-secondary]="!isDaySelected(day)"
+                    (click)="toggleDay(day)">
+              {{ day }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" [disabled]="saving()" style="margin-top: 1rem;">
+        @if (saving()) { <span class="btn-spinner"></span> }
+        {{ saving() ? 'Saving...' : 'Save Rules' }}
+      </button>
+    </form>
+  }
+</div>

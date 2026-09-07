@@ -88,6 +88,18 @@ public class AttendanceController {
                 attendanceService.edit(id, request, principal.getId(), httpRequest)));
     }
 
+    /** "My Attendance History" - for anyone with ATTENDANCE_SELF_MARK, regardless of whether
+        they also hold ATTENDANCE_READ (most self-service employees don't) - resolves strictly
+        to the CALLER's own records, see AttendanceService.findMyHistoryInRange(). */
+    @GetMapping("/mine/history")
+    @PreAuthorize("hasAuthority('ATTENDANCE_SELF_MARK')")
+    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> myHistory(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.findMyHistoryInRange(principal.getId(), from, to)));
+    }
+
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("hasAuthority('ATTENDANCE_READ')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> byEmployee(
@@ -113,5 +125,42 @@ public class AttendanceController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) Long siteId) {
         return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.getMarkableEmployees(date, siteId)));
+    }
+
+    /** Today's centralized attendance record for the logged-in employee - check-in/out times,
+        working duration, late/early-exit, work mode, source, all in one place for the "Today's
+        Attendance" card. Returns null (as data) if nothing recorded yet today. Reuses
+        ATTENDANCE_SELF_MARK - see V99 migration note on why check-in/out don't need a separate permission. */
+    @GetMapping("/today")
+    @PreAuthorize("hasAuthority('ATTENDANCE_SELF_MARK')")
+    public ResponseEntity<ApiResponse<AttendanceResponse>> today(@AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.findMyTodayStatus(principal.getId())));
+    }
+
+    /** Company-wide "who's checked in today" snapshot for the admin dashboard - see AttendanceService.getTodayOverview(). */
+    @GetMapping("/today-overview")
+    @PreAuthorize("hasAuthority('ATTENDANCE_READ')")
+    public ResponseEntity<ApiResponse<TodayAttendanceOverviewResponse>> todayOverview() {
+        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.getTodayOverview()));
+    }
+
+    @PostMapping("/check-in")
+    @PreAuthorize("hasAuthority('ATTENDANCE_SELF_MARK')")
+    public ResponseEntity<ApiResponse<AttendanceResponse>> checkIn(@RequestBody(required = false) CheckInRequest request,
+                                                                     @AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                     HttpServletRequest httpRequest) {
+        CheckInRequest body = request != null ? request : new CheckInRequest();
+        AttendanceResponse result = attendanceService.checkIn(principal.getId(), body, principal.getId(), httpRequest);
+        return ResponseEntity.status(201).body(ApiResponse.success("Checked in successfully", result));
+    }
+
+    @PostMapping("/check-out")
+    @PreAuthorize("hasAuthority('ATTENDANCE_SELF_MARK')")
+    public ResponseEntity<ApiResponse<AttendanceResponse>> checkOut(@RequestBody(required = false) CheckOutRequest request,
+                                                                      @AuthenticationPrincipal CustomUserPrincipal principal,
+                                                                      HttpServletRequest httpRequest) {
+        CheckOutRequest body = request != null ? request : new CheckOutRequest();
+        AttendanceResponse result = attendanceService.checkOut(principal.getId(), body, principal.getId(), httpRequest);
+        return ResponseEntity.ok(ApiResponse.success("Checked out successfully", result));
     }
 }

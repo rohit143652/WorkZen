@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResult } from '../../core/models/page.model';
-import { ClientCompanyRequest, ClientCompanyResponse } from '../models/client-company.model';
+import { ClientCompanyRequest, ClientCompanyResponse, CompanyFeatureResponse, UpdateCompanyFeaturesRequest } from '../models/client-company.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 
@@ -41,5 +41,14 @@ export class ClientCompanyService {
 
   deactivate(id: number): Observable<ClientCompanyResponse> {
     return this.http.put<ApiEnvelope<ClientCompanyResponse>>(`${this.baseUrl}/${id}/deactivate`, {}).pipe(map(e => e.data));
+  }
+
+  /** Super Admin "Manage Features" screen - current on/off state for every known feature code, grouped by category. */
+  getFeatures(id: number): Observable<CompanyFeatureResponse> {
+    return this.http.get<ApiEnvelope<CompanyFeatureResponse>>(`${this.baseUrl}/${id}/features`).pipe(map(e => e.data));
+  }
+
+  updateFeatures(id: number, request: UpdateCompanyFeaturesRequest): Observable<Record<string, boolean>> {
+    return this.http.put<ApiEnvelope<Record<string, boolean>>>(`${this.baseUrl}/${id}/features`, request).pipe(map(e => e.data));
   }
 }

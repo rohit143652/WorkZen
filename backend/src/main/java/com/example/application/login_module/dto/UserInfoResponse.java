@@ -11,11 +11,14 @@ public class UserInfoResponse {
     private List<String> roles;
     private List<String> permissions;
     private boolean mustChangePassword;
+    /** Null for logins with no linked Employee (e.g. a SUPER_ADMIN account created directly, not through an employee record). */
+    private String employeeCode;
 
     public UserInfoResponse() {}
 
     public UserInfoResponse(Long id, String username, String email, String firstName, String lastName,
-                             List<String> roles, List<String> permissions, boolean mustChangePassword) {
+                             List<String> roles, List<String> permissions, boolean mustChangePassword,
+                             String employeeCode) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -24,6 +27,7 @@ public class UserInfoResponse {
         this.roles = roles;
         this.permissions = permissions;
         this.mustChangePassword = mustChangePassword;
+        this.employeeCode = employeeCode;
     }
 
     public Long getId() { return id; }
@@ -42,4 +46,6 @@ public class UserInfoResponse {
     public void setPermissions(List<String> permissions) { this.permissions = permissions; }
     public boolean isMustChangePassword() { return mustChangePassword; }
     public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+    public String getEmployeeCode() { return employeeCode; }
+    public void setEmployeeCode(String employeeCode) { this.employeeCode = employeeCode; }
 }

@@ -163,6 +163,7 @@ public class UserService {
      * resetPassword, since a password an admin just typed is not something
      * only the user knows yet.
      */
+    @Transactional
     public void setPassword(Long id, AdminSetPasswordRequest request, Long actorId, HttpServletRequest httpRequest) {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new com.example.application.common.exception.BadRequestException("New password and confirmation do not match");

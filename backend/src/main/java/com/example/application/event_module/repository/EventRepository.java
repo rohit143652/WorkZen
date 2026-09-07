@@ -27,4 +27,18 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             "ORDER BY e.startAt ASC")
     List<Event> findVisibleInRange(@Param("tenantId") Long tenantId, @Param("employeeId") Long employeeId,
                                     @Param("rangeStart") LocalDateTime rangeStart, @Param("rangeEnd") LocalDateTime rangeEnd);
+
+    /**
+     * Every event in range regardless of visibility/participants - for whoever manages the
+     * calendar (see EventService.findVisibleInRange()'s EVENT_MANAGE_ALL check). Without this,
+     * a SELECTED_USERS meeting a Client Admin creates for other people was invisible to the
+     * admin themselves the moment they weren't also a participant on their own meeting - the
+     * person managing the calendar couldn't actually see everything on it.
+     */
+    @Query("SELECT DISTINCT e FROM Event e " +
+            "WHERE e.clientCompanyId = :tenantId " +
+            "AND e.startAt < :rangeEnd AND e.endAt > :rangeStart " +
+            "ORDER BY e.startAt ASC")
+    List<Event> findAllInRange(@Param("tenantId") Long tenantId,
+                                @Param("rangeStart") LocalDateTime rangeStart, @Param("rangeEnd") LocalDateTime rangeEnd);
 }
