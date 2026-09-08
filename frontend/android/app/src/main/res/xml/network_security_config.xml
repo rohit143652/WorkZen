@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Android blocks plain HTTP (cleartext) network calls by default since API 28 - the backend at
-  43.204.237.48:8080 is plain HTTP (no TLS certificate), so without this, every API call from
+  15.207.88.193:8080 is plain HTTP (no TLS certificate), so without this, every API call from
   the packaged app would fail with a cleartext-traffic-blocked error, even though the exact same
   code works fine from a regular web browser.
 
@@ -15,6 +15,6 @@
 -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">43.204.237.48</domain>
+        <domain includeSubdomains="false">15.207.88.193</domain>
     </domain-config>
 </network-security-config>

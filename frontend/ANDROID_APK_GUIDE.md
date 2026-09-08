@@ -1,4 +1,4 @@
-# WORKZEN - Production Server (43.204.237.48) + APK - संपूर्ण मार्गदर्शक
+# WORKZEN - Production Server (15.207.88.193) + APK - संपूर्ण मार्गदर्शक
 
 Code मधले आवश्यक बदल **आधीच केलेले आहेत** (खाली "आधीच झालेलं" section मध्ये बघा). इथून पुढे फक्त deployment/build च्या पायऱ्या आहेत, त्या तुमच्याच server आणि laptop वर कराव्या लागतील.
 
@@ -8,16 +8,16 @@ Code मधले आवश्यक बदल **आधीच केलेले
 
 | काय | कुठे | बदल |
 |---|---|---|
-| Frontend backend ला कुठे शोधतं | `frontend/src/environments/environment.prod.ts` | `http://43.204.237.48:8080/api` |
+| Frontend backend ला कुठे शोधतं | `frontend/src/environments/environment.prod.ts` | `http://15.207.88.193:8080/api` |
 | APK मध्ये HTTP ला परवानगी | `frontend/android/app/src/main/res/xml/network_security_config.xml` | फक्त याच IP साठी HTTP allow केलं (APK डीफॉल्टपणे प्लेन HTTP block करतो) |
 
 ---
 
-# भाग 1 — Backend Server (43.204.237.48) वर सुरू करा
+# भाग 1 — Backend Server (15.207.88.193) वर सुरू करा
 
 ### Step 1 — Server ला SSH ने जोडा
 ```bash
-ssh <तुमचं-username>@43.204.237.48
+ssh <तुमचं-username>@15.207.88.193
 ```
 
 ### Step 2 — Java 21 install आहे का तपासा (नसेल तर install करा)
@@ -61,7 +61,7 @@ export DB_PASSWORD="<तुमचं db password>"
 export JWT_SECRET="<तुमचा base64 secret>"
 export PORT=8080
 export SPRING_PROFILES_ACTIVE=prod
-export CORS_ALLOWED_ORIGINS="http://43.204.237.48"
+export CORS_ALLOWED_ORIGINS="http://15.207.88.193"
 ```
 **टीप:** `CORS_ALLOWED_ORIGINS` इथे तुमचं **Frontend (website)** जिथे host आहे तो actual URL टाका (browser मधून access करताना हे लागतं — APK ला थेट फरक पडत नाही, पण website साठी आवश्यक आहे).
 
@@ -89,7 +89,7 @@ sudo ufw allow 8080
 ### Step 9 — बाहेरून तपासा (server सोडून, तुमच्या स्वतःच्या laptop वरून)
 Browser मध्ये उघडा:
 ```
-http://43.204.237.48:8080/api/auth/login
+http://15.207.88.193:8080/api/auth/login
 ```
 "Method Not Allowed" किंवा तत्सम JSON error आलं तरी चालेल — याचा अर्थ **backend पोहोचतंय**, चूक फक्त GET ऐवजी POST लागतो एवढीच आहे. काहीच न उघडणं (timeout) म्हणजे Port बंद आहे — Step 8 परत तपासा.
 
@@ -110,7 +110,7 @@ npm install
 ```powershell
 ng build --configuration=production
 ```
-हे आधीच `http://43.204.237.48:8080/api` कडे point करणारा build बनवेल (Code मध्ये आधीच सेट आहे).
+हे आधीच `http://15.207.88.193:8080/api` कडे point करणारा build बनवेल (Code मध्ये आधीच सेट आहे).
 
 ### Step 4 — Android Project मध्ये Sync करा
 ```powershell
@@ -149,7 +149,7 @@ frontend\android\app\build\outputs\apk\debug\app-debug.apk
 |---|---|---|
 | App उघडतं, पण Login button दाबल्यावर काहीच होत नाही | Backend पोहोचत नाहीये | भाग 1 चा Step 9 परत तपासा — Port 8080 उघडा आहे का |
 | "Network Error" येतो | Backend बंद आहे, किंवा Firewall port block करतोय | Server वर `java -jar` अजून चालू आहे का बघा |
-| Phone च्या Wi-Fi/Data शी काही संबंध | Phone आणि 43.204.237.48 दोघांनाही Internet द्वारे एकमेकांशी बोलता आलं पाहिजे — दोघेही same local network वर असायची गरज नाही, जोपर्यंत Server public IP वर उघडा आहे |
+| Phone च्या Wi-Fi/Data शी काही संबंध | Phone आणि 15.207.88.193 दोघांनाही Internet द्वारे एकमेकांशी बोलता आलं पाहिजे — दोघेही same local network वर असायची गरज नाही, जोपर्यंत Server public IP वर उघडा आहे |
 | GPS Attendance काम करत नाही | Phone Settings → Apps → WORKZEN → Permissions → Location चालू करा |
 
 ---
