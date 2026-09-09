@@ -28,10 +28,16 @@
       </select>
     </div>
     @if (needsValue(newCalcType)) {
-      <div class="form-field"><label>Amount (₹)</label><input type="number" min="0" [(ngModel)]="newValue" /></div>
+      <div class="form-field">
+        <label>Default Amount (₹)</label>
+        <input type="number" min="0" [(ngModel)]="newValue" />
+      </div>
     }
     @if (needsPercentage(newCalcType)) {
-      <div class="form-field"><label>Percentage</label><input type="number" min="0" max="100" [(ngModel)]="newPercentage" /></div>
+      <div class="form-field">
+        <label>Default Percentage</label>
+        <input type="number" min="0" max="100" [(ngModel)]="newPercentage" />
+      </div>
     }
     <div class="form-field">
       <label>Taxable</label>
@@ -41,6 +47,10 @@
       </label>
     </div>
   </div>
+  <p class="muted" style="font-size: 0.82rem;">
+    <i class="bi bi-info-circle"></i> This default just pre-fills the amount when you add this component to a Salary Structure -
+    each structure can then set its own amount for it without affecting this default or any other structure.
+  </p>
   <div class="form-actions">
     <button type="button" class="btn btn-primary" [disabled]="!newName.trim() || saving()" (click)="addComponent()">
       {{ saving() ? 'Adding...' : '+ Add Component' }}
@@ -58,7 +68,7 @@
   } @else {
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Calculation</th><th>Value/%</th><th>Taxable</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Calculation</th><th>Default Value/%</th><th>Taxable</th><th>Status</th><th></th></tr></thead>
         <tbody>
           @for (c of components(); track c.id) {
             <tr>

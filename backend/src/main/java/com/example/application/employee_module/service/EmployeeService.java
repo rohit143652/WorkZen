@@ -155,6 +155,14 @@ public class EmployeeService {
                 request.getDateOfBirth(), request.getGender(), request.getJoiningDate(), request.getDepartment(),
                 request.getDesignation(), request.getEmploymentType(), request.getAddress(), request.getCity(),
                 request.getState(), request.getCountry(), request.getPincode(), request.getAadharNumber(), request.getPanNumber());
+        employee.setUanNumber(request.getUanNumber());
+        employee.setPfMemberId(request.getPfMemberId());
+        employee.setEsicNumber(request.getEsicNumber());
+        employee.setBankAccountHolderName(request.getBankAccountHolderName());
+        employee.setBankAccountNumber(request.getBankAccountNumber());
+        employee.setBankIfscCode(request.getBankIfscCode() != null ? request.getBankIfscCode().toUpperCase() : null);
+        employee.setBankName(request.getBankName());
+        employee.setBankBranch(request.getBankBranch());
         employee.setPhotoData(request.getPhotoData());
         employee.setStatus("ACTIVE");
         if (request.getPfApplicable() != null) employee.setPfApplicable(request.getPfApplicable());
@@ -227,6 +235,14 @@ public class EmployeeService {
         employee.setPincode(request.getPincode());
         employee.setAadharNumber(request.getAadharNumber());
         employee.setPanNumber(newPan);
+        employee.setUanNumber(request.getUanNumber());
+        employee.setPfMemberId(request.getPfMemberId());
+        employee.setEsicNumber(request.getEsicNumber());
+        employee.setBankAccountHolderName(request.getBankAccountHolderName());
+        employee.setBankAccountNumber(request.getBankAccountNumber());
+        employee.setBankIfscCode(request.getBankIfscCode() != null ? request.getBankIfscCode().toUpperCase() : null);
+        employee.setBankName(request.getBankName());
+        employee.setBankBranch(request.getBankBranch());
         // Only overwritten when the request actually sends something - allows an edit that
         // doesn't touch the photo at all (most edits) to leave the existing one alone, while
         // still letting a request explicitly clear it by sending an empty string.
@@ -570,6 +586,14 @@ public class EmployeeService {
         r.setPincode(e.getPincode());
         r.setAadharNumber(e.getAadharNumber());
         r.setPanNumber(e.getPanNumber());
+        r.setUanNumber(e.getUanNumber());
+        r.setPfMemberId(e.getPfMemberId());
+        r.setEsicNumber(e.getEsicNumber());
+        r.setBankAccountHolderName(e.getBankAccountHolderName());
+        r.setBankAccountNumber(e.getBankAccountNumber());
+        r.setBankIfscCode(e.getBankIfscCode());
+        r.setBankName(e.getBankName());
+        r.setBankBranch(e.getBankBranch());
         r.setPhotoData(includePhoto ? e.getPhotoData() : null);
         r.setPfApplicable(e.isPfApplicable());
         r.setEsiApplicable(e.isEsiApplicable());

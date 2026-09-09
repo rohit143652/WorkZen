@@ -97,6 +97,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Salary Components', path: '/salary-components', icon: 'sliders', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Payroll Settings', path: '/payroll/settings', icon: 'gear', permission: 'PAYROLL_REGISTER_EXPORT' },
       { label: 'Payroll Processing', path: '/payroll/runs', icon: 'journal-check', permission: 'PAYROLL_RUN_READ' },
+      { label: 'Overtime Register', path: '/payroll/overtime', icon: 'clock-history', permission: ['OVERTIME_RECORD_MANAGE', 'OVERTIME_RECORD_READ'], feature: 'OVERTIME_MANAGEMENT' },
       { label: 'My Payslip', path: '/payroll/my-payslip', icon: 'receipt', permission: 'PAYSLIP_SELF_VIEW' }
     ]
   },

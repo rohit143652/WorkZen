@@ -2,6 +2,7 @@ package com.example.application.payroll_module.service;
 
 import com.example.application.attendance_module.repository.AttendanceRepository;
 import com.example.application.audit_module.service.AuditService;
+import com.example.application.client_company_module.feature.FeatureAccessService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
 import com.example.application.common.tenant.TenantContextService;
@@ -57,6 +58,8 @@ class PayrollRunServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private TenantContextService tenantContext;
     @Mock private AuditService auditService;
+    @Mock private FeatureAccessService featureAccessService;
+    @Mock private EmployeeOvertimeService overtimeService;
 
     @InjectMocks
     private PayrollRunService service;
@@ -269,7 +272,7 @@ class PayrollRunServiceTest {
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 new BigDecimal("15000.00"), BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("15000.00"));
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("15000.00"));
         when(payrollCalculationService.calculate(any())).thenReturn(result);
 
         // First calculation: no existing row for this employee yet.

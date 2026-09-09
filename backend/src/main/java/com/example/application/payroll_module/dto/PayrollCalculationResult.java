@@ -17,6 +17,7 @@ public class PayrollCalculationResult {
     private final BigDecimal advanceRecovery;
     private final BigDecimal outstandingAdvance;
     private final BigDecimal allowance;
+    private final BigDecimal overtimeAmount;
     private final BigDecimal totalDeduct;
     private final BigDecimal netPayment;
 
@@ -25,7 +26,7 @@ public class PayrollCalculationResult {
                                      BigDecimal esiEmployee, BigDecimal esiEmployer,
                                      BigDecimal totalSalary, BigDecimal professionalTax,
                                      BigDecimal otherManualDeduction, BigDecimal advanceRecovery, BigDecimal outstandingAdvance,
-                                     BigDecimal allowance, BigDecimal totalDeduct, BigDecimal netPayment) {
+                                     BigDecimal allowance, BigDecimal overtimeAmount, BigDecimal totalDeduct, BigDecimal netPayment) {
         this.basicSalary = basicSalary;
         this.da = da;
         this.totalGross = totalGross;
@@ -39,6 +40,7 @@ public class PayrollCalculationResult {
         this.advanceRecovery = advanceRecovery;
         this.outstandingAdvance = outstandingAdvance;
         this.allowance = allowance;
+        this.overtimeAmount = overtimeAmount;
         this.totalDeduct = totalDeduct;
         this.netPayment = netPayment;
     }
@@ -56,6 +58,7 @@ public class PayrollCalculationResult {
     public BigDecimal getAdvanceRecovery() { return advanceRecovery; }
     public BigDecimal getOutstandingAdvance() { return outstandingAdvance; }
     public BigDecimal getAllowance() { return allowance; }
+    public BigDecimal getOvertimeAmount() { return overtimeAmount; }
     public BigDecimal getTotalDeduct() { return totalDeduct; }
     public BigDecimal getNetPayment() { return netPayment; }
 }

@@ -17,10 +17,12 @@ public class PayrollSettingsResponse {
     private BigDecimal esiWageCeiling;
     private boolean ptEnabled;
     private BigDecimal professionalTax;
+    private String pfCalculationBase;
 
     public PayrollSettingsResponse(boolean epfEnabled, BigDecimal epfEmployeePercent, BigDecimal epfEmployerPercent,
                                     boolean esiEnabled, BigDecimal esiEmployeePercent, BigDecimal esiEmployerPercent,
-                                    BigDecimal esiWageCeiling, boolean ptEnabled, BigDecimal professionalTax) {
+                                    BigDecimal esiWageCeiling, boolean ptEnabled, BigDecimal professionalTax,
+                                    String pfCalculationBase) {
         this.epfEnabled = epfEnabled;
         this.epfEmployeePercent = epfEmployeePercent;
         this.epfEmployerPercent = epfEmployerPercent;
@@ -30,6 +32,7 @@ public class PayrollSettingsResponse {
         this.esiWageCeiling = esiWageCeiling;
         this.ptEnabled = ptEnabled;
         this.professionalTax = professionalTax;
+        this.pfCalculationBase = pfCalculationBase;
     }
 
     public Long getId() { return id; }
@@ -49,4 +52,5 @@ public class PayrollSettingsResponse {
     public BigDecimal getEsiWageCeiling() { return esiWageCeiling; }
     public boolean isPtEnabled() { return ptEnabled; }
     public BigDecimal getProfessionalTax() { return professionalTax; }
+    public String getPfCalculationBase() { return pfCalculationBase; }
 }

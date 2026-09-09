@@ -36,6 +36,8 @@ public class PayrollCalculationInput {
     private boolean pfApplicable;
     private BigDecimal epfEmployeePercent;
     private BigDecimal epfEmployerPercent;
+    /** GROSS, BASIC, or BASIC_PLUS_DA (client-configured, see PayrollSettings.pfCalculationBase) - which figure PF is a percentage OF. Defaults to BASIC_PLUS_DA (the pre-existing behavior) if left unset, for backward compatibility with any caller that hasn't been updated yet. */
+    private String pfCalculationBase = "BASIC_PLUS_DA";
 
     private boolean esiApplicable;
     private BigDecimal esiEmployeePercent;
@@ -68,6 +70,7 @@ public class PayrollCalculationInput {
     public boolean isPfApplicable() { return pfApplicable; }
     public BigDecimal getEpfEmployeePercent() { return epfEmployeePercent; }
     public BigDecimal getEpfEmployerPercent() { return epfEmployerPercent; }
+    public String getPfCalculationBase() { return pfCalculationBase; }
     public boolean isEsiApplicable() { return esiApplicable; }
     public BigDecimal getEsiEmployeePercent() { return esiEmployeePercent; }
     public BigDecimal getEsiEmployerPercent() { return esiEmployerPercent; }
@@ -95,6 +98,7 @@ public class PayrollCalculationInput {
         public Builder pf(boolean applicable, BigDecimal employeePercent, BigDecimal employerPercent) {
             target.pfApplicable = applicable; target.epfEmployeePercent = employeePercent; target.epfEmployerPercent = employerPercent; return this;
         }
+        public Builder pfCalculationBase(String v) { if (v != null) target.pfCalculationBase = v; return this; }
         public Builder esi(boolean applicable, BigDecimal employeePercent, BigDecimal employerPercent, BigDecimal wageCeiling) {
             target.esiApplicable = applicable; target.esiEmployeePercent = employeePercent; target.esiEmployerPercent = employerPercent; target.esiWageCeiling = wageCeiling; return this;
         }

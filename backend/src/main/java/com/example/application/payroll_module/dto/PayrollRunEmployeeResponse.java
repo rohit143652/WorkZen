@@ -28,6 +28,8 @@ public class PayrollRunEmployeeResponse {
     private BigDecimal grossSalary;
 
     private BigDecimal allowance;
+    private BigDecimal overtimeAmount;
+    private BigDecimal overtimeHours;
     private BigDecimal totalEarnings;
 
     private BigDecimal epfEmployee;
@@ -94,6 +96,10 @@ public class PayrollRunEmployeeResponse {
     public void setGrossSalary(BigDecimal grossSalary) { this.grossSalary = grossSalary; }
     public BigDecimal getAllowance() { return allowance; }
     public void setAllowance(BigDecimal allowance) { this.allowance = allowance; }
+    public BigDecimal getOvertimeAmount() { return overtimeAmount; }
+    public void setOvertimeAmount(BigDecimal overtimeAmount) { this.overtimeAmount = overtimeAmount; }
+    public BigDecimal getOvertimeHours() { return overtimeHours; }
+    public void setOvertimeHours(BigDecimal overtimeHours) { this.overtimeHours = overtimeHours; }
     public BigDecimal getTotalEarnings() { return totalEarnings; }
     public void setTotalEarnings(BigDecimal totalEarnings) { this.totalEarnings = totalEarnings; }
     public BigDecimal getEpfEmployee() { return epfEmployee; }

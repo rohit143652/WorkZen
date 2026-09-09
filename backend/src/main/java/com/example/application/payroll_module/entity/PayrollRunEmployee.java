@@ -110,6 +110,16 @@ public class PayrollRunEmployee {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal allowance;
 
+    /** hours x rate at the time this run was calculated - see PayrollCalculationService/PayrollInputResolver. Zero for any company without the Overtime feature enabled. */
+    @Column(name = "overtime_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal overtimeAmount = BigDecimal.ZERO;
+
+    /** The raw hours this overtimeAmount was computed from - stored alongside the amount so the
+        adjustment-edit UI can show what was actually entered, since the amount alone can't be
+        reversed back into hours if the rate has since changed. */
+    @Column(name = "overtime_hours", nullable = false, precision = 6, scale = 2)
+    private BigDecimal overtimeHours = BigDecimal.ZERO;
+
     @Column(name = "total_earnings", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalEarnings;
 
@@ -224,6 +234,10 @@ public class PayrollRunEmployee {
     public void setGrossSalary(BigDecimal grossSalary) { this.grossSalary = grossSalary; }
     public BigDecimal getAllowance() { return allowance; }
     public void setAllowance(BigDecimal allowance) { this.allowance = allowance; }
+    public BigDecimal getOvertimeAmount() { return overtimeAmount; }
+    public void setOvertimeAmount(BigDecimal overtimeAmount) { this.overtimeAmount = overtimeAmount; }
+    public BigDecimal getOvertimeHours() { return overtimeHours; }
+    public void setOvertimeHours(BigDecimal overtimeHours) { this.overtimeHours = overtimeHours; }
     public BigDecimal getTotalEarnings() { return totalEarnings; }
     public void setTotalEarnings(BigDecimal totalEarnings) { this.totalEarnings = totalEarnings; }
     public BigDecimal getEpfEmployee() { return epfEmployee; }

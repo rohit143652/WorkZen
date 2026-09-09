@@ -23,6 +23,12 @@ public class PayrollSettingsRequest {
     @NotNull private Boolean ptEnabled;
     @NotNull @DecimalMin("0") private BigDecimal professionalTax;
 
+    /** GROSS, BASIC, or BASIC_PLUS_DA - see PayrollCalculationService.resolveEpfBase(). Required like every other field here - this whole request is always a full resend of the complete configuration (the frontend pre-fills from the currently-open config), never a partial patch, so there's no safe "leave unchanged" meaning for a missing value. */
+    @NotNull private String pfCalculationBase;
+
+    public String getPfCalculationBase() { return pfCalculationBase; }
+    public void setPfCalculationBase(String pfCalculationBase) { this.pfCalculationBase = pfCalculationBase; }
+
     public Boolean getEpfEnabled() { return epfEnabled; }
     public void setEpfEnabled(Boolean epfEnabled) { this.epfEnabled = epfEnabled; }
     public LocalDate getEffectiveFrom() { return effectiveFrom; }

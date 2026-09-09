@@ -41,6 +41,14 @@ public class EmployeeResponse {
     private String pincode;
     private String aadharNumber;
     private String panNumber;
+    private String uanNumber;
+    private String pfMemberId;
+    private String esicNumber;
+    private String bankAccountHolderName;
+    private String bankAccountNumber;
+    private String bankIfscCode;
+    private String bankName;
+    private String bankBranch;
 
     /** Optional - base64 data-URI string. Omit or send null to leave unchanged (update) or blank (create). */
     private String photoData;
@@ -116,6 +124,22 @@ public class EmployeeResponse {
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }
     public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+    public String getUanNumber() { return uanNumber; }
+    public void setUanNumber(String uanNumber) { this.uanNumber = uanNumber; }
+    public String getPfMemberId() { return pfMemberId; }
+    public void setPfMemberId(String pfMemberId) { this.pfMemberId = pfMemberId; }
+    public String getEsicNumber() { return esicNumber; }
+    public void setEsicNumber(String esicNumber) { this.esicNumber = esicNumber; }
+    public String getBankAccountHolderName() { return bankAccountHolderName; }
+    public void setBankAccountHolderName(String bankAccountHolderName) { this.bankAccountHolderName = bankAccountHolderName; }
+    public String getBankAccountNumber() { return bankAccountNumber; }
+    public void setBankAccountNumber(String bankAccountNumber) { this.bankAccountNumber = bankAccountNumber; }
+    public String getBankIfscCode() { return bankIfscCode; }
+    public void setBankIfscCode(String bankIfscCode) { this.bankIfscCode = bankIfscCode; }
+    public String getBankName() { return bankName; }
+    public void setBankName(String bankName) { this.bankName = bankName; }
+    public String getBankBranch() { return bankBranch; }
+    public void setBankBranch(String bankBranch) { this.bankBranch = bankBranch; }
     public String getPhotoData() { return photoData; }
     public void setPhotoData(String photoData) { this.photoData = photoData; }
     public boolean isPfApplicable() { return pfApplicable; }

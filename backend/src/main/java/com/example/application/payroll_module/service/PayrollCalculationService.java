@@ -40,16 +40,15 @@ import java.math.RoundingMode;
  *      go negative (spec section 19) - any shortfall stays outstanding
  *   6. calculateNetPay()      - Gross - Total Deduct + Allowance
  *
- * Bonus/Overtime/Arrears/Reimbursements (spec sections 4/17) are NOT yet
- * separate inputs - Gross Earnings here is still the single lump figure
- * Salary Structure + attendance proration produces (see
- * payroll_module.PayrollInputResolver). Adding those as genuinely distinct,
- * separately-tracked earnings is a real gap, not an oversight - there is
- * currently no UI/data model capturing a monthly Bonus or Overtime amount
- * per employee anywhere in the project (EmployeePayrollAdjustment only has
- * otherManualDeduction and allowance). Building that input mechanism is
- * new scope beyond "orchestrate existing inputs," so it's deliberately
- * left as documented future work rather than invented here.
+ * Overtime (Overtime feature) IS wired into Net Pay as of this change - see
+ * calculateNetPay(). Bonus/Arrears (spec sections 4/17) are NOT yet separate
+ * inputs - same reasoning as before (no UI/data model capturing them per
+ * employee/month yet beyond the raw EmployeePayrollAdjustment columns,
+ * which nothing currently populates for those two). Overtime itself is a
+ * direct rupee amount entered per day in the Overtime Register
+ * (EmployeeOvertimeRecord), summed for the month by PayrollRunService -
+ * not hours multiplied by any fixed rate - gated solely by the Super
+ * Admin's OVERTIME_MANAGEMENT company feature.
  */
 @Service
 public class PayrollCalculationService {
@@ -77,7 +76,7 @@ public class PayrollCalculationService {
         boolean hasGross = input.getTotalGross() != null;
         BigDecimal totalGross = nz(input.getTotalGross());
 
-        BigDecimal epfBase = resolveEpfBase(basic, da, totalGross);
+        BigDecimal epfBase = resolveEpfBase(basic, da, totalGross, input.getPfCalculationBase());
         BigDecimal[] pf = calculatePf(input, epfBase);
         BigDecimal epfEmployee = pf[0];
         BigDecimal epfEmployer = pf[1];
@@ -91,21 +90,31 @@ public class PayrollCalculationService {
 
         BigDecimal otherManualDeduction = nz(input.getOtherManualDeduction());
         BigDecimal allowance = nz(input.getAllowance());
+        BigDecimal overtimeAmount = nz(input.getOvertime());
 
         BigDecimal advanceRecovery = calculateAdvanceRecovery(input, totalGross, epfEmployee, esiEmployee, pt, otherManualDeduction);
         BigDecimal outstandingAdvance = advanceService.getOutstandingForEmployee(input.getTenantId(), input.getEmployeeId());
 
         BigDecimal totalDeduct = epfEmployee.add(esiEmployee).add(pt).add(otherManualDeduction).add(advanceRecovery);
-        BigDecimal netPayment = calculateNetPay(totalGross, totalDeduct, allowance);
+        BigDecimal netPayment = calculateNetPay(totalGross, totalDeduct, allowance, overtimeAmount);
 
         return new PayrollCalculationResult(basic, da, totalGross, epfEmployee, epfEmployer, esiEmployee, esiEmployer,
-                totalSalaryCtc, pt, otherManualDeduction, advanceRecovery, outstandingAdvance, allowance, totalDeduct, netPayment);
+                totalSalaryCtc, pt, otherManualDeduction, advanceRecovery, outstandingAdvance, allowance, overtimeAmount, totalDeduct, netPayment);
     }
 
-    /** STEP 1: structures with no separate Basic/DA (DAILY/HOURLY/CONTRACT) fall back to the full Gross as the PF base. */
-    private BigDecimal resolveEpfBase(BigDecimal basic, BigDecimal da, BigDecimal totalGross) {
+    /** STEP 1: which figure PF is a percentage of is now a client-configured choice
+        (PayrollSettings.pfCalculationBase - GROSS / BASIC / BASIC_PLUS_DA), not a hardcoded
+        rule. BASIC_PLUS_DA (and legacy BASIC, which is treated the same when DA is zero/absent)
+        still falls back to Gross for structures with no separate Basic/DA at all (DAILY/HOURLY/
+        CONTRACT) - a client can't calculate PF "on Basic" for a structure that has no Basic. */
+    private BigDecimal resolveEpfBase(BigDecimal basic, BigDecimal da, BigDecimal totalGross, String pfCalculationBase) {
         BigDecimal basicPlusDa = basic.add(da);
-        return basicPlusDa.signum() > 0 ? basicPlusDa : totalGross;
+        String base = pfCalculationBase != null ? pfCalculationBase : "BASIC_PLUS_DA";
+        return switch (base) {
+            case "GROSS" -> totalGross;
+            case "BASIC" -> basic.signum() > 0 ? basic : totalGross;
+            default -> basicPlusDa.signum() > 0 ? basicPlusDa : totalGross; // BASIC_PLUS_DA
+        };
     }
 
     /** STEP 2 (spec section 11): PF is 0 unless BOTH the tenant's PayrollSettings enable it AND this employee's own pfApplicable flag is true - both are already combined into input.isPfApplicable() by the caller. */
@@ -150,9 +159,14 @@ public class PayrollCalculationService {
                 input.getTenantId(), input.getEmployeeId(), input.getYear(), input.getMonth(), input.getPayrollRunId(), remainingForAdvance);
     }
 
-    /** STEP 6 (spec section 19): Net Pay = Total Earnings (Gross + Allowance) - Total Deductions. Never negative in practice, since Advance Recovery is already capped in calculateAdvanceRecovery() above and every other deduction is a fixed/percentage amount that cannot itself exceed Gross under normal configuration. */
-    private BigDecimal calculateNetPay(BigDecimal totalGross, BigDecimal totalDeduct, BigDecimal allowance) {
-        return totalGross.subtract(totalDeduct).add(allowance);
+    /** STEP 6 (spec section 19): Net Pay = Total Earnings (Gross + Allowance + Overtime) - Total
+        Deductions. Overtime is included here as of the Overtime feature - previously this field
+        existed on the input/entity but was never actually added to anything (see this class's
+        own outdated header comment, now corrected). Never negative in practice, since Advance
+        Recovery is already capped in calculateAdvanceRecovery() above and every other deduction
+        is a fixed/percentage amount that cannot itself exceed Gross under normal configuration. */
+    private BigDecimal calculateNetPay(BigDecimal totalGross, BigDecimal totalDeduct, BigDecimal allowance, BigDecimal overtimeAmount) {
+        return totalGross.subtract(totalDeduct).add(allowance).add(overtimeAmount);
     }
 
     private BigDecimal percentOf(BigDecimal base, BigDecimal percent) {

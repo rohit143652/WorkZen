@@ -65,6 +65,29 @@
         </dl>
       </div>
 
+      <div class="card detail-card detail-card-full">
+        <div class="section-title">PF, ESIC &amp; Bank Details</div>
+        <div class="statutory-bank-grid">
+          <div>
+            <div class="statutory-bank-subheading">PF &amp; ESIC</div>
+            <dl>
+              <dt>UAN No <span class="field-hint-inline">(Universal Account Number)</span></dt><dd>{{ emp.uanNumber || '-' }}</dd>
+              <dt>Member ID <span class="field-hint-inline">(PF Member ID)</span></dt><dd>{{ emp.pfMemberId || '-' }}</dd>
+              <dt>ESIC No <span class="field-hint-inline">(Employee State Insurance Corporation)</span></dt><dd>{{ emp.esicNumber || '-' }}</dd>
+            </dl>
+          </div>
+          <div>
+            <div class="statutory-bank-subheading">Bank Details</div>
+            <dl>
+              <dt>Account Holder</dt><dd>{{ emp.bankAccountHolderName || '-' }}</dd>
+              <dt>Account Number</dt><dd>{{ emp.bankAccountNumber || '-' }}</dd>
+              <dt>IFSC Code <span class="field-hint-inline">(Indian Financial System Code)</span></dt><dd>{{ emp.bankIfscCode || '-' }}</dd>
+              <dt>Bank / Branch</dt><dd>{{ emp.bankName || '-' }} / {{ emp.bankBranch || '-' }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+
       <div class="card detail-card">
         <div class="section-title">Login Information</div>
 

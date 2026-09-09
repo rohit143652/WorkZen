@@ -3,6 +3,8 @@ package com.example.application.payroll_module.service;
 import com.example.application.attendance_module.entity.Attendance;
 import com.example.application.attendance_module.repository.AttendanceRepository;
 import com.example.application.audit_module.service.AuditService;
+import com.example.application.client_company_module.feature.FeatureAccessService;
+import com.example.application.client_company_module.feature.FeatureCode;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
 import com.example.application.common.exception.ResourceNotFoundException;
@@ -83,6 +85,8 @@ public class PayrollRunService {
     private final UserRepository userRepository;
     private final TenantContextService tenantContext;
     private final AuditService auditService;
+    private final FeatureAccessService featureAccessService;
+    private final EmployeeOvertimeService overtimeService;
 
     public PayrollRunService(PayrollRunRepository payrollRunRepository,
                               PayrollRunEmployeeRepository payrollRunEmployeeRepository,
@@ -97,7 +101,9 @@ public class PayrollRunService {
                               PayrollStatusTransitionService statusTransitionService,
                               UserRepository userRepository,
                               TenantContextService tenantContext,
-                              AuditService auditService) {
+                              AuditService auditService,
+                              FeatureAccessService featureAccessService,
+                              EmployeeOvertimeService overtimeService) {
         this.payrollRunRepository = payrollRunRepository;
         this.payrollRunEmployeeRepository = payrollRunEmployeeRepository;
         this.employeeRepository = employeeRepository;
@@ -112,6 +118,8 @@ public class PayrollRunService {
         this.userRepository = userRepository;
         this.tenantContext = tenantContext;
         this.auditService = auditService;
+        this.featureAccessService = featureAccessService;
+        this.overtimeService = overtimeService;
     }
 
     // ------------------------------------------------------------------
@@ -206,13 +214,32 @@ public class PayrollRunService {
             BigDecimal manualDeduction = adjustment != null ? adjustment.getOtherManualDeduction() : BigDecimal.ZERO;
             BigDecimal manualAllowance = adjustment != null ? adjustment.getAllowance() : BigDecimal.ZERO;
 
+            // Overtime pay = the sum of directly-entered per-entry amounts from the Overtime
+            // Register (EmployeeOvertimeRecord - a day-wise auditable log, see V107/V108
+            // migrations for why this replaced a fixed company-wide rate x hours approach:
+            // different days/situations can legitimately warrant different amounts). Gated
+            // solely by the Super Admin's OVERTIME_MANAGEMENT company feature - the separate
+            // Payroll Settings "Pay Overtime" toggle that used to sit underneath this was
+            // removed as a confusing, redundant second on/off switch for the exact same thing -
+            // one feature flag, one place, is enough. payroll_settings.overtime_enabled stays
+            // in the schema (unused) rather than being dropped, same precedent as its sibling
+            // overtime_rate_per_hour column.
+            boolean overtimeAllowed = featureAccessService.isEnabled(tenantId, FeatureCode.OVERTIME_MANAGEMENT);
+            EmployeeOvertimeService.MonthTotal overtimeTotals = overtimeAllowed
+                    ? overtimeService.getTotalsForEmployeeMonth(tenantId, e.getId(), run.getYear(), run.getMonth())
+                    : new EmployeeOvertimeService.MonthTotal(BigDecimal.ZERO, BigDecimal.ZERO);
+            BigDecimal overtimeAmount = overtimeTotals.amount();
+            BigDecimal overtimeHours = overtimeTotals.hours();
+
             PayrollCalculationInput calcInput = PayrollCalculationInput.builder()
                     .tenantId(tenantId).employeeId(e.getId()).year(run.getYear()).month(run.getMonth()).payrollRunId(run.getId())
                     .basicSalary(in.getBasicSalary()).da(in.getDa()).totalGross(in.getTotalGross())
                     .pf(payrollSettings.isEpfEnabled() && e.isPfApplicable(), payrollSettings.getEpfEmployeePercent(), payrollSettings.getEpfEmployerPercent())
+                    .pfCalculationBase(payrollSettings.getPfCalculationBase())
                     .esi(payrollSettings.isEsiEnabled() && e.isEsiApplicable(), payrollSettings.getEsiEmployeePercent(), payrollSettings.getEsiEmployerPercent(), payrollSettings.getEsiWageCeiling())
                     .pt(payrollSettings.isPtEnabled() && e.isPtApplicable(), payrollSettings.getProfessionalTax())
                     .otherManualDeduction(manualDeduction).allowance(manualAllowance)
+                    .overtime(overtimeAmount)
                     .build();
 
             PayrollCalculationResult result = payrollCalculationService.calculate(calcInput);
@@ -255,7 +282,9 @@ public class PayrollRunService {
             pre.setGrossSalary(result.getTotalGross());
 
             pre.setAllowance(result.getAllowance());
-            pre.setTotalEarnings(result.getTotalGross().add(result.getAllowance()));
+            pre.setOvertimeAmount(result.getOvertimeAmount());
+            pre.setOvertimeHours(overtimeHours);
+            pre.setTotalEarnings(result.getTotalGross().add(result.getAllowance()).add(result.getOvertimeAmount()));
 
             pre.setEpfEmployee(result.getEpfEmployee());
             pre.setEpfEmployer(result.getEpfEmployer());
@@ -422,10 +451,11 @@ public class PayrollRunService {
                 });
         adjustment.setOtherManualDeduction(otherManualDeduction);
         adjustment.setAllowance(allowance);
+        adjustment.setUpdatedBy(actorId);
         payrollAdjustmentRepository.save(adjustment);
         auditService.log(actorId, "PAYROLL_ADJUSTMENT_UPDATED",
-                "Set Other Deduction=" + otherManualDeduction + ", Allowance=" + allowance + " for employee " + employeeId
-                        + " (" + monthLabel(run.getYear(), run.getMonth()) + ") - applies on next calculation", httpRequest);
+                "Set Other Deduction=" + otherManualDeduction + ", Allowance=" + allowance
+                        + " for employee " + employeeId + " (" + monthLabel(run.getYear(), run.getMonth()) + ") - applies on next calculation", httpRequest);
     }
 
     // ------------------------------------------------------------------
@@ -511,6 +541,7 @@ public class PayrollRunService {
         List<PayrollRunEmployee> rows = payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(runId);
         BigDecimal totalGross = sum(rows, PayrollRunEmployee::getGrossSalary);
         BigDecimal totalEarnings = sum(rows, PayrollRunEmployee::getTotalEarnings);
+        BigDecimal totalOvertime = sum(rows, PayrollRunEmployee::getOvertimeAmount);
         BigDecimal totalEpf = sum(rows, PayrollRunEmployee::getEpfEmployee);
         BigDecimal totalEsi = sum(rows, PayrollRunEmployee::getEsiEmployee);
         BigDecimal totalPt = sum(rows, PayrollRunEmployee::getProfessionalTax);
@@ -518,7 +549,7 @@ public class PayrollRunService {
         BigDecimal totalAdvance = sum(rows, PayrollRunEmployee::getAdvanceRecovery);
         BigDecimal totalDeductions = sum(rows, PayrollRunEmployee::getTotalDeductions);
         BigDecimal totalNetPay = sum(rows, PayrollRunEmployee::getNetPay);
-        return new PayrollRunSummaryResponse(rows.size(), totalGross, totalEarnings, totalEpf, totalEsi, totalPt,
+        return new PayrollRunSummaryResponse(rows.size(), totalGross, totalEarnings, totalOvertime, totalEpf, totalEsi, totalPt,
                 totalOther, totalAdvance, totalDeductions, totalNetPay);
     }
 
@@ -555,6 +586,8 @@ public class PayrollRunService {
         r.setDa(e.getDa());
         r.setGrossSalary(e.getGrossSalary());
         r.setAllowance(e.getAllowance());
+        r.setOvertimeAmount(e.getOvertimeAmount());
+        r.setOvertimeHours(e.getOvertimeHours());
         r.setTotalEarnings(e.getTotalEarnings());
         r.setEpfEmployee(e.getEpfEmployee());
         r.setEpfEmployer(e.getEpfEmployer());

@@ -105,6 +105,32 @@ export class SalaryStructureFormComponent {
     this.componentRows.push(this.buildComponentRow());
   }
 
+  /**
+   * THE fix for the "why is there an Amount field here AND on Salary Components" confusion:
+   * SalaryComponent.value/percentage/calculationType (set on the master "Salary Components"
+   * screen) were always meant to be DEFAULTS that pre-fill a new structure line - see that
+   * entity's own class javadoc on the backend - but nothing here ever actually copied them
+   * over, so picking a component always left Amount blank and the connection between the two
+   * screens was invisible. This is purely a convenience prefill: the values land in normal,
+   * fully-editable form fields, and PayrollInputResolver/SalaryStructureService only ever read
+   * THIS row's own amount/percentage/calculationType afterward - the master component's values
+   * are never consulted again once copied here, so changing them later never silently changes
+   * an existing structure. Overwrites the row's calculation fields every time a component is
+   * (re)selected, on the assumption that switching which component a blank-ish row represents
+   * should reset to that new component's own defaults rather than keep leftover values from
+   * whatever was picked before.
+   */
+  onComponentSelected(index: number): void {
+    const componentId = this.componentRows.at(index).get('salaryComponentId')?.value;
+    const component = this.availableComponents().find(c => c.id === componentId);
+    if (!component) return;
+    this.componentRows.at(index).patchValue({
+      calculationType: component.calculationType,
+      amount: this.needsAmount(component.calculationType) ? (component.value ?? null) : null,
+      percentage: this.needsPercentage(component.calculationType) ? (component.percentage ?? null) : null
+    });
+  }
+
   removeComponentRow(index: number): void {
     this.componentRows.removeAt(index);
   }

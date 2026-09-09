@@ -10,6 +10,7 @@ export interface PayrollRunSummary {
   totalEmployees: number;
   totalGross: number;
   totalEarnings: number;
+  totalOvertime: number;
   totalEpf: number;
   totalEsi: number;
   totalPt: number;
@@ -66,6 +67,8 @@ export interface PayrollRunEmployeeResult {
   da: number;
   grossSalary: number;
   allowance: number;
+  overtimeAmount: number;
+  overtimeHours: number;
   totalEarnings: number;
   epfEmployee: number;
   epfEmployer: number;

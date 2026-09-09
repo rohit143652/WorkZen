@@ -9,6 +9,7 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
+import { FeatureStateService } from '../../../core/services/feature-state.service';
 
 /**
  * Read-only view of a persisted Payroll Run + its employee results, plus
@@ -32,6 +33,8 @@ export class PayrollRunDetailsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly payrollRunService = inject(PayrollRunService);
   private readonly toast = inject(ToastService);
+  private readonly featureState = inject(FeatureStateService);
+  readonly overtimeFeatureEnabled = () => this.featureState.isEnabled('OVERTIME_MANAGEMENT');
   private readonly confirmDialog = inject(ConfirmDialogService);
 
   private readonly runId = Number(this.route.snapshot.paramMap.get('id'));

@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { PayrollService } from '../../services/payroll.service';
-import { PayrollSettings, PayrollSettingsCreateRequest } from '../../models/payroll.model';
+import { PayrollSettings, PayrollSettingsCreateRequest, PF_CALCULATION_BASES, PfCalculationBase } from '../../models/payroll.model';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
+import { FeatureStateService } from '../../../core/services/feature-state.service';
 
 /**
  * CLIENT_ADMIN only - see PAYROLL_REGISTER_EXPORT permission and the route
@@ -18,13 +20,22 @@ import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.se
 @Component({
   selector: 'app-payroll-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './payroll-settings.component.html'
 })
 export class PayrollSettingsComponent {
   private readonly payrollService = inject(PayrollService);
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly featureState = inject(FeatureStateService);
+
+  /** Whether to show the "Overtime is managed in the Overtime Register" note at all - this component no longer configures overtime itself in any way (see the Overtime Register instead). */
+  readonly overtimeFeatureEnabled = () => this.featureState.isEnabled('OVERTIME_MANAGEMENT');
+  readonly pfCalculationBases = PF_CALCULATION_BASES;
+
+  pfBaseLabel(base: PfCalculationBase): string {
+    return this.pfCalculationBases.find(b => b.value === base)?.label ?? base;
+  }
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -47,6 +58,8 @@ export class PayrollSettingsComponent {
 
   ptEnabled = true;
   professionalTax = 200;
+
+  pfCalculationBase: PfCalculationBase = 'BASIC_PLUS_DA';
 
   constructor() {
     this.load();
@@ -90,6 +103,7 @@ export class PayrollSettingsComponent {
       this.esiWageCeiling = c.esiWageCeiling ?? 21000;
       this.ptEnabled = c.ptEnabled;
       this.professionalTax = c.professionalTax;
+      this.pfCalculationBase = c.pfCalculationBase ?? 'BASIC_PLUS_DA';
     }
     this.showScheduleForm.set(true);
   }
@@ -113,7 +127,8 @@ export class PayrollSettingsComponent {
       esiEmployerPercent: this.esiEmployerPercent,
       esiWageCeiling: this.hasEsiCeiling ? this.esiWageCeiling : null,
       ptEnabled: this.ptEnabled,
-      professionalTax: this.professionalTax
+      professionalTax: this.professionalTax,
+      pfCalculationBase: this.pfCalculationBase
     };
     this.saving.set(true);
     this.payrollService.createConfig(request).subscribe({

@@ -202,6 +202,28 @@ tbody tr:last-child td {
 .detail-card dt { color: var(--muted-color); font-size: 0.8rem; font-weight: 600; }
 .detail-card dd { margin: 0; font-size: 0.9rem; color: var(--text-color); }
 
+/* ---- Simple tab bar (Overtime Register's Log/History split, and available for reuse
+   wherever a page needs a plain two/three-way switcher without a full router-driven layout) ---- */
+.simple-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+.simple-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted-color);
+  cursor: pointer;
+}
+.simple-tab:hover { color: var(--text-color); }
+.simple-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+
 /* ---- Forms ---- */
 .form-card { padding: 1.75rem; }
 

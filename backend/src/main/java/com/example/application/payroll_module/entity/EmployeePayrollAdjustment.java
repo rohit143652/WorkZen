@@ -48,8 +48,18 @@ public class EmployeePayrollAdjustment {
     @Column(name = "bonus", nullable = false, precision = 10, scale = 2)
     private BigDecimal bonus = BigDecimal.ZERO;
 
+    /** Legacy, unused - see V105 migration comment. Overtime pay is now derived from overtimeHours x PayrollSettings.overtimeRatePerHour instead of a raw amount, so nothing writes to this column any more; kept only so any historical row that somehow had a value doesn't lose it. */
     @Column(name = "overtime", nullable = false, precision = 10, scale = 2)
     private BigDecimal overtime = BigDecimal.ZERO;
+
+    /** Legacy, unused - superseded by the Overtime Register (EmployeeOvertimeRecord, see V107
+        migration) within the same release that introduced this column. A month's overtime
+        hours for payroll are now summed from that day-wise, auditable log instead of being
+        typed in here as one number - kept in place rather than dropped, same as the sibling
+        'overtime' amount column above, since nothing is actually lost by leaving an unused
+        column at its default of 0.00. */
+    @Column(name = "overtime_hours", nullable = false, precision = 6, scale = 2)
+    private BigDecimal overtimeHours = BigDecimal.ZERO;
 
     @Column(name = "arrears", nullable = false, precision = 10, scale = 2)
     private BigDecimal arrears = BigDecimal.ZERO;
@@ -79,6 +89,8 @@ public class EmployeePayrollAdjustment {
     public void setBonus(BigDecimal bonus) { this.bonus = bonus; }
     public BigDecimal getOvertime() { return overtime; }
     public void setOvertime(BigDecimal overtime) { this.overtime = overtime; }
+    public BigDecimal getOvertimeHours() { return overtimeHours; }
+    public void setOvertimeHours(BigDecimal overtimeHours) { this.overtimeHours = overtimeHours; }
     public BigDecimal getArrears() { return arrears; }
     public void setArrears(BigDecimal arrears) { this.arrears = arrears; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

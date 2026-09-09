@@ -57,6 +57,7 @@ class PayrollSettingsServiceTest {
         r.setEsiEmployerPercent(BigDecimal.ZERO);
         r.setPtEnabled(false);
         r.setProfessionalTax(BigDecimal.ZERO);
+        r.setPfCalculationBase("BASIC_PLUS_DA");
         return r;
     }
 

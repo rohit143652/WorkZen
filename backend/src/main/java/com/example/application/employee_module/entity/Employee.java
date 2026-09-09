@@ -85,6 +85,36 @@ public class Employee {
     /** 10-character Income Tax PAN (format ABCDE1234F, always stored upper-case) - unique per tenant, mandatory for new employees (see EmployeeRequest). Nullable here only so pre-existing rows from before this field don't break. */
     private String panNumber;
 
+    /** Universal Account Number (EPFO) - genuinely optional: often not issued until PF
+        registration completes, sometimes weeks after joining. No format enforcement beyond
+        length - UAN format has varied over the years and isn't worth hard-coding a pattern for. */
+    @Column(name = "uan_number", length = 20)
+    private String uanNumber;
+
+    /** PF Member ID / PF Account Number - optional, same reasoning as UAN. */
+    @Column(name = "pf_member_id", length = 30)
+    private String pfMemberId;
+
+    /** ESIC (Employee State Insurance) number - optional, same reasoning as UAN. */
+    @Column(name = "esic_number", length = 20)
+    private String esicNumber;
+
+    /** Bank details - all optional, filled in whenever convenient rather than blocking employee creation. */
+    @Column(name = "bank_account_holder_name", length = 150)
+    private String bankAccountHolderName;
+
+    @Column(name = "bank_account_number", length = 30)
+    private String bankAccountNumber;
+
+    @Column(name = "bank_ifsc_code", length = 11)
+    private String bankIfscCode;
+
+    @Column(name = "bank_name", length = 150)
+    private String bankName;
+
+    @Column(name = "bank_branch", length = 150)
+    private String bankBranch;
+
     /** Base64 data-URI string (e.g. "data:image/jpeg;base64,...") - see V95 migration javadoc for why this isn't a file-on-disk reference instead. */
     @Column(columnDefinition = "LONGTEXT")
     private String photoData;
@@ -170,6 +200,22 @@ public class Employee {
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }
     public void setPanNumber(String panNumber) { this.panNumber = panNumber; }
+    public String getUanNumber() { return uanNumber; }
+    public void setUanNumber(String uanNumber) { this.uanNumber = uanNumber; }
+    public String getPfMemberId() { return pfMemberId; }
+    public void setPfMemberId(String pfMemberId) { this.pfMemberId = pfMemberId; }
+    public String getEsicNumber() { return esicNumber; }
+    public void setEsicNumber(String esicNumber) { this.esicNumber = esicNumber; }
+    public String getBankAccountHolderName() { return bankAccountHolderName; }
+    public void setBankAccountHolderName(String bankAccountHolderName) { this.bankAccountHolderName = bankAccountHolderName; }
+    public String getBankAccountNumber() { return bankAccountNumber; }
+    public void setBankAccountNumber(String bankAccountNumber) { this.bankAccountNumber = bankAccountNumber; }
+    public String getBankIfscCode() { return bankIfscCode; }
+    public void setBankIfscCode(String bankIfscCode) { this.bankIfscCode = bankIfscCode; }
+    public String getBankName() { return bankName; }
+    public void setBankName(String bankName) { this.bankName = bankName; }
+    public String getBankBranch() { return bankBranch; }
+    public void setBankBranch(String bankBranch) { this.bankBranch = bankBranch; }
     public String getPhotoData() { return photoData; }
     public void setPhotoData(String photoData) { this.photoData = photoData; }
     public String getStatus() { return status; }

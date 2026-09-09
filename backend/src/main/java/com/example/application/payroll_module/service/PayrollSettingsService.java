@@ -183,6 +183,9 @@ public class PayrollSettingsService {
         BigDecimalRange.assertPercent(request.getEpfEmployerPercent(), "epfEmployerPercent");
         BigDecimalRange.assertPercent(request.getEsiEmployeePercent(), "esiEmployeePercent");
         BigDecimalRange.assertPercent(request.getEsiEmployerPercent(), "esiEmployerPercent");
+        if (!java.util.Set.of("GROSS", "BASIC", "BASIC_PLUS_DA").contains(request.getPfCalculationBase())) {
+            throw new BadRequestException("pfCalculationBase must be one of: GROSS, BASIC, BASIC_PLUS_DA");
+        }
     }
 
     private void applyRequest(PayrollSettings settings, PayrollSettingsRequest request) {
@@ -195,12 +198,13 @@ public class PayrollSettingsService {
         settings.setEsiWageCeiling(request.getEsiWageCeiling());
         settings.setPtEnabled(request.getPtEnabled());
         settings.setProfessionalTax(request.getProfessionalTax());
+        settings.setPfCalculationBase(request.getPfCalculationBase());
     }
 
     private PayrollSettingsResponse toResponse(PayrollSettings s) {
         PayrollSettingsResponse r = new PayrollSettingsResponse(s.isEpfEnabled(), s.getEpfEmployeePercent(), s.getEpfEmployerPercent(),
                 s.isEsiEnabled(), s.getEsiEmployeePercent(), s.getEsiEmployerPercent(), s.getEsiWageCeiling(),
-                s.isPtEnabled(), s.getProfessionalTax());
+                s.isPtEnabled(), s.getProfessionalTax(), s.getPfCalculationBase());
         r.setId(s.getId());
         r.setEffectiveFrom(s.getEffectiveFrom());
         r.setEffectiveTo(s.getEffectiveTo());

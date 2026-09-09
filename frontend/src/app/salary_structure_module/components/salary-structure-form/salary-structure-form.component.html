@@ -69,7 +69,7 @@
           <div class="form-grid">
             <div class="form-field">
               <label>Component</label>
-              <select formControlName="salaryComponentId">
+              <select formControlName="salaryComponentId" (change)="onComponentSelected(i)">
                 <option [ngValue]="null">Select a component</option>
                 @for (c of availableComponents(); track c.id) { <option [ngValue]="c.id">{{ c.componentName }} ({{ c.componentType }})</option> }
               </select>
@@ -86,12 +86,21 @@
               </select>
             </div>
             @if (needsAmount(row.getRawValue().calculationType)) {
-              <div class="form-field"><label>Amount (₹)</label><input type="number" min="0" formControlName="amount" /></div>
+              <div class="form-field">
+                <label>Amount (₹) for this structure</label>
+                <input type="number" min="0" formControlName="amount" />
+              </div>
             }
             @if (needsPercentage(row.getRawValue().calculationType)) {
-              <div class="form-field"><label>Percentage</label><input type="number" min="0" max="100" formControlName="percentage" /></div>
+              <div class="form-field">
+                <label>Percentage for this structure</label>
+                <input type="number" min="0" max="100" formControlName="percentage" />
+              </div>
             }
           </div>
+          <p class="muted" style="font-size: 0.76rem; margin: 0.35rem 0 0;">
+            Filled in from the component's default when picked above - change it freely, it only affects this one structure.
+          </p>
           <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.25rem; justify-content: flex-start;">
             <button type="button" class="btn btn-danger btn-sm" (click)="removeComponentRow(i)">Remove</button>
           </div>

@@ -97,6 +97,9 @@
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total Employees</div><strong>{{ r.summary.totalEmployees }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total Gross</div><strong>₹{{ r.summary.totalGross }}</strong></div>
+        @if (overtimeFeatureEnabled()) {
+          <div class="card" style="padding: 0.9rem;"><div class="muted">Total Overtime</div><strong>₹{{ r.summary.totalOvertime }}</strong></div>
+        }
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total EPF</div><strong>₹{{ r.summary.totalEpf }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total ESI</div><strong>₹{{ r.summary.totalEsi }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total P.T.</div><strong>₹{{ r.summary.totalPt }}</strong></div>
@@ -116,13 +119,20 @@
       @if (employees().length === 0) {
         <div class="empty-state">No employee results yet.</div>
       } @else {
-        <p class="muted" style="font-size: 0.85rem;">Advance/Uniform deduction and Allowance can be edited directly below - saving automatically recalculates the whole run so totals update right away.</p>
+        <p class="muted" style="font-size: 0.85rem;">
+          Advance/Uniform deduction and Allowance can be edited directly below - saving automatically recalculates the whole run so totals update right away.
+          @if (overtimeFeatureEnabled()) {
+            Overtime is logged separately in the <a routerLink="/payroll/overtime">Overtime Register</a> and totalled here automatically.
+          }
+        </p>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
                 <th>Employee</th><th>Payable Days</th><th>Gross</th><th>EPF</th><th>ESI</th><th>P.T.</th>
-                <th>Advance/Uniform</th><th>Advance Recovery</th><th>Allowance</th><th>Total Deduct</th><th>Net Pay</th><th>Note</th><th></th>
+                <th>Advance/Uniform</th><th>Advance Recovery</th><th>Allowance</th>
+                @if (overtimeFeatureEnabled()) { <th>Overtime</th> }
+                <th>Total Deduct</th><th>Net Pay</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -156,9 +166,16 @@
                       ₹{{ e.allowance }}
                     }
                   </td>
+                  @if (overtimeFeatureEnabled()) {
+                    <td>
+                      <div>₹{{ e.overtimeAmount }}</div>
+                      @if (e.overtimeHours > 0) {
+                        <div class="muted" style="font-size: 0.72rem;">{{ e.overtimeHours }} hrs</div>
+                      }
+                    </td>
+                  }
                   <td>₹{{ e.totalDeductions }}</td>
                   <td><strong>₹{{ e.netPay }}</strong></td>
-                  <td class="muted" style="white-space: normal; min-width: 160px;">{{ e.note }}</td>
                   <td>
                     <div class="actions">
                     @if (recalculable()) {

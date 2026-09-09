@@ -18,6 +18,8 @@ import { AuthStateService } from '../../../core/services/auth-state.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { EmployeeResponse } from '../../models/employee.model';
 import { UserManagementService } from '../../../user_module/services/user-management.service';
+
+type EmployeeFormTab = 'personal' | 'employment' | 'statutory' | 'login';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
 
 function passwordsMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -55,6 +57,26 @@ export class EmployeeFormComponent {
   readonly salaryStructures = signal<SalaryStructureResponse[]>([]);
   readonly saving = signal(false);
   readonly loading = signal(false);
+
+  /** Sectioned form (Personal / Employment / Statutory & Bank / Login Access) - purely a
+      presentation split, the underlying FormGroup is one single group same as before, so
+      switching tabs never loses anything typed on another tab (Angular reactive form controls
+      keep their value whether or not they're currently rendered). */
+  readonly activeTab = signal<EmployeeFormTab>('personal');
+
+  readonly tabs: { id: EmployeeFormTab; label: string }[] = [
+    { id: 'personal', label: 'Personal Info' },
+    { id: 'employment', label: 'Employment Details' },
+    { id: 'statutory', label: 'PF, ESIC & Bank Details' },
+    { id: 'login', label: 'Login Access' }
+  ];
+
+  /** Which tab each required control lives on - used only to jump the user to the right tab if they submit with an error hidden on a tab they're not currently viewing. */
+  private readonly CONTROL_TAB: Record<string, EmployeeFormTab> = {
+    firstName: 'personal', lastName: 'personal', email: 'personal',
+    aadharNumber: 'personal', panNumber: 'personal',
+    joiningDate: 'employment', department: 'employment', designation: 'employment'
+  };
   readonly isEditMode = signal(false);
   readonly employeeId = signal<number | null>(null);
   /** True whenever a User row exists for this employee, active or not (backend sets userId
@@ -105,6 +127,14 @@ export class EmployeeFormComponent {
     pincode: [''],
     aadharNumber: ['', [Validators.required, Validators.pattern(/^\d{4} ?\d{4} ?\d{4}$/)]],
     panNumber: ['', [Validators.required, Validators.pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/)]],
+    uanNumber: [''],
+    pfMemberId: [''],
+    esicNumber: [''],
+    bankAccountHolderName: [''],
+    bankAccountNumber: [''],
+    bankIfscCode: [''],
+    bankName: [''],
+    bankBranch: [''],
     pfApplicable: [false],
     esiApplicable: [false],
     ptApplicable: [false],
@@ -258,6 +288,14 @@ export class EmployeeFormComponent {
       pincode: emp.pincode ?? '',
       aadharNumber: this.formatAadhar(emp.aadharNumber ?? ''),
       panNumber: emp.panNumber ?? '',
+      uanNumber: emp.uanNumber ?? '',
+      pfMemberId: emp.pfMemberId ?? '',
+      esicNumber: emp.esicNumber ?? '',
+      bankAccountHolderName: emp.bankAccountHolderName ?? '',
+      bankAccountNumber: emp.bankAccountNumber ?? '',
+      bankIfscCode: emp.bankIfscCode ?? '',
+      bankName: emp.bankName ?? '',
+      bankBranch: emp.bankBranch ?? '',
       pfApplicable: emp.pfApplicable,
       esiApplicable: emp.esiApplicable,
       ptApplicable: emp.ptApplicable,
@@ -303,6 +341,7 @@ export class EmployeeFormComponent {
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.jumpToFirstInvalidTab();
       return;
     }
 
@@ -337,6 +376,37 @@ export class EmployeeFormComponent {
 
   cancel(): void {
     this.router.navigateByUrl('/employees');
+  }
+
+  /** If a required field is invalid but sits on a tab the user isn't currently looking at, an
+      error message rendered next to it would be completely invisible - jump there instead of
+      leaving them stuck wondering why Save did nothing. Only checks the fields actually listed
+      in CONTROL_TAB (the required ones) - optional fields never block submission so they never
+      need this. */
+  private jumpToFirstInvalidTab(): void {
+    for (const [controlName, tab] of Object.entries(this.CONTROL_TAB)) {
+      if (this.form.get(controlName)?.invalid) {
+        this.activeTab.set(tab);
+        this.toast.error(`Please fix the highlighted field(s) in the "${this.tabs.find(t => t.id === tab)?.label}" tab.`);
+        return;
+      }
+    }
+    // Login Access fields (username/password/role) aren't in CONTROL_TAB since they're only
+    // required conditionally (enableLogin on, or the reactivation form open) - checked
+    // separately since "invalid" alone can't distinguish "required and empty" from "not
+    // applicable right now".
+    if ((this.form.controls.enableLogin.value && this.form.controls.loginAccess.invalid)
+        || (this.showEnableLoginForm() && this.enableLoginForm.invalid)) {
+      this.activeTab.set('login');
+      this.toast.error('Please fix the highlighted field(s) in the "Login Access" tab.');
+    }
+  }
+
+  /** Drives a small error dot on a tab button so a mistake on a tab the user isn't viewing is at least visible, not just silently there. */
+  tabHasError(tab: EmployeeFormTab): boolean {
+    return Object.entries(this.CONTROL_TAB).some(
+      ([controlName, t]) => t === tab && !!this.form.get(controlName)?.invalid && !!this.form.get(controlName)?.touched
+    );
   }
 
   resetForm(): void {

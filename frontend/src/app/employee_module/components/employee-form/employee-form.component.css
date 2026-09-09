@@ -1,2 +1,53 @@
 /* Page-level styles live in the global styles.css (form-card, form-actions,
    login-access-section, toggle-row). */
+
+/* ---------- Tabbed sections ---------- */
+.employee-form-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.employee-form-tab {
+  position: relative;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.employee-form-tab:hover { color: var(--text-color); }
+
+.employee-form-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.employee-form-tab-error-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger-color);
+  display: inline-block;
+}
+
+/* ---------- Short label + small full-form hint (UAN No / IFSC etc.) ---------- */
+.field-hint {
+  font-size: 0.72rem;
+  color: var(--muted-color);
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 640px) {
+  .employee-form-tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .employee-form-tab { white-space: nowrap; }
+}

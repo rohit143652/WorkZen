@@ -17,6 +17,10 @@
         <div class="form-field"><label>EPF</label><div>{{ c.epfEnabled ? (c.epfEmployeePercent + '% / ' + c.epfEmployerPercent + '% (employee/employer)') : 'Disabled' }}</div></div>
         <div class="form-field"><label>ESI</label><div>{{ c.esiEnabled ? (c.esiEmployeePercent + '% / ' + c.esiEmployerPercent + '%' + (c.esiWageCeiling != null ? ' up to ₹' + c.esiWageCeiling : '')) : 'Disabled' }}</div></div>
         <div class="form-field"><label>Professional Tax</label><div>{{ c.ptEnabled ? ('₹' + c.professionalTax + '/month') : 'Disabled' }}</div></div>
+        <div class="form-field"><label>PF Calculated On</label><div>{{ pfBaseLabel(c.pfCalculationBase) }}</div></div>
+        @if (overtimeFeatureEnabled()) {
+          <div class="form-field"><label>Overtime</label><div><a routerLink="/payroll/overtime">Manage in Overtime Register</a></div></div>
+        }
       </div>
       @if (nextScheduled; as next) {
         <div class="temp-password-box" style="background: var(--info-bg); border-color: var(--secondary-color);">
@@ -49,8 +53,14 @@
         <div class="form-grid">
           <div class="form-field"><label>Employee Share (%)</label><input type="number" min="0" max="100" step="0.01" [(ngModel)]="epfEmployeePercent" /></div>
           <div class="form-field"><label>Employer Share (%)</label><input type="number" min="0" max="100" step="0.01" [(ngModel)]="epfEmployerPercent" /></div>
+          <div class="form-field">
+            <label>Calculate PF On</label>
+            <select [(ngModel)]="pfCalculationBase">
+              @for (b of pfCalculationBases; track b.value) { <option [value]="b.value">{{ b.label }}</option> }
+            </select>
+          </div>
         </div>
-        <p class="muted" style="margin-top: -0.5rem;">Applied to Basic + DA (actual, prorated by attendance).</p>
+        <p class="muted" style="margin-top: -0.5rem;">Applied to whichever figure is selected above (actual, prorated by attendance) - structures with no separate Basic/DA fall back to Gross regardless of this choice.</p>
       }
 
       <div class="section-title"><i class="bi bi-heart-pulse"></i> ESI (Employee State Insurance)</div>
@@ -86,6 +96,13 @@
           <label>Flat Amount (₹/month)</label>
           <input type="number" min="0" [(ngModel)]="professionalTax" />
         </div>
+      }
+
+      @if (overtimeFeatureEnabled()) {
+        <p class="muted" style="font-size: 0.82rem;">
+          <i class="bi bi-info-circle"></i> Overtime is managed entirely in the <a routerLink="/payroll/overtime">Overtime Register</a> -
+          each entry's rupee amount is entered directly there, with no separate rate or toggle needed here.
+        </p>
       }
 
       <div class="form-actions" style="justify-content: flex-start;">

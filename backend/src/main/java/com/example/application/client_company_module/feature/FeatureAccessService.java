@@ -94,7 +94,13 @@ public class FeatureAccessService {
         return getFeatureMap(clientCompanyId);
     }
 
-    /** Seeds every catalog feature code as enabled=true for a brand-new tenant - called once from ClientCompanyService.create() so a new company's Manage Features screen has concrete rows to show immediately, same as the V102 migration did for existing tenants. */
+    /** Feature codes that must be an explicit Super Admin opt-in even for a brand-new company -
+        true-by-default (matching the "absence of a row = enabled" rule) is right for most
+        features, but wrong for OVERTIME_MANAGEMENT specifically, since it's a real payroll-
+        calculation change, not a passive module (see V106 migration). */
+    private static final java.util.Set<String> OPT_IN_DEFAULT_OFF = java.util.Set.of(FeatureCode.OVERTIME_MANAGEMENT);
+
+    /** Seeds every catalog feature code for a brand-new tenant - called once from ClientCompanyService.create() so a new company's Manage Features screen has concrete rows to show immediately, same as the V102/V106 migrations did for existing tenants. */
     @Transactional
     public void seedDefaultsForNewCompany(Long clientCompanyId) {
         for (FeatureCode.FeatureCategory category : FeatureCode.CATALOG) {
@@ -103,7 +109,7 @@ public class FeatureAccessService {
                     CompanyFeature cf = new CompanyFeature();
                     cf.setClientCompanyId(clientCompanyId);
                     cf.setFeatureCode(code);
-                    cf.setEnabled(true);
+                    cf.setEnabled(!OPT_IN_DEFAULT_OFF.contains(code));
                     repository.save(cf);
                 }
             }

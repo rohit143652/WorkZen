@@ -77,6 +77,24 @@ public class PayrollSettings {
     @Column(name = "professional_tax", nullable = false, precision = 10, scale = 2)
     private BigDecimal professionalTax = new BigDecimal("200.00");
 
+    /** Client-configured choice of what PF is a percentage OF - see PayrollCalculationService.resolveEpfBase(). */
+    @Column(name = "pf_calculation_base", nullable = false, length = 20)
+    private String pfCalculationBase = "BASIC_PLUS_DA";
+
+    /** Legacy, unused - overtime is now gated solely by the Super Admin's OVERTIME_MANAGEMENT
+        company feature (see FeatureAccessService/PayrollRunService); this second, redundant
+        client-level toggle was removed as confusing UI (two on/off switches for one thing).
+        Left in place rather than dropped, same as its sibling overtime_rate_per_hour column. */
+    @Column(name = "overtime_enabled", nullable = false)
+    private boolean overtimeEnabled = false;
+
+    /** Legacy, unused - see V108 migration. Overtime amounts are now entered directly per entry
+        in the Overtime Register rather than computed from a fixed company-wide rate, so this no
+        longer has anything to configure. Left in place rather than dropped, same as the other
+        unused legacy columns already in this codebase (e.g. EmployeePayrollAdjustment.overtime). */
+    @Column(name = "overtime_rate_per_hour", nullable = false, precision = 10, scale = 2)
+    private BigDecimal overtimeRatePerHour = BigDecimal.ZERO;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -119,6 +137,12 @@ public class PayrollSettings {
     public void setPtEnabled(boolean ptEnabled) { this.ptEnabled = ptEnabled; }
     public BigDecimal getProfessionalTax() { return professionalTax; }
     public void setProfessionalTax(BigDecimal professionalTax) { this.professionalTax = professionalTax; }
+    public String getPfCalculationBase() { return pfCalculationBase; }
+    public void setPfCalculationBase(String pfCalculationBase) { this.pfCalculationBase = pfCalculationBase; }
+    public boolean isOvertimeEnabled() { return overtimeEnabled; }
+    public void setOvertimeEnabled(boolean overtimeEnabled) { this.overtimeEnabled = overtimeEnabled; }
+    public BigDecimal getOvertimeRatePerHour() { return overtimeRatePerHour; }
+    public void setOvertimeRatePerHour(BigDecimal overtimeRatePerHour) { this.overtimeRatePerHour = overtimeRatePerHour; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }

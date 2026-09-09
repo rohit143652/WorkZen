@@ -26,6 +26,15 @@ export interface EmployeeRequest {
   pincode?: string;
   aadharNumber: string;
   panNumber: string;
+  /** All genuinely optional - see backend V104 migration for why (e.g. UAN often isn't issued until weeks after joining). */
+  uanNumber?: string;
+  pfMemberId?: string;
+  esicNumber?: string;
+  bankAccountHolderName?: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankName?: string;
+  bankBranch?: string;
   /** Optional - base64 data-URI string (e.g. "data:image/jpeg;base64,..."). */
   photoData?: string | null;
   /** PF/ESI/PT deduction applicability for this specific employee - independent of Salary Structure type. Both this AND the tenant's Payroll Settings must be enabled for a deduction to apply. Omit to keep the default (true). */
@@ -64,6 +73,14 @@ export interface EmployeeResponse {
   pincode?: string;
   aadharNumber?: string;
   panNumber?: string;
+  uanNumber?: string;
+  pfMemberId?: string;
+  esicNumber?: string;
+  bankAccountHolderName?: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankName?: string;
+  bankBranch?: string;
   photoData?: string | null;
   pfApplicable: boolean;
   esiApplicable: boolean;
