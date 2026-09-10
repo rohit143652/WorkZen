@@ -10,6 +10,12 @@ public interface AdvanceRecoveryTransactionRepository extends JpaRepository<Adva
     /** Source-aware lookup (architecture refactor Phase 5) - PAYROLL and MANUAL_SETTLEMENT rows for the same advance+month are now separate, co-existing rows (see V70/V71), so the upsert key must include source too. */
     Optional<AdvanceRecoveryTransaction> findByAdvanceIdAndYearAndMonthAndSource(Long advanceId, int year, int month, String source);
 
+    /** Unlike the singular finder above, this can return MORE than one row - V80 deliberately
+        allows multiple MANUAL_SETTLEMENT entries for the same advance in the same month (e.g.
+        two separate cash payments the same month), so anything that needs "how much was
+        manually settled this month in total" must sum a list, not assume a single row. */
+    List<AdvanceRecoveryTransaction> findAllByAdvanceIdAndYearAndMonthAndSource(Long advanceId, int year, int month, String source);
+
     /** Every recovery ever applied against one advance - what getOutstanding() sums to compute how much has already been recovered. */
     List<AdvanceRecoveryTransaction> findAllByAdvanceId(Long advanceId);
 

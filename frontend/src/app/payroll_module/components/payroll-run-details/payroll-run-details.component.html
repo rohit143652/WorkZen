@@ -103,7 +103,6 @@
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total EPF</div><strong>₹{{ r.summary.totalEpf }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total ESI</div><strong>₹{{ r.summary.totalEsi }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total P.T.</div><strong>₹{{ r.summary.totalPt }}</strong></div>
-        <div class="card" style="padding: 0.9rem;"><div class="muted">Total Other Deduction</div><strong>₹{{ r.summary.totalOtherDeduction }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total Advance Recovery</div><strong>₹{{ r.summary.totalAdvanceRecovery }}</strong></div>
         <div class="card" style="padding: 0.9rem;"><div class="muted">Total Deductions</div><strong>₹{{ r.summary.totalDeductions }}</strong></div>
         <div class="card" style="padding: 0.9rem; background: var(--accent-soft, #eef2ff);"><div class="muted">Total Net Pay</div><strong>₹{{ r.summary.totalNetPay }}</strong></div>
@@ -120,7 +119,9 @@
         <div class="empty-state">No employee results yet.</div>
       } @else {
         <p class="muted" style="font-size: 0.85rem;">
-          Advance/Uniform deduction and Allowance can be edited directly below - saving automatically recalculates the whole run so totals update right away.
+          Advance Recovery is calculated automatically from Employee Advances, not editable here - use "Skip this month" or the Employee
+          Advances page to change what a specific advance recovers. Allowance can still be edited directly below - saving automatically
+          recalculates the whole run so totals update right away.
           @if (overtimeFeatureEnabled()) {
             Overtime is logged separately in the <a routerLink="/payroll/overtime">Overtime Register</a> and totalled here automatically.
           }
@@ -130,7 +131,7 @@
             <thead>
               <tr>
                 <th>Employee</th><th>Payable Days</th><th>Gross</th><th>EPF</th><th>ESI</th><th>P.T.</th>
-                <th>Advance/Uniform</th><th>Advance Recovery</th><th>Allowance</th>
+                <th>Advance Recovery</th><th>Allowance</th>
                 @if (overtimeFeatureEnabled()) { <th>Overtime</th> }
                 <th>Total Deduct</th><th>Net Pay</th><th></th>
               </tr>
@@ -145,18 +146,24 @@
                   <td>₹{{ e.esiEmployee }}</td>
                   <td>₹{{ e.professionalTax }}</td>
                   <td>
-                    @if (editingEmployeeId() === e.employeeId) {
-                      <input type="number" min="0" [(ngModel)]="editAdvanceUniform" style="width: 70px; padding: 0.25rem; border: 1px solid var(--border-color); border-radius: 6px;" />
-                    } @else {
-                      ₹{{ e.otherManualDeduction }}
-                    }
-                  </td>
-                  <td>
                     <div>₹{{ e.advanceRecovery }}</div>
                     @if (e.advanceOutstandingBeforeRecovery > 0 || e.advanceOutstandingAfterRecovery > 0) {
-                      <div class="muted" style="font-size: 0.72rem; white-space: nowrap;" title="Advance outstanding before this month's recovery, and what remains after it">
-                        ₹{{ e.advanceOutstandingBeforeRecovery }} &rarr; ₹{{ e.advanceOutstandingAfterRecovery }}
+                      <div class="muted" style="font-size: 0.68rem; white-space: nowrap;" title="Advance outstanding before this month's recovery, and what remains after it">
+                        Outstanding: ₹{{ e.advanceOutstandingBeforeRecovery }} &rarr; ₹{{ e.advanceOutstandingAfterRecovery }}
                       </div>
+                    }
+                    @if (e.singleEligibleAdvanceId && e.advanceRecovery > 0) {
+                      <button
+                        type="button"
+                        *appHasPermission="'ADVANCE_UPDATE'"
+                        class="btn-ghost"
+                        style="font-size: 0.68rem; padding: 0; border: none; background: none; color: var(--primary-color); cursor: pointer; text-decoration: underline;"
+                        [disabled]="togglingAdvanceForEmployeeId() === e.employeeId"
+                        (click)="skipAdvanceThisMonth(e)">
+                        {{ togglingAdvanceForEmployeeId() === e.employeeId ? 'Working...' : 'Skip this month' }}
+                      </button>
+                    } @else if (e.advanceRecovery > 0) {
+                      <a routerLink="/advances" class="muted" style="font-size: 0.68rem;">Manage in Employee Advances</a>
                     }
                   </td>
                   <td>
@@ -185,7 +192,7 @@
                         </button>
                         <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEditAdjustment()"><i class="bi bi-x-lg"></i></button>
                       } @else {
-                        <button type="button" *appHasPermission="'PAYROLL_RUN_CALCULATE'" class="btn-ghost btn btn-sm" (click)="startEditAdjustment(e)" title="Edit Advance/Uniform and Allowance">
+                        <button type="button" *appHasPermission="'PAYROLL_RUN_CALCULATE'" class="btn-ghost btn btn-sm" (click)="startEditAdjustment(e)" title="Edit Allowance">
                           <i class="bi bi-pencil"></i>
                         </button>
                       }

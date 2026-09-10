@@ -87,6 +87,7 @@ public class PayrollRunService {
     private final AuditService auditService;
     private final FeatureAccessService featureAccessService;
     private final EmployeeOvertimeService overtimeService;
+    private final com.example.application.advance_module.service.EmployeeAdvanceService advanceService;
 
     public PayrollRunService(PayrollRunRepository payrollRunRepository,
                               PayrollRunEmployeeRepository payrollRunEmployeeRepository,
@@ -103,7 +104,8 @@ public class PayrollRunService {
                               TenantContextService tenantContext,
                               AuditService auditService,
                               FeatureAccessService featureAccessService,
-                              EmployeeOvertimeService overtimeService) {
+                              EmployeeOvertimeService overtimeService,
+                              com.example.application.advance_module.service.EmployeeAdvanceService advanceService) {
         this.payrollRunRepository = payrollRunRepository;
         this.payrollRunEmployeeRepository = payrollRunEmployeeRepository;
         this.employeeRepository = employeeRepository;
@@ -120,6 +122,7 @@ public class PayrollRunService {
         this.auditService = auditService;
         this.featureAccessService = featureAccessService;
         this.overtimeService = overtimeService;
+        this.advanceService = advanceService;
     }
 
     // ------------------------------------------------------------------
@@ -492,7 +495,8 @@ public class PayrollRunService {
     public Page<PayrollRunEmployeeResponse> getRunEmployees(Long runId, Pageable pageable) {
         Long tenantId = tenantContext.requireCurrentTenantId();
         PayrollRun run = getRunForTenant(tenantId, runId);
-        return payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(run.getId(), pageable).map(this::toEmployeeResponse);
+        return payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(run.getId(), pageable)
+                .map(e -> toEmployeeResponse(e, run));
     }
 
     // ------------------------------------------------------------------
@@ -562,8 +566,10 @@ public class PayrollRunService {
         return userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
     }
 
-    private PayrollRunEmployeeResponse toEmployeeResponse(PayrollRunEmployee e) {
+    private PayrollRunEmployeeResponse toEmployeeResponse(PayrollRunEmployee e, PayrollRun run) {
         PayrollRunEmployeeResponse r = new PayrollRunEmployeeResponse();
+        r.setSingleEligibleAdvanceId(
+                advanceService.getSingleEligibleAdvanceId(run.getClientCompanyId(), e.getEmployeeId(), run.getYear(), run.getMonth()));
         r.setId(e.getId());
         r.setEmployeeId(e.getEmployeeId());
         r.setEmployeeCode(e.getEmployeeCode());

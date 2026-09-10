@@ -10,6 +10,7 @@ import { HasPermissionDirective } from '../../../shared/directives/has-permissio
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
 import { FeatureStateService } from '../../../core/services/feature-state.service';
+import { EmployeeAdvanceService } from '../../../advance_module/services/employee-advance.service';
 
 /**
  * Read-only view of a persisted Payroll Run + its employee results, plus
@@ -34,7 +35,47 @@ export class PayrollRunDetailsComponent {
   private readonly payrollRunService = inject(PayrollRunService);
   private readonly toast = inject(ToastService);
   private readonly featureState = inject(FeatureStateService);
+  private readonly employeeAdvanceService = inject(EmployeeAdvanceService);
   readonly overtimeFeatureEnabled = () => this.featureState.isEnabled('OVERTIME_MANAGEMENT');
+  readonly togglingAdvanceForEmployeeId = signal<number | null>(null);
+
+  /** "Skip this month" - only offered when the employee has EXACTLY ONE advance eligible for
+      payroll recovery (see PayrollRunEmployeeResult.singleEligibleAdvanceId / backend
+      EmployeeAdvanceService.getSingleEligibleAdvanceId()). Pauses that advance's payroll
+      recovery via the SAME "Cut from Payroll" mechanism the Employee Advances page uses -
+      correctly reflected in the real ledger (outstanding stays unchanged this month), not a
+      cosmetic override - then recalculates so the run's figures update immediately. Re-enabling
+      it afterward (for next month) is done from the Employee Advances page, same as always. */
+  async skipAdvanceThisMonth(row: PayrollRunEmployeeResult): Promise<void> {
+    if (!row.singleEligibleAdvanceId) return;
+    const ok = await this.confirmDialog.ask({
+      title: "Skip this employee's advance recovery this month?",
+      message: `No amount will be cut from ${row.employeeName}'s pay this month for this advance - the outstanding balance stays the same and recovery resumes automatically next month (or whenever you turn "Cut from Payroll" back on from Employee Advances).`,
+      confirmLabel: 'Skip This Month'
+    });
+    if (!ok) return;
+    this.togglingAdvanceForEmployeeId.set(row.employeeId);
+    this.employeeAdvanceService.updateRecoverViaPayroll(row.employeeId, row.singleEligibleAdvanceId, false).subscribe({
+      next: () => {
+        this.payrollRunService.calculate(this.runId).subscribe({
+          next: () => {
+            this.togglingAdvanceForEmployeeId.set(null);
+            this.toast.success(`Advance recovery skipped for ${row.employeeName} this month - run recalculated.`);
+            this.load();
+          },
+          error: err => {
+            this.togglingAdvanceForEmployeeId.set(null);
+            this.toast.error(err.error?.message ?? 'Skipped, but the run could not be recalculated automatically - use Recalculate above.');
+            this.load();
+          }
+        });
+      },
+      error: err => {
+        this.togglingAdvanceForEmployeeId.set(null);
+        this.toast.error(err.error?.message ?? 'Unable to update this advance.');
+      }
+    });
+  }
   private readonly confirmDialog = inject(ConfirmDialogService);
 
   private readonly runId = Number(this.route.snapshot.paramMap.get('id'));
@@ -46,7 +87,10 @@ export class PayrollRunDetailsComponent {
 
   readonly editingEmployeeId = signal<number | null>(null);
   readonly savingEmployeeId = signal<number | null>(null);
-  editAdvanceUniform = 0;
+  /** Sent as-is to preserve the request contract (backend still requires this field) - there's
+      no UI to edit it any more (see "advance deduction madhun manual kadhun tak" request: Manual
+      was removed from this screen entirely, only automatic Advance Recovery is shown now). */
+  private currentOtherManualDeduction = 0;
   editAllowance = 0;
 
   readonly showCancelForm = signal(false);
@@ -181,7 +225,7 @@ export class PayrollRunDetailsComponent {
 
   startEditAdjustment(row: PayrollRunEmployeeResult): void {
     this.editingEmployeeId.set(row.employeeId);
-    this.editAdvanceUniform = row.otherManualDeduction;
+    this.currentOtherManualDeduction = row.otherManualDeduction;
     this.editAllowance = row.allowance;
   }
 
@@ -190,12 +234,12 @@ export class PayrollRunDetailsComponent {
   }
 
   saveAdjustment(row: PayrollRunEmployeeResult): void {
-    if (this.editAdvanceUniform < 0 || this.editAllowance < 0) {
-      this.toast.warning('Advance/Uniform and Allowance must be 0 or more.');
+    if (this.editAllowance < 0) {
+      this.toast.warning('Allowance must be 0 or more.');
       return;
     }
     this.savingEmployeeId.set(row.employeeId);
-    this.payrollRunService.setEmployeeAdjustment(this.runId, row.employeeId, this.editAdvanceUniform, this.editAllowance).subscribe({
+    this.payrollRunService.setEmployeeAdjustment(this.runId, row.employeeId, this.currentOtherManualDeduction, this.editAllowance).subscribe({
       next: () => {
         this.editingEmployeeId.set(null);
         // Recalculate the whole run immediately, so this employee's (and everyone's) totals

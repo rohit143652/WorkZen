@@ -77,6 +77,7 @@ export interface PayrollRunEmployeeResult {
   professionalTax: number;
   otherManualDeduction: number;
   advanceRecovery: number;
+  singleEligibleAdvanceId: number | null;
   totalDeductions: number;
   advanceOutstandingBeforeRecovery: number;
   advanceOutstandingAfterRecovery: number;

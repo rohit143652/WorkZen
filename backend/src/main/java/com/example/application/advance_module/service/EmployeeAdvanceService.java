@@ -258,6 +258,12 @@ public class EmployeeAdvanceService {
         return toResponse(getAdvanceForEmployee(tenantId, employeeId, advanceId));
     }
 
+    /** "Outstanding right now" - the actual, current, global balance across every active advance,
+        regardless of any advance's recovery-start month. Correct for full-and-final settlement
+        (ExitService) - an exiting employee's ACTUAL outstanding balance today includes every
+        advance they owe, whether or not payroll has started recovering it yet. NOT correct for
+        showing "outstanding" on a specific historical Payroll Run row - see the (year, month)
+        overload below for that. */
     @Transactional(readOnly = true)
     public BigDecimal getOutstandingForEmployee(Long tenantId, Long employeeId) {
         List<EmployeeAdvance> advances = advanceRepository.findAllByClientCompanyIdAndEmployeeIdOrderByAdvanceDateDesc(tenantId, employeeId)
@@ -268,6 +274,70 @@ public class EmployeeAdvanceService {
         return advances.stream()
                 .map(a -> outstandingFrom(a, transactionsByAdvanceId.getOrDefault(a.getId(), List.of())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * "Outstanding AS OF a specific payroll month" - what PayrollCalculationService actually
+     * needs for the Advance Recovery column on a given month's run. Two real bugs this fixes
+     * over just calling the no-args overload above:
+     *   1. An advance given THIS month (its recoveryStartYear/Month hasn't been reached yet by
+     *      the month being calculated) is excluded entirely - it contributes NOTHING to a past
+     *      or current month's outstanding figure, since it didn't exist as a payroll obligation
+     *      yet. Without this, giving a new advance today would make it immediately show up (and
+     *      inflate "Outstanding") on an already-calculated PREVIOUS month's row the moment that
+     *      row is recalculated - the advance existing "right now" leaked into a month it had no
+     *      business appearing in at all.
+     *   2. Only recovery transactions from STRICTLY EARLIER (year, month) count toward "the
+     *      balance before this month's own recovery" - a later month's recovery (if that later
+     *      month has already been calculated too, an edge case but a real one) must not reduce
+     *      what an EARLIER month's row shows as outstanding.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal getOutstandingForEmployee(Long tenantId, Long employeeId, int year, int month) {
+        List<EmployeeAdvance> advances = advanceRepository.findAllByClientCompanyIdAndEmployeeIdOrderByAdvanceDateDesc(tenantId, employeeId)
+                .stream()
+                .filter(a -> "ACTIVE".equals(a.getStatus()))
+                .filter(a -> hasRecoveryStartedBy(a, year, month))
+                .toList();
+        Map<Long, List<AdvanceRecoveryTransaction>> transactionsByAdvanceId = recoveryRepository
+                .findAllByAdvanceIdIn(advances.stream().map(EmployeeAdvance::getId).toList())
+                .stream()
+                .filter(t -> isStrictlyBefore(t.getYear(), t.getMonth(), year, month))
+                .collect(Collectors.groupingBy(AdvanceRecoveryTransaction::getAdvanceId));
+        return advances.stream()
+                .map(a -> outstandingFrom(a, transactionsByAdvanceId.getOrDefault(a.getId(), List.of())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Same "has this payroll month reached the advance's configured recovery-start month yet" check computeMonthlyRecovery() uses - extracted here so both places can never silently drift apart. */
+    private boolean hasRecoveryStartedBy(EmployeeAdvance advance, int year, int month) {
+        return !(year < advance.getRecoveryStartYear()
+                || (year == advance.getRecoveryStartYear() && month < advance.getRecoveryStartMonth()));
+    }
+
+    private boolean isStrictlyBefore(int year, int month, int refYear, int refMonth) {
+        return year < refYear || (year == refYear && month < refMonth);
+    }
+
+    /**
+     * For the Payroll Run screen's "skip this month" convenience toggle - returns the advance's
+     * id ONLY if there is EXACTLY ONE advance currently eligible to be recovered via payroll for
+     * this employee this month (active, recovery already started, not already paused, still has
+     * an outstanding balance). Null if there are zero (nothing to skip) or more than one
+     * (ambiguous which one the toggle should apply to - that case is pushed to the Employee
+     * Advances page instead, where each advance's own "Cut from Payroll" checkbox is
+     * unambiguous).
+     */
+    @Transactional(readOnly = true)
+    public Long getSingleEligibleAdvanceId(Long tenantId, Long employeeId, int year, int month) {
+        List<EmployeeAdvance> eligible = advanceRepository
+                .findAllByClientCompanyIdAndEmployeeIdAndStatusOrderByAdvanceDateAsc(tenantId, employeeId, "ACTIVE")
+                .stream()
+                .filter(a -> hasRecoveryStartedBy(a, year, month))
+                .filter(EmployeeAdvance::isRecoverViaPayroll)
+                .filter(a -> getOutstanding(a).signum() > 0)
+                .toList();
+        return eligible.size() == 1 ? eligible.get(0).getId() : null;
     }
 
     /**
@@ -294,9 +364,10 @@ public class EmployeeAdvanceService {
             // Recovery Start Month (spec section 9/10): skip an advance entirely until the
             // payroll month being processed reaches its configured start month - e.g. an advance
             // granted in August with "Recovery Start: September 2026" contributes nothing to
-            // August's payroll.
-            if (year < advance.getRecoveryStartYear()
-                    || (year == advance.getRecoveryStartYear() && month < advance.getRecoveryStartMonth())) {
+            // August's payroll. Same check getOutstandingForEmployee(tenantId, employeeId, year,
+            // month) uses, via the shared hasRecoveryStartedBy() helper - kept in one place so
+            // "does this advance apply to this month" can never drift between the two.
+            if (!hasRecoveryStartedBy(advance, year, month)) {
                 continue;
             }
             // Pause/resume: admin can turn payroll recovery off for this advance temporarily
@@ -308,8 +379,27 @@ public class EmployeeAdvanceService {
             BigDecimal outstanding = getOutstanding(advance);
             if (outstanding.signum() <= 0) continue;
 
-            BigDecimal recovery = advance.getMonthlyRecoveryAmount().min(outstanding).min(remainingCapacity);
-            if (recovery.signum() <= 0) continue;
+            // An employee who's already manually settled some or all of this month's usual
+            // installment (Settle Partial/Full, recorded as a MANUAL_SETTLEMENT transaction for
+            // this SAME advance+year+month) shouldn't also have it cut from payroll - reduce
+            // what payroll targets this month by whatever's already been manually covered.
+            // Summing (not finding one row) because V80 deliberately allows more than one
+            // MANUAL_SETTLEMENT entry for the same advance in the same month.
+            BigDecimal alreadySettledThisMonth = recoveryRepository
+                    .findAllByAdvanceIdAndYearAndMonthAndSource(advance.getId(), year, month, "MANUAL_SETTLEMENT")
+                    .stream().map(AdvanceRecoveryTransaction::getRecoveredAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal targetThisMonth = advance.getMonthlyRecoveryAmount().subtract(alreadySettledThisMonth).max(BigDecimal.ZERO);
+
+            BigDecimal recovery = targetThisMonth.min(outstanding).min(remainingCapacity);
+            if (recovery.signum() <= 0) {
+                // Fully covered by the manual settlement above - if an earlier calculation of
+                // this same still-editable run already created a nonzero PAYROLL row for this
+                // month (before the settlement happened), remove it rather than leaving a stale
+                // amount that no longer reflects what's actually owed this month.
+                recoveryRepository.findByAdvanceIdAndYearAndMonthAndSource(advance.getId(), year, month, "PAYROLL")
+                        .ifPresent(recoveryRepository::delete);
+                continue;
+            }
 
             AdvanceRecoveryTransaction txn = recoveryRepository.findByAdvanceIdAndYearAndMonthAndSource(advance.getId(), year, month, "PAYROLL")
                     .orElseGet(() -> {

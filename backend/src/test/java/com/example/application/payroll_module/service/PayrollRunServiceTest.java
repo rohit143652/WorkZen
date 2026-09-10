@@ -60,6 +60,7 @@ class PayrollRunServiceTest {
     @Mock private AuditService auditService;
     @Mock private FeatureAccessService featureAccessService;
     @Mock private EmployeeOvertimeService overtimeService;
+    @Mock private com.example.application.advance_module.service.EmployeeAdvanceService advanceService;
 
     @InjectMocks
     private PayrollRunService service;

@@ -93,7 +93,7 @@ public class PayrollCalculationService {
         BigDecimal overtimeAmount = nz(input.getOvertime());
 
         BigDecimal advanceRecovery = calculateAdvanceRecovery(input, totalGross, epfEmployee, esiEmployee, pt, otherManualDeduction);
-        BigDecimal outstandingAdvance = advanceService.getOutstandingForEmployee(input.getTenantId(), input.getEmployeeId());
+        BigDecimal outstandingAdvance = advanceService.getOutstandingForEmployee(input.getTenantId(), input.getEmployeeId(), input.getYear(), input.getMonth());
 
         BigDecimal totalDeduct = epfEmployee.add(esiEmployee).add(pt).add(otherManualDeduction).add(advanceRecovery);
         BigDecimal netPayment = calculateNetPay(totalGross, totalDeduct, allowance, overtimeAmount);

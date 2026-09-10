@@ -43,6 +43,10 @@ public class PayrollRunEmployeeResponse {
     private BigDecimal professionalTax;
     private BigDecimal otherManualDeduction;
     private BigDecimal advanceRecovery;
+    /** Non-null only when exactly one advance is eligible for payroll recovery this month - see EmployeeAdvanceService.getSingleEligibleAdvanceId(). Drives the Payroll Run screen's "skip this month" convenience toggle; null means zero or multiple advances, handled on the Employee Advances page instead. */
+    private Long singleEligibleAdvanceId;
+    public Long getSingleEligibleAdvanceId() { return singleEligibleAdvanceId; }
+    public void setSingleEligibleAdvanceId(Long singleEligibleAdvanceId) { this.singleEligibleAdvanceId = singleEligibleAdvanceId; }
     private BigDecimal totalDeductions;
 
     private BigDecimal advanceOutstandingBeforeRecovery;
