@@ -662,6 +662,13 @@ public class AttendanceService {
     @Transactional(readOnly = true)
     public TodayAttendanceOverviewResponse getTodayOverview() {
         Long tenantId = tenantContext.requireCurrentTenantId();
+        // This overview is specifically about check-in/check-out data (who's checked in today,
+        // who hasn't) - if the company has EMPLOYEE_SELF_ATTENDANCE off, there's nothing
+        // meaningful for it to show, same rule the dashboard's canSeeAttendanceOverview() applies
+        // on the frontend - enforced here too so hiding the widget isn't the only thing stopping
+        // a direct API call from still returning this data.
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.ATTENDANCE_MANAGEMENT, "Attendance Management");
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.EMPLOYEE_SELF_ATTENDANCE, "Employee Self Attendance");
         LocalDate today = LocalDate.now();
 
         List<Employee> activeEmployees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");

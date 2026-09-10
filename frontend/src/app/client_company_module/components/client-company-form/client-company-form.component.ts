@@ -6,6 +6,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientCompanyService } from '../../services/client-company.service';
 import { ClientCompanyResponse } from '../../models/client-company.model';
 import { ToastService } from '../../../shared/services/toast.service';
+import { SubscriptionPlanService } from '../../../subscription_module/services/subscription-plan.service';
+import { SubscriptionPlan } from '../../../subscription_module/models/subscription.model';
+import { calculateSubscriptionEndDate } from '../../../subscription_module/utils/subscription-date.util';
 
 @Component({
   selector: 'app-client-company-form',
@@ -16,9 +19,13 @@ import { ToastService } from '../../../shared/services/toast.service';
 export class ClientCompanyFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly clientCompanyService = inject(ClientCompanyService);
+  private readonly planService = inject(SubscriptionPlanService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  readonly plans = signal<SubscriptionPlan[]>([]);
+  readonly selectedPlan = signal<SubscriptionPlan | null>(null);
 
   readonly saving = signal(false);
   readonly loading = signal(false);
@@ -46,6 +53,17 @@ export class ClientCompanyFormComponent {
     clientAdminLogin: this.fb.nonNullable.group({
       username: [''],
       password: ['']
+    }),
+    subscription: this.fb.nonNullable.group({
+      planId: [null as number | null, Validators.required],
+      billingCycle: ['MONTHLY', Validators.required],
+      startDate: [new Date().toISOString().slice(0, 10), Validators.required],
+      endDate: [''],
+      status: ['ACTIVE', Validators.required],
+      employeeLimitOverride: [null as number | null],
+      monthlyPriceOverride: [null as number | null],
+      yearlyPriceOverride: [null as number | null],
+      notes: ['']
     })
   });
 
@@ -65,6 +83,48 @@ export class ClientCompanyFormComponent {
       group.controls.username.updateValueAndValidity();
       group.controls.password.updateValueAndValidity();
     });
+
+    // Subscription is only relevant/required when CREATING - update() never reads it (see
+    // backend ClientCompanyRequest javadoc), so it's disabled entirely outside the create flow
+    // rather than asking an admin editing company details to also re-pick a plan every time.
+    if (idParam) {
+      this.form.controls.subscription.disable();
+    } else {
+      this.planService.list(true).subscribe({
+        next: plans => this.plans.set(plans),
+        error: () => this.toast.error('Unable to load subscription plans.')
+      });
+    }
+
+    this.form.controls.subscription.controls.planId.valueChanges.subscribe(planId => {
+      const plan = this.plans().find(p => p.id === planId) ?? null;
+      this.selectedPlan.set(plan);
+      const overrideControls = this.form.controls.subscription.controls;
+      if (plan?.customEmployeeLimitAllowed) {
+        overrideControls.employeeLimitOverride.setValidators([Validators.required, Validators.min(1)]);
+        overrideControls.monthlyPriceOverride.setValidators([Validators.required, Validators.min(0)]);
+        overrideControls.yearlyPriceOverride.setValidators([Validators.required, Validators.min(0)]);
+      } else {
+        overrideControls.employeeLimitOverride.clearValidators();
+        overrideControls.monthlyPriceOverride.clearValidators();
+        overrideControls.yearlyPriceOverride.clearValidators();
+      }
+      overrideControls.employeeLimitOverride.updateValueAndValidity();
+      overrideControls.monthlyPriceOverride.updateValueAndValidity();
+      overrideControls.yearlyPriceOverride.updateValueAndValidity();
+    });
+
+    // Auto-calculate End Date from Start Date + Billing Cycle - Monthly adds exactly one month,
+    // Yearly adds exactly one year. Recomputed whenever either input changes; the admin can
+    // still edit End Date manually afterward (e.g. for a negotiated custom period) without it
+    // being overwritten again unless they change Start Date or Billing Cycle a second time.
+    const recalcEndDate = () => {
+      const sub = this.form.controls.subscription.controls;
+      const computed = calculateSubscriptionEndDate(sub.startDate.value, sub.billingCycle.value);
+      if (computed) sub.endDate.setValue(computed);
+    };
+    this.form.controls.subscription.controls.startDate.valueChanges.subscribe(recalcEndDate);
+    this.form.controls.subscription.controls.billingCycle.valueChanges.subscribe(recalcEndDate);
 
     if (idParam) {
       this.companyId.set(Number(idParam));
@@ -114,12 +174,13 @@ export class ClientCompanyFormComponent {
     }
     this.saving.set(true);
     const raw = this.form.getRawValue();
+    const isUpdate = this.companyId() !== null && this.isEditMode();
     const payload = {
       ...raw,
-      clientAdminLogin: raw.createClientAdminLogin ? raw.clientAdminLogin : undefined
+      clientAdminLogin: raw.createClientAdminLogin ? raw.clientAdminLogin : undefined,
+      subscription: isUpdate ? undefined : (raw.subscription as any)
     };
 
-    const isUpdate = this.companyId() !== null && this.isEditMode();
     const action$ = isUpdate
       ? this.clientCompanyService.update(this.companyId()!, payload)
       : this.clientCompanyService.create(payload);

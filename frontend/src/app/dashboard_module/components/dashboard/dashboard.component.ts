@@ -40,10 +40,14 @@ export class DashboardComponent {
     && this.featureState.isEnabled('ATTENDANCE_MANAGEMENT')
     && this.featureState.isEnabled('EMPLOYEE_SELF_ATTENDANCE'));
   readonly hasAttendanceReadPermission = this.authState.hasPermission('ATTENDANCE_READ');
-  /** Same upper-level rule applied to the admin "Today's Attendance Overview" widget - if the
-      whole module is off for this company, this has nothing meaningful to show either. */
+  /** Same upper-level rule applied to the admin "Today's Attendance Overview" widget - it shows
+      check-in/check-out data specifically, so it needs BOTH Attendance Management AND Employee
+      Self Attendance to be on for this company - if either is off, there's nothing meaningful
+      (or in EMPLOYEE_SELF_ATTENDANCE's case, nothing at all) for it to show. */
   readonly canSeeAttendanceOverview = computed(() =>
-    this.hasAttendanceReadPermission && this.featureState.isEnabled('ATTENDANCE_MANAGEMENT'));
+    this.hasAttendanceReadPermission
+    && this.featureState.isEnabled('ATTENDANCE_MANAGEMENT')
+    && this.featureState.isEnabled('EMPLOYEE_SELF_ATTENDANCE'));
   readonly hasEventReadPermission = this.authState.hasPermission('EVENT_READ');
 
   /** True when none of the widgets below apply to this account at all - shown a friendly

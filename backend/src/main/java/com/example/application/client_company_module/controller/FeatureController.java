@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,5 +39,11 @@ public class FeatureController {
         // as enabled, same default as the backend (see FeatureAccessService).
         Map<String, Boolean> features = tenantId != null ? featureAccessService.getFeatureMap(tenantId) : Map.of();
         return ResponseEntity.ok(ApiResponse.success("OK", features));
+    }
+
+    /** The catalog structure itself (category -> codes), independent of any one company - used by the Subscription Plan form's feature checkboxes (a plan isn't tied to a company, so the per-company /mine endpoint above doesn't fit here). Same @PreAuthorize-free access as /mine: this only reveals which feature codes exist, nothing about any tenant's actual configuration. */
+    @GetMapping("/catalog")
+    public ResponseEntity<ApiResponse<List<com.example.application.client_company_module.feature.FeatureCode.FeatureCategory>>> catalog() {
+        return ResponseEntity.ok(ApiResponse.success("OK", com.example.application.client_company_module.feature.FeatureCode.CATALOG));
     }
 }

@@ -15,27 +15,54 @@ import java.util.Map;
  * AttendanceService for how the two combine: company feature enabled AND role permission
  * allowed, both required, company restriction always wins if either says no.
  *
- * Absence of a company_feature row for a given (tenant, code) means ENABLED, not disabled - see
- * V102's migration comment for why: a feature code added after a tenant was created should never
- * silently lock that tenant out just because nobody has explicitly configured it yet. A tenant
- * only loses access once a Super Admin has explicitly flipped it off.
+ * Effective access priority (subscription plan system):
+ *   1. Subscription status - SUSPENDED/CANCELLED blocks everything regardless of feature/plan
+ *      (see SubscriptionAccessPolicy, called separately by controllers/filters that need it).
+ *   2. Explicit CompanyFeature override for this (tenant, code) - if a row exists, its enabled
+ *      value wins outright, whichever way it's set. This is UNCHANGED from before the
+ *      subscription system existed - every row that already existed keeps meaning exactly what
+ *      it always meant.
+ *   3. No override row -> the tenant's subscribed PLAN's default for that code (PlanFeature).
+ *   4. No subscription/plan resolvable at all (should not happen once V110's backfill has run,
+ *      but fails open rather than locking a tenant out over a data gap) -> enabled, matching the
+ *      original pre-subscription behavior exactly for that edge case only.
+ *
+ * Before the subscription system existed, step 3 didn't exist and step 4 was the ONLY fallback
+ * (absence of a row always meant enabled) - safe only because there was no paid tier for that to
+ * silently bypass. Now that plans exist, a feature a tenant's plan doesn't include must actually
+ * be off by default, not on just because nobody explicitly disabled it (see V110 migration).
  */
 @Service
 public class FeatureAccessService {
 
     private final CompanyFeatureRepository repository;
     private final TenantContextService tenantContext;
+    private final com.example.application.subscription_module.repository.ClientSubscriptionRepository subscriptionRepository;
+    private final com.example.application.subscription_module.repository.PlanFeatureRepository planFeatureRepository;
 
-    public FeatureAccessService(CompanyFeatureRepository repository, TenantContextService tenantContext) {
+    public FeatureAccessService(CompanyFeatureRepository repository, TenantContextService tenantContext,
+                                 com.example.application.subscription_module.repository.ClientSubscriptionRepository subscriptionRepository,
+                                 com.example.application.subscription_module.repository.PlanFeatureRepository planFeatureRepository) {
         this.repository = repository;
         this.tenantContext = tenantContext;
+        this.subscriptionRepository = subscriptionRepository;
+        this.planFeatureRepository = planFeatureRepository;
     }
 
     @Transactional(readOnly = true)
     public boolean isEnabled(Long clientCompanyId, String featureCode) {
         return repository.findByClientCompanyIdAndFeatureCode(clientCompanyId, featureCode)
                 .map(CompanyFeature::isEnabled)
-                .orElse(true);
+                .orElseGet(() -> planDefaultFor(clientCompanyId, featureCode));
+    }
+
+    /** Step 3/4 of the priority above - the tenant's subscribed plan's default for this code, or true if no subscription/plan can be resolved at all (data-gap fallback, see class javadoc). */
+    private boolean planDefaultFor(Long clientCompanyId, String featureCode) {
+        return subscriptionRepository.findByClientCompanyId(clientCompanyId)
+                .map(sub -> planFeatureRepository.findByPlanIdAndFeatureCode(sub.getPlanId(), featureCode)
+                        .map(pf -> pf.isEnabled())
+                        .orElse(false)) // plan resolved but doesn't include this code -> genuinely off
+                .orElse(true); // no subscription row at all -> fail open, see class javadoc
     }
 
     @Transactional(readOnly = true)
@@ -60,21 +87,36 @@ public class FeatureAccessService {
         }
     }
 
-    /** Every known feature code (see FeatureCode.CATALOG) mapped to whether it's currently enabled for this company - for the Manage Features screen and the frontend's "my enabled features" call. */
+    /** Every known feature code (see FeatureCode.CATALOG) mapped to whether it's currently EFFECTIVELY enabled for this company (override if present, else plan default) - for the Manage Features screen and the frontend's "my enabled features" call. */
     @Transactional(readOnly = true)
     public Map<String, Boolean> getFeatureMap(Long clientCompanyId) {
-        Map<String, Boolean> overrides = new LinkedHashMap<>();
-        for (CompanyFeature cf : repository.findAllByClientCompanyId(clientCompanyId)) {
-            overrides.put(cf.getFeatureCode(), cf.isEnabled());
-        }
         Map<String, Boolean> result = new LinkedHashMap<>();
         for (FeatureCode.FeatureCategory category : FeatureCode.CATALOG) {
             for (String code : category.codes()) {
-                result.put(code, overrides.getOrDefault(code, true));
+                result.put(code, isEnabled(clientCompanyId, code));
             }
         }
         return result;
     }
+
+    /** Richer version for the Manage Features / Client Feature Overrides screen - shows the plan default, the client override (if any), and the effective result side by side, per spec: "Feature: PAYROLL, Plan: Enabled, Client Override: No Override, Effective: Enabled". */
+    @Transactional(readOnly = true)
+    public List<FeatureEffectiveStatus> getEffectiveFeatureDetails(Long clientCompanyId) {
+        List<FeatureEffectiveStatus> result = new java.util.ArrayList<>();
+        for (FeatureCode.FeatureCategory category : FeatureCode.CATALOG) {
+            for (String code : category.codes()) {
+                boolean planDefault = planDefaultFor(clientCompanyId, code);
+                Boolean override = repository.findByClientCompanyIdAndFeatureCode(clientCompanyId, code)
+                        .map(CompanyFeature::isEnabled).orElse(null);
+                boolean effective = override != null ? override : planDefault;
+                result.add(new FeatureEffectiveStatus(code, category.label(), planDefault, override, effective));
+            }
+        }
+        return result;
+    }
+
+    /** One feature code's plan default / client override (null = no override) / effective result, for the Manage Features screen. */
+    public record FeatureEffectiveStatus(String featureCode, String category, boolean planDefault, Boolean clientOverride, boolean effective) {}
 
     /** Super Admin updating one company's feature flags - upserts each code individually so a partial update (only some codes present) never touches the others. */
     @Transactional

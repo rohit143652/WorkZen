@@ -1,0 +1,48 @@
+<div class="page-header">
+  <div>
+    <h1>Subscription Plans</h1>
+    <p class="muted">Manage the plans available to client companies - employee limits, pricing, and included features.</p>
+  </div>
+  <a routerLink="/subscription-plans/new" class="btn btn-primary" *appHasPermission="'SUBSCRIPTION_PLAN_CREATE'">
+    <i class="bi bi-plus-lg"></i> New Plan
+  </a>
+</div>
+
+<div class="card table-card">
+  @if (loading()) {
+    <div class="skeleton" style="height: 240px; margin: 1rem;"></div>
+  } @else if (plans().length === 0) {
+    <div class="empty-state">No subscription plans yet.</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Plan</th><th>Employee Limit</th><th>Monthly Price</th><th>Yearly Price</th>
+            <th>Status</th><th>Clients</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of plans(); track p.id) {
+            <tr>
+              <td><strong>{{ p.planName }}</strong><div class="muted" style="font-size: 0.75rem;">{{ p.planCode }}</div></td>
+              <td>{{ p.customEmployeeLimitAllowed ? 'Custom' : p.employeeLimit }}</td>
+              <td>{{ p.monthlyPrice != null ? '₹' + p.monthlyPrice : 'Custom' }}</td>
+              <td>{{ p.yearlyPrice != null ? '₹' + p.yearlyPrice : 'Custom' }}</td>
+              <td><span class="badge" [class.badge-success]="p.active" [class.badge-muted]="!p.active">{{ p.active ? 'Active' : 'Inactive' }}</span></td>
+              <td>{{ p.clientCount }}</td>
+              <td style="white-space: nowrap;">
+                <a [routerLink]="['/subscription-plans', p.id, 'edit']" class="btn btn-secondary btn-sm" *appHasPermission="'SUBSCRIPTION_PLAN_UPDATE'">Edit</a>
+                <button type="button" class="btn btn-sm" [class.btn-danger]="p.active" [class.btn-primary]="!p.active"
+                        *appHasPermission="p.active ? 'SUBSCRIPTION_PLAN_DEACTIVATE' : 'SUBSCRIPTION_PLAN_ACTIVATE'"
+                        (click)="toggleActive(p)">
+                  {{ p.active ? 'Deactivate' : 'Activate' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

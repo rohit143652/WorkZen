@@ -1,3 +1,5 @@
+import { ClientSubscriptionRequest } from '../../subscription_module/models/subscription.model';
+
 export interface ClientAdminLoginRequest {
   username: string;
   password: string;
@@ -8,10 +10,20 @@ export interface FeatureCategory {
   codes: string[];
 }
 
+export interface FeatureEffectiveStatus {
+  featureCode: string;
+  category: string;
+  planDefault: boolean;
+  clientOverride: boolean | null;
+  effective: boolean;
+}
+
 export interface CompanyFeatureResponse {
   features: Record<string, boolean>;
   categories: FeatureCategory[];
   enforcedCodes: string[];
+  /** Plan default / client override (null = no override) / effective, per feature code - spec section 16. */
+  details: FeatureEffectiveStatus[];
 }
 
 export interface UpdateCompanyFeaturesRequest {
@@ -35,6 +47,8 @@ export interface ClientCompanyRequest {
   contactPersonPhone?: string;
   createClientAdminLogin: boolean;
   clientAdminLogin?: ClientAdminLoginRequest;
+  /** Required when CREATING a client - omitted entirely when updating (the backend never reads this field on update). */
+  subscription?: ClientSubscriptionRequest;
 }
 
 export interface ClientCompanyResponse {

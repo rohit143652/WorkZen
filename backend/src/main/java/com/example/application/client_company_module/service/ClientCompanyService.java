@@ -52,13 +52,15 @@ public class ClientCompanyService {
     private final AuditService auditService;
     private final StarterRoleSeederService starterRoleSeederService;
     private final FeatureAccessService featureAccessService;
+    private final com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService;
 
     public ClientCompanyService(ClientCompanyRepository clientCompanyRepository, UserRepository userRepository,
                                  RoleRepository roleRepository, EmployeeRepository employeeRepository,
                                  SiteRepository siteRepository,
                                  PasswordEncoder passwordEncoder, RefreshTokenService refreshTokenService,
                                  AuditService auditService, StarterRoleSeederService starterRoleSeederService,
-                                 FeatureAccessService featureAccessService) {
+                                 FeatureAccessService featureAccessService,
+                                 com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService) {
         this.clientCompanyRepository = clientCompanyRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -69,6 +71,7 @@ public class ClientCompanyService {
         this.auditService = auditService;
         this.starterRoleSeederService = starterRoleSeederService;
         this.featureAccessService = featureAccessService;
+        this.clientSubscriptionService = clientSubscriptionService;
     }
 
     @Transactional(readOnly = true)
@@ -98,6 +101,9 @@ public class ClientCompanyService {
      */
     @Transactional
     public ClientCompanyResponse create(ClientCompanyRequest request, Long actorId, HttpServletRequest httpRequest) {
+        if (request.getSubscription() == null) {
+            throw new BadRequestException("A subscription plan selection is required to create a client company");
+        }
         String companyCode = request.getCompanyCode();
         if (companyCode == null || companyCode.isBlank()) {
             String lastCode = clientCompanyRepository
@@ -123,7 +129,19 @@ public class ClientCompanyService {
         // StarterRoleSeederService for exactly what each one gets, and why - all of it can be
         // renamed, re-permissioned, or deleted afterward like any other custom role.
         starterRoleSeederService.seedStandardRoles(saved.getId());
-        featureAccessService.seedDefaultsForNewCompany(saved.getId());
+
+        // Subscription creation is atomic with the company itself - same transaction, so a
+        // failure here (e.g. an invalid plan) rolls the whole client creation back rather than
+        // leaving a company with no subscription. This REPLACES the old
+        // featureAccessService.seedDefaultsForNewCompany() blanket-override call: that method
+        // gave every new company an explicit CompanyFeature row for every single code, which
+        // would make the plan's own feature defaults pointless (an override always exists, so
+        // the plan default underneath it would never actually apply). A brand new company now
+        // gets NO CompanyFeature rows at all - its subscribed plan's PlanFeature defaults are
+        // what FeatureAccessService.isEnabled() falls through to, exactly as intended. The old
+        // method itself is left in place (unused by this flow) rather than deleted, since
+        // nothing about it is unsafe to keep around for reference/tests.
+        clientSubscriptionService.createInitial(saved.getId(), request.getSubscription(), actorId, httpRequest);
 
         if (request.isCreateClientAdminLogin()) {
             if (request.getClientAdminLogin() == null) {

@@ -44,6 +44,12 @@ export const routes: Routes = [
         loadChildren: () => import('./client_company_module/client-company.routes').then(m => m.CLIENT_COMPANY_ROUTES)
       },
       {
+        path: 'subscription-plans',
+        canActivate: [permissionGuard],
+        data: { permission: 'SUBSCRIPTION_PLAN_READ' },
+        loadChildren: () => import('./subscription_module/subscription-plan.routes').then(m => m.SUBSCRIPTION_PLAN_ROUTES)
+      },
+      {
         path: 'sites',
         canActivate: [permissionGuard],
         data: { permission: 'SITE_READ' },

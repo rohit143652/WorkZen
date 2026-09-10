@@ -7,6 +7,8 @@ public class CompanyFeatureResponse {
     private Map<String, Boolean> features;
     private List<CategoryDto> categories;
     private List<String> enforcedCodes;
+    /** Plan default / client override / effective, per feature code - see FeatureAccessService.FeatureEffectiveStatus. Lets the Manage Features screen show "Plan: Enabled, Client Override: No Override, Effective: Enabled" per spec section 16. */
+    private List<com.example.application.client_company_module.feature.FeatureAccessService.FeatureEffectiveStatus> details;
 
     public static class CategoryDto {
         private String label;
@@ -29,4 +31,6 @@ public class CompanyFeatureResponse {
     public void setCategories(List<CategoryDto> categories) { this.categories = categories; }
     public List<String> getEnforcedCodes() { return enforcedCodes; }
     public void setEnforcedCodes(List<String> enforcedCodes) { this.enforcedCodes = enforcedCodes; }
+    public List<com.example.application.client_company_module.feature.FeatureAccessService.FeatureEffectiveStatus> getDetails() { return details; }
+    public void setDetails(List<com.example.application.client_company_module.feature.FeatureAccessService.FeatureEffectiveStatus> details) { this.details = details; }
 }

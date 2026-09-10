@@ -33,6 +33,13 @@
               @if (!isEnforced(code)) {
                 <span class="badge badge-muted" style="font-size: 0.68rem;" title="Toggleable and stored, but no part of the app currently checks this flag yet.">Not yet enforced</span>
               }
+              @if (detailFor(code); as d) {
+                <div class="muted" style="font-size: 0.7rem; margin-top: 0.15rem;">
+                  Plan: {{ d.planDefault ? 'Enabled' : 'Disabled' }} &middot;
+                  Override: {{ d.clientOverride === null ? 'No Override' : (d.clientOverride ? 'Enabled' : 'Disabled') }} &middot;
+                  Effective: <strong>{{ d.effective ? 'Enabled' : 'Disabled' }}</strong>
+                </div>
+              }
             </div>
           </div>
         }

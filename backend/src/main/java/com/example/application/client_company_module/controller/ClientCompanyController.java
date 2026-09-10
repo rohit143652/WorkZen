@@ -104,6 +104,7 @@ public class ClientCompanyController {
                 .map(c -> new CompanyFeatureResponse.CategoryDto(c.label(), c.codes()))
                 .toList());
         response.setEnforcedCodes(FeatureCode.ENFORCED);
+        response.setDetails(featureAccessService.getEffectiveFeatureDetails(id));
         return ResponseEntity.ok(ApiResponse.success("OK", response));
     }
 

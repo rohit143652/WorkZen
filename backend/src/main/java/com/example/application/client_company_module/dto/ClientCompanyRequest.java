@@ -29,6 +29,13 @@ public class ClientCompanyRequest {
     @Valid
     private ClientAdminLoginRequest clientAdminLogin;
 
+    /** Required when CREATING a client (validated explicitly in ClientCompanyService.create(), not via @NotNull here) - this same DTO is also used for update(), which never reads this field at all, so it must not be a blanket-required annotation. */
+    @Valid
+    private com.example.application.subscription_module.dto.ClientSubscriptionRequest subscription;
+
+    public com.example.application.subscription_module.dto.ClientSubscriptionRequest getSubscription() { return subscription; }
+    public void setSubscription(com.example.application.subscription_module.dto.ClientSubscriptionRequest subscription) { this.subscription = subscription; }
+
     public String getCompanyCode() { return companyCode; }
     public void setCompanyCode(String companyCode) { this.companyCode = companyCode; }
     public String getCompanyName() { return companyName; }

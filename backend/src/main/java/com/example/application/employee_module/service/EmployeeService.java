@@ -56,6 +56,7 @@ public class EmployeeService {
     private final DesignationService designationService;
     private final EmployeeSalaryStructureService employeeSalaryStructureService;
     private final EmployeeAssignmentService employeeAssignmentService;
+    private final com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService;
 
     public EmployeeService(EmployeeRepository employeeRepository, UserRepository userRepository,
                             RoleService roleService, PasswordEncoder passwordEncoder,
@@ -63,7 +64,8 @@ public class EmployeeService {
                             TenantContextService tenantContextService, DepartmentService departmentService,
                             DesignationService designationService,
                             EmployeeSalaryStructureService employeeSalaryStructureService,
-                            EmployeeAssignmentService employeeAssignmentService) {
+                            EmployeeAssignmentService employeeAssignmentService,
+                            com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService) {
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.roleService = roleService;
@@ -75,6 +77,7 @@ public class EmployeeService {
         this.designationService = designationService;
         this.employeeSalaryStructureService = employeeSalaryStructureService;
         this.employeeAssignmentService = employeeAssignmentService;
+        this.clientSubscriptionService = clientSubscriptionService;
     }
 
     @Transactional(readOnly = true)
@@ -123,6 +126,12 @@ public class EmployeeService {
         // The employee's tenant is ALWAYS derived from the creator's own account, never from
         // the request body - there is no clientCompanyId field on EmployeeRequest at all.
         Long tenantId = tenantContextService.currentTenantIdOrNull();
+
+        // A newly-created employee is always ACTIVE (see below) - so this must be checked
+        // BEFORE creating the row, not after, exactly like every other "would this push us over
+        // the limit" check in this codebase (see PayrollRunService's advance-recovery capping
+        // for the same "check before, not after" shape).
+        clientSubscriptionService.validateCanHaveAnotherActiveEmployee(tenantId);
 
         String employeeCode = request.getEmployeeCode();
         if (employeeCode == null || employeeCode.isBlank()) {
@@ -286,6 +295,9 @@ public class EmployeeService {
     @Transactional
     public EmployeeResponse activate(Long id, Long actorId, HttpServletRequest httpRequest) {
         Employee employee = getEntity(id);
+        if (!"ACTIVE".equals(employee.getStatus())) {
+            clientSubscriptionService.validateCanHaveAnotherActiveEmployee(employee.getClientCompanyId());
+        }
         employee.setStatus("ACTIVE");
         Employee saved = employeeRepository.save(employee);
         auditService.log(actorId, "EMPLOYEE_ACTIVATED", "Activated employee " + saved.getEmployeeCode(), httpRequest);
@@ -307,6 +319,7 @@ public class EmployeeService {
         if ("ACTIVE".equals(employee.getStatus())) {
             throw new BadRequestException("This employee is already active.");
         }
+        clientSubscriptionService.validateCanHaveAnotherActiveEmployee(employee.getClientCompanyId());
         Long tenantId = tenantContextService.currentTenantIdOrNull();
         String oldCode = employee.getEmployeeCode();
         String lastCode = employeeRepository

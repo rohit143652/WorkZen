@@ -131,6 +131,7 @@ public class PayrollRunService {
 
     @Transactional
     public PayrollRunResponse createRun(PayrollRunCreateRequest request, Long actorId, HttpServletRequest httpRequest) {
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.PAYROLL, "Payroll");
         int year = request.getYear();
         int month = request.getMonth();
         if (month < 1 || month > 12) {
@@ -174,6 +175,7 @@ public class PayrollRunService {
      */
     @Transactional
     public PayrollRunResponse calculateRun(Long runId, Long actorId, HttpServletRequest httpRequest) {
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.PAYROLL, "Payroll");
         Long tenantId = tenantContext.requireCurrentTenantId();
         PayrollRun run = getRunForTenant(tenantId, runId);
 

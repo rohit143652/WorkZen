@@ -72,6 +72,10 @@ class PayrollRunServiceTest {
     @BeforeEach
     void setUp() {
         lenient().when(tenantContext.requireCurrentTenantId()).thenReturn(TENANT_ID);
+        // Payroll feature is now actually enforced (createRun/calculateRun) - every test in this
+        // class exercises payroll behavior assuming the feature is available, so default the
+        // mock to "enabled" here rather than repeating this stub in every single test method.
+        lenient().when(featureAccessService.isEnabledForCurrentTenant(anyString())).thenReturn(true);
     }
 
     /** TEST 1: creating a run for a month with no existing run succeeds. */

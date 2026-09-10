@@ -79,6 +79,11 @@ export class ManageFeaturesComponent {
     return this.pending()[code] ?? true;
   }
 
+  /** The plan-default/override/effective breakdown for one code, for the "Plan: Enabled, Override: No Override, Effective: Enabled" display. */
+  detailFor(code: string) {
+    return this.data()?.details.find(d => d.featureCode === code) ?? null;
+  }
+
   toggle(code: string): void {
     this.pending.update(p => ({ ...p, [code]: !(p[code] ?? true) }));
   }

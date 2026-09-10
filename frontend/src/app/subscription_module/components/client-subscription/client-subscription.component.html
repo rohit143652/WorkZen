@@ -1,0 +1,118 @@
+<div class="page-header">
+  <div>
+    <h1>Subscription - {{ company()?.companyName }}</h1>
+    <a routerLink="/clients">&larr; Back to Client Companies</a>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 200px;"></div></div>
+} @else {
+@if (subscription(); as s) {
+  @if (!editing()) {
+    <div class="card" style="padding: 1.5rem;">
+      <div class="form-grid">
+        <div class="form-field"><label>Plan</label><div><strong>{{ s.planName }}</strong></div></div>
+        <div class="form-field"><label>Billing Cycle</label><div>{{ s.billingCycle }}</div></div>
+        <div class="form-field"><label>Status</label><div><span class="badge">{{ s.status }}</span></div></div>
+        <div class="form-field"><label>Start Date</label><div>{{ s.startDate }}</div></div>
+        <div class="form-field"><label>End Date</label><div>{{ s.endDate || '-' }}</div></div>
+        <div class="form-field"><label>Days Remaining</label><div>{{ s.daysRemaining ?? '-' }}</div></div>
+        <div class="form-field"><label>Employee Limit</label><div>{{ s.effectiveEmployeeLimit ?? 'Unlimited' }}</div></div>
+        <div class="form-field"><label>Active Employees</label><div>{{ s.activeEmployeeCount }} / {{ s.effectiveEmployeeLimit ?? '∞' }}</div></div>
+        <div class="form-field"><label>Monthly Price</label><div>{{ s.effectiveMonthlyPrice != null ? '₹' + s.effectiveMonthlyPrice : '-' }}</div></div>
+        <div class="form-field"><label>Yearly Price</label><div>{{ s.effectiveYearlyPrice != null ? '₹' + s.effectiveYearlyPrice : '-' }}</div></div>
+      </div>
+      <div>
+        <label class="muted" style="font-size: 0.8rem;">Enabled Features</label>
+        <p style="margin-top: 0.25rem;">
+          @for (f of s.enabledFeatures; track f) { <span class="badge" style="margin: 0 0.25rem 0.25rem 0;">✓ {{ f }}</span> }
+        </p>
+      </div>
+      @if (s.notes) { <p class="muted">Notes: {{ s.notes }}</p> }
+      <div class="form-actions" style="justify-content: flex-start; border: none;">
+        <button type="button" class="btn btn-primary" (click)="startEdit()">Change Subscription</button>
+        @if (s.status !== 'CANCELLED') {
+          <button type="button" class="btn btn-danger" (click)="deactivateNow()">Deactivate Now</button>
+        }
+      </div>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" class="card form-card" novalidate>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="required">Plan</label>
+          <select formControlName="planId">
+            @for (p of plans(); track p.id) { <option [ngValue]="p.id">{{ p.planName }}</option> }
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="required">Billing Cycle</label>
+          <select formControlName="billingCycle">
+            <option value="MONTHLY">Monthly</option><option value="YEARLY">Yearly</option><option value="CUSTOM">Custom</option>
+          </select>
+        </div>
+        <div class="form-field"><label class="required">Status</label>
+          <select formControlName="status">
+            @for (st of statuses; track st) { <option [value]="st">{{ st }}</option> }
+          </select>
+        </div>
+        <div class="form-field"><label class="required">Start Date</label><input type="date" formControlName="startDate" /></div>
+        <div class="form-field"><label>End Date</label><input type="date" formControlName="endDate" /></div>
+      </div>
+
+      @if (selectedPlan()?.customEmployeeLimitAllowed) {
+        <div class="section-title">Custom Terms</div>
+        <div class="form-grid">
+          <div class="form-field"><label class="required">Employee Limit</label><input type="number" min="1" formControlName="employeeLimitOverride" /></div>
+          <div class="form-field"><label class="required">Monthly Price (₹)</label><input type="number" min="0" formControlName="monthlyPriceOverride" /></div>
+          <div class="form-field"><label class="required">Yearly Price (₹)</label><input type="number" min="0" formControlName="yearlyPriceOverride" /></div>
+        </div>
+      }
+
+      @if (blockedBySameActivePlanSwitch()) {
+        <div class="card" style="padding: 0.9rem 1.1rem; margin-bottom: 1rem; background: var(--warning-bg); border-color: #fde68a;">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          This subscription is currently <strong>Active</strong> on a different plan. To switch plans, first set
+          <strong>Status</strong> to something other than Active (e.g. Cancelled) and save that - then come back and
+          assign the new plan as a separate step.
+        </div>
+      }
+
+      <div class="form-field"><label>Notes</label><input type="text" formControlName="notes" /></div>
+      <div class="form-field"><label>Reason for this change</label><input type="text" formControlName="reason" placeholder="e.g. Upgraded per client request" /></div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="cancelEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving() || blockedBySameActivePlanSwitch()">{{ saving() ? 'Saving...' : 'Save Changes' }}</button>
+      </div>
+    </form>
+  }
+
+  <div class="card table-card" style="margin-top: 1rem;">
+    <div class="section-title" style="padding: 1rem 1rem 0;">Subscription History</div>
+    @if (history().length === 0) {
+      <div class="empty-state">No changes recorded yet.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Plan Change</th><th>Cycle</th><th>Employee Limit</th><th>Status</th><th>Reason</th><th>By</th></tr></thead>
+          <tbody>
+            @for (h of history(); track h.id) {
+              <tr>
+                <td>{{ h.changeDate | date:'medium' }}</td>
+                <td>{{ h.previousPlanName || '-' }} &rarr; {{ h.newPlanName || '-' }}</td>
+                <td>{{ h.previousBillingCycle || '-' }} &rarr; {{ h.newBillingCycle || '-' }}</td>
+                <td>{{ h.previousEmployeeLimit ?? '-' }} &rarr; {{ h.newEmployeeLimit ?? '-' }}</td>
+                <td>{{ h.previousStatus || '-' }} &rarr; {{ h.newStatus || '-' }}</td>
+                <td class="muted">{{ h.reason || '-' }}</td>
+                <td class="muted">{{ h.changedByUsername || '-' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+}
