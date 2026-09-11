@@ -54,6 +54,36 @@
           </select>
         </div>
       </div>
+
+      <div class="form-field" style="margin-top: 0.75rem;">
+        <label>Payroll Scope</label>
+        <select [(ngModel)]="createScope">
+          <option value="ALL">All Sites</option>
+          <option value="SINGLE">Single Site</option>
+          <option value="MULTIPLE">Multiple Sites</option>
+        </select>
+      </div>
+      @if (createScope !== 'ALL') {
+        <div class="form-field">
+          <label>{{ createScope === 'SINGLE' ? 'Select Site' : 'Select Sites' }}</label>
+          @if (createScope === 'SINGLE') {
+            <select (change)="selectSingleSite($any($event.target).value)">
+              <option value="">Select a site...</option>
+              @for (s of sites(); track s.id) { <option [value]="s.id">{{ s.siteName }}</option> }
+            </select>
+          } @else {
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+              @for (s of sites(); track s.id) {
+                <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 400; font-size: 0.85rem;">
+                  <input type="checkbox" (change)="toggleSite(s.id, $any($event.target).checked)" />
+                  {{ s.siteName }}
+                </label>
+              }
+            </div>
+          }
+        </div>
+      }
+
       <div class="form-actions" style="border: none; padding-top: 0.5rem;">
         <button type="button" class="btn btn-secondary" (click)="cancelCreateForm()">Cancel</button>
         <button type="button" class="btn btn-primary" [disabled]="creating()" (click)="createRun()">
@@ -75,11 +105,12 @@
   } @else {
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Month</th><th>Status</th><th>Employees</th><th>Total Gross</th><th>Total Net Pay</th><th>Created</th><th></th></tr></thead>
+        <thead><tr><th>Month</th><th>Scope</th><th>Status</th><th>Employees</th><th>Total Gross</th><th>Total Net Pay</th><th>Created</th><th></th></tr></thead>
         <tbody>
           @for (run of runs(); track run.id) {
             <tr>
               <td>{{ run.monthLabel }}</td>
+              <td>{{ run.siteNames && run.siteNames.length > 0 ? run.siteNames.join(', ') : 'All Sites' }}</td>
               <td>
                 @switch (run.status) {
                   @case ('DRAFT') { <app-status-badge label="Draft" kind="muted"></app-status-badge> }

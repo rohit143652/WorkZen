@@ -9,6 +9,7 @@ public class EmployeeExitResponse {
     private Long employeeId;
     private String employeeCode;
     private String employeeName;
+    private String exitType;
     private LocalDate resignationDate;
     private LocalDate lastWorkingDay;
     private long noticePeriodDays;
@@ -27,6 +28,8 @@ public class EmployeeExitResponse {
     public void setEmployeeCode(String employeeCode) { this.employeeCode = employeeCode; }
     public String getEmployeeName() { return employeeName; }
     public void setEmployeeName(String employeeName) { this.employeeName = employeeName; }
+    public String getExitType() { return exitType; }
+    public void setExitType(String exitType) { this.exitType = exitType; }
     public LocalDate getResignationDate() { return resignationDate; }
     public void setResignationDate(LocalDate resignationDate) { this.resignationDate = resignationDate; }
     public LocalDate getLastWorkingDay() { return lastWorkingDay; }

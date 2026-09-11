@@ -30,6 +30,13 @@ public class EmployeeAssignmentController {
         return ResponseEntity.ok(ApiResponse.success("OK", assignmentService.findAll(pageable)));
     }
 
+    /** Self-service "My assigned site" - no special permission required, same reasoning as My Profile/My Payslip: every logged-in employee should see their own basic info without needing an admin-tier permission. */
+    @GetMapping("/api/employees/me/current-site")
+    public ResponseEntity<ApiResponse<com.example.application.site_module.dto.SiteResponse>> myCurrentSite(
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", assignmentService.getMyCurrentSite(principal.getId())));
+    }
+
     @GetMapping("/api/employee-assignments/{id}")
     @PreAuthorize("hasAuthority('EMPLOYEE_ASSIGNMENT_READ')")
     public ResponseEntity<ApiResponse<EmployeeAssignmentResponse>> findById(@PathVariable Long id) {

@@ -10,6 +10,13 @@ export const routes: Routes = [
     loadChildren: () => import('./login_module/login.routes').then(m => m.LOGIN_ROUTES)
   },
   {
+    // Public - no authGuard - an invited employee setting up their FIRST login has no JWT yet.
+    // See backend SecurityConfig.PUBLIC_ENDPOINTS for the matching backend-side exemption.
+    path: 'employee-onboarding/:token',
+    loadComponent: () => import('./employee_module/components/employee-onboarding/employee-onboarding.component')
+      .then(m => m.EmployeeOnboardingComponent)
+  },
+  {
     path: 'change-password',
     canActivate: [authGuard],
     loadChildren: () => import('./login_module/change-password.routes').then(m => m.CHANGE_PASSWORD_ROUTES)
@@ -24,6 +31,10 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         loadChildren: () => import('./dashboard_module/dashboard.routes').then(m => m.DASHBOARD_ROUTES)
+      },
+      {
+        path: 'my-profile',
+        loadComponent: () => import('./employee_module/components/my-profile/my-profile.component').then(m => m.MyProfileComponent)
       },
       {
         path: 'employees',

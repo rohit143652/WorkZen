@@ -1,0 +1,102 @@
+<div class="page-header">
+  <div>
+    <h1>My Profile</h1>
+    <p class="muted">Update your personal, address, emergency contact, and bank details.</p>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 120px;"></div></div>
+} @else {
+@if (completion(); as c) {
+  <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+      <div style="position: relative; width: 72px; height: 72px; flex-shrink: 0;">
+        <svg viewBox="0 0 36 36" style="width: 72px; height: 72px; transform: rotate(-90deg);">
+          <circle cx="18" cy="18" r="16" fill="none" stroke="var(--border-color)" stroke-width="3"></circle>
+          <circle cx="18" cy="18" r="16" fill="none" [attr.stroke]="c.completionPercentage >= 100 ? '#16a34a' : 'var(--primary-color)'"
+                  stroke-width="3" stroke-linecap="round"
+                  [attr.stroke-dasharray]="100.5" [attr.stroke-dashoffset]="100.5 - (100.5 * c.completionPercentage / 100)"></circle>
+        </svg>
+        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem;">
+          {{ c.completionPercentage }}%
+        </div>
+      </div>
+      <div>
+        <div style="font-weight: 600; font-size: 1.05rem;">Profile {{ c.completionPercentage }}% Complete</div>
+        <p class="muted" style="margin: 0.25rem 0 0; font-size: 0.85rem;">
+          @if (c.mandatoryComplete) {
+            All required information is filled in.
+            @if (c.completionPercentage < 100) { The sections below are optional but help complete your profile. }
+          } @else {
+            Please complete the required fields below to finish setting up your profile.
+          }
+        </p>
+      </div>
+    </div>
+
+    @if (c.missingMandatoryFields.length > 0) {
+      <div style="margin-top: 1rem;">
+        <div class="muted" style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase;">Still Required</div>
+        <p style="margin-top: 0.25rem;">
+          @for (f of c.missingMandatoryFields; track f) { <span class="badge badge-danger" style="margin: 0 0.25rem 0.25rem 0;">{{ f }}</span> }
+        </p>
+      </div>
+    }
+    @if (c.incompleteSections.length > 0) {
+      <div style="margin-top: 0.75rem;">
+        <div class="muted" style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase;">Sections To Finish</div>
+        <p style="margin-top: 0.25rem;">
+          @for (s of c.incompleteSections; track s) { <span class="badge" style="margin: 0 0.25rem 0.25rem 0;">{{ sectionLabel(s) }}</span> }
+        </p>
+      </div>
+    }
+  </div>
+
+  @if (currentSiteName()) {
+    <div class="card" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+      <div class="muted" style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase;">My Assigned Site</div>
+      <div style="font-weight: 600; margin-top: 0.15rem;">{{ currentSiteName() }}</div>
+    </div>
+  }
+
+  <div class="card form-card">
+    <div class="section-title" style="margin-top: 0;">Contact Information</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Mobile Number</label><input type="text" [(ngModel)]="mobileNumber" /></div>
+      <div class="form-field"><label>Alternate Mobile</label><input type="text" [(ngModel)]="alternateMobileNumber" /></div>
+    </div>
+
+    <div class="section-title">Address</div>
+    <div class="form-grid">
+      <div class="form-field" style="grid-column: 1 / -1;"><label>Address</label><input type="text" [(ngModel)]="address" /></div>
+      <div class="form-field"><label>City</label><input type="text" [(ngModel)]="city" /></div>
+      <div class="form-field"><label>State</label><input type="text" [(ngModel)]="state" /></div>
+      <div class="form-field"><label>Country</label><input type="text" [(ngModel)]="country" /></div>
+      <div class="form-field"><label>Pincode</label><input type="text" [(ngModel)]="pincode" /></div>
+    </div>
+
+    <div class="section-title">Emergency Contact</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Name</label><input type="text" [(ngModel)]="emergencyContactName" /></div>
+      <div class="form-field"><label>Relationship</label><input type="text" [(ngModel)]="emergencyContactRelationship" placeholder="e.g. Spouse, Parent" /></div>
+      <div class="form-field"><label>Mobile Number</label><input type="text" [(ngModel)]="emergencyContactMobile" /></div>
+    </div>
+
+    <div class="section-title">Bank Details <span class="muted" style="font-weight: 400; font-size: 0.75rem;">(optional)</span></div>
+    <div class="form-grid">
+      <div class="form-field"><label>Account Holder Name</label><input type="text" [(ngModel)]="bankAccountHolderName" /></div>
+      <div class="form-field"><label>Account Number</label><input type="text" [(ngModel)]="bankAccountNumber" /></div>
+      <div class="form-field"><label>IFSC Code</label><input type="text" [(ngModel)]="bankIfscCode" style="text-transform: uppercase;" /></div>
+      <div class="form-field"><label>Bank Name</label><input type="text" [(ngModel)]="bankName" /></div>
+      <div class="form-field"><label>Branch</label><input type="text" [(ngModel)]="bankBranch" /></div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Saving...' : 'Save Progress' }}
+      </button>
+    </div>
+  </div>
+}
+}

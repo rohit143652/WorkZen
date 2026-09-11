@@ -108,6 +108,8 @@ export class EmployeeDetailsComponent {
   readonly showEnableLoginForm = signal(false);
   readonly savingLogin = signal(false);
   readonly lastTempPassword = signal<string | null>(null);
+  readonly profileCompletionPercentage = signal<number | null>(null);
+  readonly resendingInvitation = signal(false);
 
   /** minLength still applies IF something is typed, but nothing here is Validators.required at
       the form level any more - required-ness depends on context (brand-new login setup needs
@@ -115,6 +117,7 @@ export class EmployeeDetailsComponent {
       submitEnableLogin()/reactivateLogin() below and the template's two branches). */
   readonly enableLoginForm = this.fb.nonNullable.group({
     username: ['', [Validators.minLength(3)]],
+    sendInvitation: [true],
     password: ['', [Validators.minLength(8)]],
     roleId: [null as number | null]
   });
@@ -220,6 +223,18 @@ export class EmployeeDetailsComponent {
       next: emp => { this.employee.set(emp); this.loading.set(false); },
       error: () => { this.toast.error('Unable to load employee.'); this.loading.set(false); }
     });
+    this.employeeService.getProfileCompletion(this.id).subscribe({
+      next: c => this.profileCompletionPercentage.set(c.completionPercentage),
+      error: () => { /* Non-fatal - completion badge just doesn't show if this fails. */ }
+    });
+  }
+
+  resendInvitation(): void {
+    this.resendingInvitation.set(true);
+    this.employeeService.resendInvitation(this.id).subscribe({
+      next: () => { this.resendingInvitation.set(false); this.toast.success('Invitation resent successfully.'); },
+      error: err => { this.resendingInvitation.set(false); this.toast.error(err.error?.message ?? 'Unable to resend the invitation.'); }
+    });
   }
 
   openEnableLoginForm(): void {
@@ -264,29 +279,34 @@ export class EmployeeDetailsComponent {
   submitEnableLogin(): void {
     const raw = this.enableLoginForm.getRawValue();
     const isBrandNewLogin = !this.employee()?.username;
+    const adminSetsPassword = !raw.sendInvitation;
 
     // Required-ness depends on context: a genuinely new login setup (this employee never had
-    // one) needs all three; overriding credentials while reactivating an existing one does not
-    // (see the template's "Enable with different username/role..." path) - the form itself no
-    // longer enforces Validators.required since the SAME form serves both cases.
-    if (isBrandNewLogin && (!raw.username || !raw.password || !raw.roleId)) {
+    // one) needs username + role always, and password too ONLY when the admin has chosen to set
+    // one directly instead of emailing an invitation. Reactivating an existing login needs none
+    // of these (see the template's "Enable with different username/role..." path).
+    if (isBrandNewLogin && (!raw.username || !raw.roleId || (adminSetsPassword && !raw.password))) {
       this.enableLoginForm.markAllAsTouched();
-      this.toast.error('Username, password, and role are all required to set up a new login.');
+      this.toast.error(adminSetsPassword
+        ? 'Username, password, and role are all required to set up a new login.'
+        : 'Username and role are required to set up a new login.');
       return;
     }
 
     this.savingLogin.set(true);
     this.employeeService.enableLogin(this.id, {
       username: raw.username || undefined,
-      password: raw.password || undefined,
+      password: adminSetsPassword ? (raw.password || undefined) : undefined,
       roleId: raw.roleId || undefined
     }).subscribe({
       next: emp => {
         this.employee.set(emp);
         this.showEnableLoginForm.set(false);
         this.savingLogin.set(false);
-        this.enableLoginForm.reset({ username: '', password: '', roleId: null });
-        this.toast.success('Login access enabled successfully.');
+        this.enableLoginForm.reset({ username: '', sendInvitation: true, password: '', roleId: null });
+        this.toast.success(adminSetsPassword
+          ? 'Login access enabled successfully.'
+          : 'Login access enabled - an onboarding email has been sent.');
       },
       error: err => {
         this.savingLogin.set(false);

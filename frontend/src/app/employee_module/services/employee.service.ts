@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResult } from '../../core/models/page.model';
-import { AssignRoleRequest, EmployeeBulkImportResult, EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EnableLoginRequest } from '../models/employee.model';
+import { AssignRoleRequest, EmployeeBulkImportResult, EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EnableLoginRequest, ProfileCompletion, SelfProfileUpdateRequest } from '../models/employee.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 
@@ -12,6 +12,8 @@ export interface EmployeeSearchParams {
   status?: string;
   department?: string;
   loginEnabled?: boolean;
+  /** 'ONBOARDING_PENDING' | 'MANDATORY_PROFILE_INCOMPLETE' | 'PROFILE_COMPLETE' - see backend EmployeeService.onboardingStatusesFor() for exactly what each maps to. */
+  onboardingFilter?: string;
   page?: number;
   size?: number;
   sort?: string;
@@ -92,5 +94,30 @@ export class EmployeeService {
     return this.http
       .post<ApiEnvelope<EmployeeBulkImportResult>>(`${this.baseUrl}/bulk-import`, formData)
       .pipe(map(e => e.data));
+  }
+
+  /** Admin/HR action - invalidates any existing invitation for this employee and sends a fresh one (see backend EmployeeOnboardingService.resendInvitation()). */
+  resendInvitation(employeeId: number): Observable<void> {
+    return this.http.post<ApiEnvelope<void>>(`${environment.apiUrl}/onboarding/resend-invitation/${employeeId}`, {}).pipe(map(() => void 0));
+  }
+
+  /** The logged-in user's OWN full employee record - used to pre-fill the "My Profile" edit form before Save, so unedited fields aren't accidentally blanked out. */
+  getMyProfile(): Observable<EmployeeResponse> {
+    return this.http.get<ApiEnvelope<EmployeeResponse>>(`${this.baseUrl}/me`).pipe(map(e => e.data));
+  }
+
+  /** The logged-in user's OWN profile completion - resolved server-side from their own account, never from a client-supplied employee id. */
+  getMyProfileCompletion(): Observable<ProfileCompletion> {
+    return this.http.get<ApiEnvelope<ProfileCompletion>>(`${this.baseUrl}/me/profile-completion`).pipe(map(e => e.data));
+  }
+
+  /** Admin/HR view of any employee's profile completion. */
+  getProfileCompletion(id: number): Observable<ProfileCompletion> {
+    return this.http.get<ApiEnvelope<ProfileCompletion>>(`${this.baseUrl}/${id}/profile-completion`).pipe(map(e => e.data));
+  }
+
+  /** Self-service update - only EMPLOYEE_EDITABLE fields (see backend SelfProfileUpdateRequest javadoc for what's deliberately excluded). */
+  updateMyProfile(request: SelfProfileUpdateRequest): Observable<ProfileCompletion> {
+    return this.http.put<ApiEnvelope<ProfileCompletion>>(`${this.baseUrl}/me/profile`, request).pipe(map(e => e.data));
   }
 }

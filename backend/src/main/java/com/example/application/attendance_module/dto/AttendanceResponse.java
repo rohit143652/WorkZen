@@ -30,6 +30,9 @@ public class AttendanceResponse {
     private Integer lateMinutes;
     private boolean earlyExit;
     private Integer earlyExitMinutes;
+    /** Presence flags only - NEVER the actual base64 image data, which would bloat every list/history response. The image itself is fetched on demand via a separate endpoint only when an authorized viewer opens the photo (see AttendanceController's dedicated selfie endpoints). */
+    private boolean hasCheckInSelfie;
+    private boolean hasCheckOutSelfie;
     private String createdByRole;
     private String modifiedByRole;
     private String modificationReason;
@@ -61,6 +64,10 @@ public class AttendanceResponse {
     public void setLateMinutes(Integer lateMinutes) { this.lateMinutes = lateMinutes; }
     public boolean isEarlyExit() { return earlyExit; }
     public void setEarlyExit(boolean earlyExit) { this.earlyExit = earlyExit; }
+    public boolean isHasCheckInSelfie() { return hasCheckInSelfie; }
+    public void setHasCheckInSelfie(boolean hasCheckInSelfie) { this.hasCheckInSelfie = hasCheckInSelfie; }
+    public boolean isHasCheckOutSelfie() { return hasCheckOutSelfie; }
+    public void setHasCheckOutSelfie(boolean hasCheckOutSelfie) { this.hasCheckOutSelfie = hasCheckOutSelfie; }
     public Integer getEarlyExitMinutes() { return earlyExitMinutes; }
     public void setEarlyExitMinutes(Integer earlyExitMinutes) { this.earlyExitMinutes = earlyExitMinutes; }
 

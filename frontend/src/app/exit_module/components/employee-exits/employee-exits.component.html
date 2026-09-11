@@ -13,9 +13,19 @@
       <label>Employee</label>
       <app-employee-search-select [employees]="activeEmployees()" [(selectedId)]="newEmployeeId"></app-employee-search-select>
     </div>
+    <div class="form-field">
+      <label>Exit Type</label>
+      <select [(ngModel)]="newExitType">
+        <option value="RESIGNATION">Resignation</option>
+        <option value="TERMINATION">Termination</option>
+        <option value="RETIREMENT">Retirement</option>
+        <option value="END_OF_CONTRACT">End of Contract</option>
+        <option value="OTHER">Other</option>
+      </select>
+    </div>
     <div class="form-grid">
       <div class="form-field">
-        <label>Resignation Date</label>
+        <label>{{ newExitType === 'RESIGNATION' ? 'Resignation Date' : 'Exit Initiated Date' }}</label>
         <input type="date" [(ngModel)]="newResignationDate" />
       </div>
       <div class="form-field">
@@ -53,11 +63,12 @@
   } @else {
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Employee</th><th>Resignation Date</th><th>Last Working Day</th><th>Notice Days</th><th>Status</th><th>Net Settlement</th><th></th></tr></thead>
+        <thead><tr><th>Employee</th><th>Exit Type</th><th>Resignation Date</th><th>Last Working Day</th><th>Notice Days</th><th>Status</th><th>Net Settlement</th><th></th></tr></thead>
         <tbody>
           @for (exit of filteredExits; track exit.id) {
             <tr>
               <td>{{ exit.employeeCode }} &middot; {{ exit.employeeName }}</td>
+              <td>{{ exit.exitType.replace('_', ' ') || 'Resignation' }}</td>
               <td>{{ exit.resignationDate }}</td>
               <td>{{ exit.lastWorkingDay }}</td>
               <td>{{ exit.noticePeriodDays }}</td>

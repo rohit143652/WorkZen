@@ -327,21 +327,32 @@
                   }
                 </select>
               </div>
-              <div class="form-field">
-                <label class="required">Password</label>
-                <input type="password" formControlName="password" />
-                @if (form.controls.loginAccess.controls.password.invalid && form.controls.loginAccess.controls.password.touched) {
-                  <span class="field-error">Minimum 8 characters</span>
-                }
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500;">
+                  <input type="checkbox" formControlName="sendInvitation" style="width: 16px; height: 16px; cursor: pointer;" />
+                  Email the employee a secure link to set their own password
+                </label>
+                <p class="muted" style="font-size: 0.78rem; margin: 0.25rem 0 0;">
+                  Recommended - the employee gets an onboarding email with a one-time verification code and sets their own password.
+                  Uncheck this only if you need to set a password yourself right now.
+                </p>
               </div>
-              <div class="form-field">
-                <label class="required">Confirm Password</label>
-                <input type="password" formControlName="confirmPassword" />
-                @if (form.controls.loginAccess.errors?.['passwordMismatch'] && form.controls.loginAccess.controls.confirmPassword.touched) {
-                  <span class="field-error">Passwords do not match</span>
-                }
-              </div>
-            </div>
+              @if (!form.controls.loginAccess.controls.sendInvitation.value) {
+                <div class="form-field">
+                  <label class="required">Password</label>
+                  <input type="password" formControlName="password" />
+                  @if (form.controls.loginAccess.controls.password.invalid && form.controls.loginAccess.controls.password.touched) {
+                    <span class="field-error">Minimum 8 characters</span>
+                  }
+                </div>
+                <div class="form-field">
+                  <label class="required">Confirm Password</label>
+                  <input type="password" formControlName="confirmPassword" />
+                  @if (form.controls.loginAccess.errors?.['passwordMismatch'] && form.controls.loginAccess.controls.confirmPassword.touched) {
+                    <span class="field-error">Passwords do not match</span>
+                  }
+                </div>
+              }            </div>
           }
         </div>
       } @else if (hasLoginAccount() && loginIsActive()) {
@@ -402,20 +413,28 @@
                   @for (role of roles(); track role.id) { <option [ngValue]="role.id">{{ role.name }}</option> }
                 </select>
               </div>
-              <div class="form-field">
-                <label class="required">Password</label>
-                <input type="password" formControlName="password" [class.invalid]="enableLoginForm.controls.password.invalid && enableLoginForm.controls.password.touched" />
-                @if (enableLoginForm.controls.password.invalid && enableLoginForm.controls.password.touched) {
-                  <span class="field-error">Minimum 8 characters</span>
-                }
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500;">
+                  <input type="checkbox" formControlName="sendInvitation" style="width: 16px; height: 16px; cursor: pointer;" />
+                  Email the employee a secure link to set their own password
+                </label>
               </div>
-              <div class="form-field">
-                <label class="required">Confirm Password</label>
-                <input type="password" formControlName="confirmPassword" [class.invalid]="enableLoginForm.errors?.['passwordMismatch'] && enableLoginForm.controls.confirmPassword.touched" />
-                @if (enableLoginForm.errors?.['passwordMismatch'] && enableLoginForm.controls.confirmPassword.touched) {
-                  <span class="field-error">Passwords do not match</span>
-                }
-              </div>
+              @if (!enableLoginForm.controls.sendInvitation.value) {
+                <div class="form-field">
+                  <label class="required">Password</label>
+                  <input type="password" formControlName="password" [class.invalid]="enableLoginForm.controls.password.invalid && enableLoginForm.controls.password.touched" />
+                  @if (enableLoginForm.controls.password.invalid && enableLoginForm.controls.password.touched) {
+                    <span class="field-error">Minimum 8 characters</span>
+                  }
+                </div>
+                <div class="form-field">
+                  <label class="required">Confirm Password</label>
+                  <input type="password" formControlName="confirmPassword" [class.invalid]="enableLoginForm.errors?.['passwordMismatch'] && enableLoginForm.controls.confirmPassword.touched" />
+                  @if (enableLoginForm.errors?.['passwordMismatch'] && enableLoginForm.controls.confirmPassword.touched) {
+                    <span class="field-error">Passwords do not match</span>
+                  }
+                </div>
+              }
             </div>
 
             <div class="form-actions" style="border: none; padding-top: 0.5rem; margin-top: 0.5rem;">

@@ -7,6 +7,7 @@ import {
   BulkAssignmentResult, BulkEmployeeAssignmentRequest, BulkEndAssignmentRequest, BulkEndResult,
   EmployeeAssignmentRequest, EmployeeAssignmentResponse, TransferEmployeeRequest
 } from '../models/employee-assignment.model';
+import { SiteResponse } from '../../site_module/models/site.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 
@@ -60,6 +61,13 @@ export class EmployeeAssignmentService {
   historyForEmployee(employeeId: number): Observable<EmployeeAssignmentResponse[]> {
     return this.http
       .get<ApiEnvelope<EmployeeAssignmentResponse[]>>(`${environment.apiUrl}/employees/${employeeId}/assignments`)
+      .pipe(map(e => e.data));
+  }
+
+  /** Self-service "My assigned site" - null if the employee has no active site assignment (a normal state for companies that don't use multi-site structure). */
+  myCurrentSite(): Observable<SiteResponse | null> {
+    return this.http
+      .get<ApiEnvelope<SiteResponse | null>>(`${environment.apiUrl}/employees/me/current-site`)
       .pipe(map(e => e.data));
   }
 }

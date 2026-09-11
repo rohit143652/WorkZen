@@ -1,8 +1,11 @@
+export type ExitType = 'RESIGNATION' | 'TERMINATION' | 'RETIREMENT' | 'END_OF_CONTRACT' | 'OTHER';
+
 export interface EmployeeExitResponse {
   id: number;
   employeeId: number;
   employeeCode: string;
   employeeName: string;
+  exitType: ExitType;
   resignationDate: string;
   lastWorkingDay: string;
   noticePeriodDays: number;
@@ -16,6 +19,7 @@ export interface EmployeeExitResponse {
 
 export interface EmployeeExitRequest {
   employeeId: number;
+  exitType: ExitType;
   resignationDate: string;
   lastWorkingDay: string;
   reason?: string;

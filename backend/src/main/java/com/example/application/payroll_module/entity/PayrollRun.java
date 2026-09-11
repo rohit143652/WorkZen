@@ -30,6 +30,10 @@ public class PayrollRun {
     @Column(name = "client_company_id", nullable = false)
     private Long clientCompanyId;
 
+    /** Comma-separated site IDs this run covers - NULL/blank means ALL sites (the only option before Phase 4). Fixed for the run's whole lifecycle (see V115 migration) - recalculation always reuses this, never a newly-supplied scope, so a run's employee set can't silently drift between calculations. */
+    @Column(name = "site_ids", length = 500)
+    private String siteIds;
+
     @Column(nullable = false)
     private int year;
 
@@ -99,6 +103,8 @@ public class PayrollRun {
     public void setId(Long id) { this.id = id; }
     public Long getClientCompanyId() { return clientCompanyId; }
     public void setClientCompanyId(Long clientCompanyId) { this.clientCompanyId = clientCompanyId; }
+    public String getSiteIds() { return siteIds; }
+    public void setSiteIds(String siteIds) { this.siteIds = siteIds; }
     public int getYear() { return year; }
     public void setYear(int year) { this.year = year; }
     public int getMonth() { return month; }

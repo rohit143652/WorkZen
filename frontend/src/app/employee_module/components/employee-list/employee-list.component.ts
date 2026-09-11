@@ -35,6 +35,7 @@ export class EmployeeListComponent {
   // dropdown to "Inactive" or "All statuses" still shows them when that's genuinely needed.
   statusFilter = 'ACTIVE';
   loginFilter = '';
+  onboardingFilter = '';
 
   /** Typing triggers a search automatically (see onSearchInput()) instead of needing the
       "Search" button - debounced so a fast typist doesn't fire an API call on every single
@@ -61,6 +62,7 @@ export class EmployeeListComponent {
         search: this.search || undefined,
         status: this.statusFilter || undefined,
         loginEnabled: this.loginFilter === '' ? undefined : this.loginFilter === 'true',
+        onboardingFilter: this.onboardingFilter || undefined,
         page: this.page(),
         size: this.pageSize,
         sort: 'createdAt,desc'

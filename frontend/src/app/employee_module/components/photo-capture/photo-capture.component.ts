@@ -29,6 +29,8 @@ export class PhotoCaptureComponent implements OnDestroy {
 
   @Input() photoData: string | null = null;
   @Output() photoDataChange = new EventEmitter<string | null>();
+  /** When true, hides the upload/preview/capture-button UI entirely - only the camera modal itself (triggered externally via a parent calling openCamera() through a ViewChild reference) is available. Used for flows like "selfie required for check-in" where the camera should open directly on a single button click, with no separate capture-widget step first. */
+  @Input() hideInlineControls = false;
 
   @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
   @ViewChild('videoEl') videoRef?: ElementRef<HTMLVideoElement>;

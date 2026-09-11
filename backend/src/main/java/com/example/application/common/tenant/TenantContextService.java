@@ -45,9 +45,20 @@ public class TenantContextService {
         return currentPrincipal().getPermissionNames();
     }
 
-    /** Null for SUPER_ADMIN / any house user. Non-null for tenant-scoped users. */
+    /**
+     * Null for SUPER_ADMIN / any house user, OR when there is no authenticated principal at all
+     * (e.g. called during the login flow itself, before there is anything to authenticate against
+     * - login is genuinely anonymous up until credentials are verified). Deliberately does NOT
+     * delegate to currentPrincipal() here, unlike every other method in this class - that method
+     * throws when unauthenticated, which is correct for actions that assume a logged-in user, but
+     * wrong for this one specific "OrNull" method whose entire contract is to never throw.
+     */
     public Long currentTenantIdOrNull() {
-        return currentPrincipal().getUser().getClientCompanyId();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserPrincipal principal)) {
+            return null;
+        }
+        return principal.getUser().getClientCompanyId();
     }
 
     /**

@@ -49,6 +49,19 @@
       </div>
 
       <div class="form-field">
+        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400;">
+          <input type="checkbox" formControlName="checkInSelfieRequired" />
+          Require a selfie for check-in
+        </label>
+      </div>
+      <div class="form-field">
+        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400;">
+          <input type="checkbox" formControlName="checkOutSelfieRequired" />
+          Require a selfie for check-out
+        </label>
+      </div>
+
+      <div class="form-field">
         <label>Weekly Off Days</label>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
           @for (day of allDays; track day) {

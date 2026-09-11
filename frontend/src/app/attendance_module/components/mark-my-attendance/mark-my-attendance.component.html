@@ -50,6 +50,15 @@
           </p>
         }
 
+        <div style="max-width: 260px; margin: 1rem auto 0;">
+          @if (!ruleConfig()?.checkInSelfieRequired) {
+            <label class="muted" style="font-size: 0.8rem; display: block; margin-bottom: 0.35rem;">Selfie (optional)</label>
+          }
+          <!-- When required, inline controls are hidden - the Check In button below opens the camera directly via this ViewChild, and capturing the photo immediately submits (see onCheckInSelfieCaptured()). -->
+          <app-photo-capture #checkInPhotoCapture [hideInlineControls]="!!ruleConfig()?.checkInSelfieRequired"
+                              [photoData]="checkInSelfie" (photoDataChange)="onCheckInSelfieCaptured($event)"></app-photo-capture>
+        </div>
+
         <button type="button" class="btn btn-primary" style="margin-top: 1.25rem; padding: 0.85rem 2rem; font-size: 1rem;"
                 [disabled]="working()" (click)="checkIn()">
           @if (working()) { <span class="btn-spinner"></span> }
@@ -119,6 +128,13 @@
             <i class="bi bi-exclamation-triangle"></i> {{ locationError() }}
           </p>
         }
+        <div style="margin-bottom: 1rem;">
+          @if (!ruleConfig()?.checkOutSelfieRequired) {
+            <label class="muted" style="font-size: 0.8rem; display: block; margin-bottom: 0.35rem;">Selfie (optional)</label>
+          }
+          <app-photo-capture #checkOutPhotoCapture [hideInlineControls]="!!ruleConfig()?.checkOutSelfieRequired"
+                              [photoData]="checkOutSelfie" (photoDataChange)="onCheckOutSelfieCaptured($event)"></app-photo-capture>
+        </div>
         <button type="button" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;"
                 [disabled]="working()" (click)="checkOut()">
           @if (working()) { <span class="btn-spinner"></span> }
@@ -157,7 +173,7 @@
           <div class="table-scroll">
             <table>
               <thead>
-                <tr><th>Date</th><th>Status</th><th>Check-In</th><th>Check-Out</th><th>Net Hours</th></tr>
+                <tr><th>Date</th><th>Status</th><th>Check-In</th><th>Check-Out</th><th>Net Hours</th><th>Photo</th></tr>
               </thead>
               <tbody>
                 @for (h of history(); track h.id) {
@@ -167,6 +183,15 @@
                     <td>{{ h.checkInTime ? (h.checkInTime | date:'shortTime') : '-' }}</td>
                     <td>{{ h.checkOutTime ? (h.checkOutTime | date:'shortTime') : '-' }}</td>
                     <td>{{ h.netWorkMinutes != null ? formatMinutes(h.netWorkMinutes) : '-' }}</td>
+                    <td>
+                      @if (h.hasCheckInSelfie) {
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="viewSelfie(h.id, false)">In</button>
+                      }
+                      @if (h.hasCheckOutSelfie) {
+                        <button type="button" class="btn btn-ghost btn-sm" (click)="viewSelfie(h.id, true)">Out</button>
+                      }
+                      @if (!h.hasCheckInSelfie && !h.hasCheckOutSelfie) { <span class="muted">-</span> }
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -177,3 +202,19 @@
     }
   }
 </div>
+
+@if (viewingSelfie() !== null || loadingSelfie()) {
+  <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000;"
+       (click)="viewingSelfie.set(null)">
+    <div class="card" style="padding: 1rem; max-width: 90vw; max-height: 90vh;" (click)="$event.stopPropagation()">
+      @if (loadingSelfie()) {
+        <div class="skeleton" style="width: 300px; height: 300px;"></div>
+      } @else if (viewingSelfie()) {
+        <img [src]="viewingSelfie()" style="max-width: 100%; max-height: 80vh; border-radius: 8px; display: block;" />
+      } @else {
+        <p class="muted" style="padding: 2rem;">No photo was captured for this record.</p>
+      }
+      <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 0.75rem;" (click)="viewingSelfie.set(null)">Close</button>
+    </div>
+  </div>
+}

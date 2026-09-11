@@ -449,6 +449,24 @@
   text-align: center;
 }
 
+.dropdown-item.profile-card-my-profile {
+  justify-content: center;
+  text-align: center;
+  color: var(--primary-color);
+}
+
+.dropdown-item.profile-card-my-profile:hover { background: var(--primary-bg, rgba(37, 99, 235, 0.08)); }
+
+/** Small dot next to "My Profile" when the linked employee's mandatory profile fields are incomplete - a distinct signal from the link's own color, which stays neutral either way. */
+.profile-incomplete-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d97706;
+  margin-left: 0.35rem;
+}
+
 .dropdown-item {
   width: 100%;
   display: flex;

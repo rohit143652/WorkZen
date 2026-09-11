@@ -153,4 +153,11 @@ export class AttendanceService {
       .put<ApiEnvelope<void>>(`${this.baseUrl}/monthly-report/leave-adjustment`, { employeeId, year, month, paidDaysUsed })
       .pipe(map(() => void 0));
   }
+
+  /** On-demand selfie fetch - never bundled into list/detail responses (see AttendanceResponse.hasCheckInSelfie/hasCheckOutSelfie). Returns the base64 data-URI, or null if none was captured. */
+  getSelfie(attendanceId: number, checkOut: boolean): Observable<string | null> {
+    return this.http
+      .get<ApiEnvelope<string | null>>(`${this.baseUrl}/${attendanceId}/selfie`, { params: { checkOut } as any })
+      .pipe(map(e => e.data));
+  }
 }

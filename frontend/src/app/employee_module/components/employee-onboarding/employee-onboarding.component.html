@@ -1,0 +1,57 @@
+<div style="max-width: 420px; margin: 4rem auto; padding: 0 1rem;">
+  <div class="card" style="padding: 2rem;">
+
+    @if (loading()) {
+      <div class="skeleton" style="height: 120px;"></div>
+    } @else if (loadError()) {
+      <h2>Activate Your Account</h2>
+      <p class="muted" style="margin-top: 1rem;">{{ loadError() }}</p>
+      <button type="button" class="btn btn-secondary" style="margin-top: 1rem;" (click)="goToLogin()">Go to Login</button>
+    } @else {
+@if (info(); as i) {
+
+      @if (step() === 'code') {
+        <h2>Activate Your Account</h2>
+        <p class="muted">Hello {{ i.employeeName }}, welcome to {{ i.companyName }}.</p>
+        <p style="margin-top: 1rem;">Enter the one-time verification code from your email.</p>
+        <div class="form-field">
+          <label>Verification Code</label>
+          <input type="text" [(ngModel)]="code" placeholder="123456" maxlength="6" style="text-align:center; font-size:1.3rem; letter-spacing:4px;" />
+        </div>
+        @if (errorMessage()) {
+          <p style="color: var(--danger-color, #dc2626); font-size: 0.85rem;">{{ errorMessage() }}</p>
+        }
+        <button type="button" class="btn btn-primary" style="width:100%; margin-top: 1rem;" [disabled]="submitting()" (click)="submitCode()">
+          {{ submitting() ? 'Verifying...' : 'Verify Code' }}
+        </button>
+      }
+
+      @if (step() === 'password') {
+        <h2>Create Your Password</h2>
+        <p class="muted">Code verified. Choose a password for your account.</p>
+        <div class="form-field">
+          <label>Password</label>
+          <input type="password" [(ngModel)]="password" placeholder="At least 8 characters" />
+        </div>
+        <div class="form-field">
+          <label>Confirm Password</label>
+          <input type="password" [(ngModel)]="confirmPassword" />
+        </div>
+        @if (errorMessage()) {
+          <p style="color: var(--danger-color, #dc2626); font-size: 0.85rem;">{{ errorMessage() }}</p>
+        }
+        <button type="button" class="btn btn-primary" style="width:100%; margin-top: 1rem;" [disabled]="submitting()" (click)="submitPassword()">
+          {{ submitting() ? 'Saving...' : 'Set Password' }}
+        </button>
+      }
+
+      @if (step() === 'done') {
+        <h2>All Set!</h2>
+        <p class="muted">Your password has been created. You can now log in with your username and new password.</p>
+        <button type="button" class="btn btn-primary" style="width:100%; margin-top: 1rem;" (click)="goToLogin()">Go to Login</button>
+      }
+
+    }
+  }
+  </div>
+</div>

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ExitService } from '../../services/exit.service';
-import { EmployeeExitResponse } from '../../models/employee-exit.model';
+import { EmployeeExitResponse, ExitType } from '../../models/employee-exit.model';
 import { EmployeeService } from '../../../employee_module/services/employee.service';
 import { EmployeeResponse } from '../../../employee_module/models/employee.model';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -41,6 +41,7 @@ export class EmployeeExitsComponent {
   readonly showAddForm = signal(false);
   readonly saving = signal(false);
   newEmployeeId: number | null = null;
+  newExitType: ExitType = 'RESIGNATION';
   newResignationDate = '';
   newLastWorkingDay = '';
   newReason = '';
@@ -66,6 +67,7 @@ export class EmployeeExitsComponent {
   openAddForm(): void {
     this.showAddForm.set(true);
     this.newEmployeeId = null;
+    this.newExitType = 'RESIGNATION';
     this.newResignationDate = '';
     this.newLastWorkingDay = '';
     this.newReason = '';
@@ -89,6 +91,7 @@ export class EmployeeExitsComponent {
     this.saving.set(true);
     this.exitService.initiate({
       employeeId: this.newEmployeeId,
+      exitType: this.newExitType,
       resignationDate: this.newResignationDate,
       lastWorkingDay: this.newLastWorkingDay,
       reason: this.newReason.trim() || undefined

@@ -9,6 +9,10 @@ public class PayrollRunResponse {
     private String monthLabel;
     private String status;
     private String remarks;
+    /** Comma-separated site IDs, or null for "all sites" - the run's fixed scope (see PayrollRun.siteIds javadoc). */
+    private String siteIds;
+    /** Human-readable site names for display, resolved server-side - empty list means "all sites". */
+    private java.util.List<String> siteNames = java.util.List.of();
     private LocalDateTime createdAt;
     private String createdBy;
     private LocalDateTime calculatedAt;
@@ -37,6 +41,10 @@ public class PayrollRunResponse {
     public void setStatus(String status) { this.status = status; }
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
+    public String getSiteIds() { return siteIds; }
+    public void setSiteIds(String siteIds) { this.siteIds = siteIds; }
+    public java.util.List<String> getSiteNames() { return siteNames; }
+    public void setSiteNames(java.util.List<String> siteNames) { this.siteNames = siteNames; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getCreatedBy() { return createdBy; }

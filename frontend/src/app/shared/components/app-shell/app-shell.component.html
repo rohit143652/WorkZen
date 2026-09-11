@@ -101,6 +101,12 @@
                 <div class="profile-card-role">{{ user.roles[0] }}</div>
               }
               <hr class="profile-card-divider" />
+              @if (showMyProfile()) {
+                <a routerLink="/my-profile" class="dropdown-item profile-card-my-profile" (click)="profileMenuOpen.set(false)">
+                  <i class="bi bi-person-circle"></i> My Profile
+                  @if (profileIncomplete()) { <span class="profile-incomplete-dot" title="Your profile is incomplete"></span> }
+                </a>
+              }
               <button type="button" class="dropdown-item profile-card-signout" (click)="logout()">
                 <i class="bi bi-box-arrow-right"></i> Sign Out
               </button>

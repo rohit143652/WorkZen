@@ -47,6 +47,10 @@ public class AttendanceRuleConfig {
     @Column(name = "allow_multiple_checkin", nullable = false)
     private boolean allowMultipleCheckin;
 
+    /** Configurable per company (Phase 3) - if true, self check-in/check-out is rejected without an accompanying selfie. Independent toggles since some companies only care about verifying arrival, not departure, or vice versa. */
+    private boolean checkInSelfieRequired;
+    private boolean checkOutSelfieRequired;
+
     /** Comma-separated java.time.DayOfWeek names, e.g. "SATURDAY,SUNDAY". */
     @Column(name = "weekly_off_days", nullable = false, length = 100)
     private String weeklyOffDays;
@@ -79,6 +83,10 @@ public class AttendanceRuleConfig {
     public void setDefaultBreakMinutes(Integer defaultBreakMinutes) { this.defaultBreakMinutes = defaultBreakMinutes; }
     public boolean isAllowMultipleCheckin() { return allowMultipleCheckin; }
     public void setAllowMultipleCheckin(boolean allowMultipleCheckin) { this.allowMultipleCheckin = allowMultipleCheckin; }
+    public boolean isCheckInSelfieRequired() { return checkInSelfieRequired; }
+    public void setCheckInSelfieRequired(boolean checkInSelfieRequired) { this.checkInSelfieRequired = checkInSelfieRequired; }
+    public boolean isCheckOutSelfieRequired() { return checkOutSelfieRequired; }
+    public void setCheckOutSelfieRequired(boolean checkOutSelfieRequired) { this.checkOutSelfieRequired = checkOutSelfieRequired; }
     public String getWeeklyOffDays() { return weeklyOffDays; }
     public void setWeeklyOffDays(String weeklyOffDays) { this.weeklyOffDays = weeklyOffDays; }
     public LocalDateTime getCreatedAt() { return createdAt; }

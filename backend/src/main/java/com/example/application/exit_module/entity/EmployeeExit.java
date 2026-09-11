@@ -15,6 +15,8 @@ public class EmployeeExit {
 
     private Long clientCompanyId;
     private Long employeeId;
+    /** RESIGNATION / TERMINATION / RETIREMENT / END_OF_CONTRACT / OTHER - see V113 migration. Defaults to RESIGNATION for backward compatibility; resignationDate below is kept as the generic "exit initiation date" for every type, not renamed. */
+    private String exitType = "RESIGNATION";
     private LocalDate resignationDate;
     private LocalDate lastWorkingDay;
     private String reason;
@@ -40,6 +42,8 @@ public class EmployeeExit {
     public void setClientCompanyId(Long clientCompanyId) { this.clientCompanyId = clientCompanyId; }
     public Long getEmployeeId() { return employeeId; }
     public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+    public String getExitType() { return exitType; }
+    public void setExitType(String exitType) { this.exitType = exitType; }
     public LocalDate getResignationDate() { return resignationDate; }
     public void setResignationDate(LocalDate resignationDate) { this.resignationDate = resignationDate; }
     public LocalDate getLastWorkingDay() { return lastWorkingDay; }

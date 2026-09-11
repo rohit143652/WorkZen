@@ -1,9 +1,25 @@
+@if (authState.hasRole('SUPER_ADMIN')) {
+  <app-super-admin-dashboard></app-super-admin-dashboard>
+} @else {
 <div class="page-header">
   <div>
     <h1>Welcome back, {{ authState.currentUser()?.firstName || authState.currentUser()?.username }}</h1>
     <p class="muted">Role: {{ authState.currentUser()?.roles?.[0] }}</p>
   </div>
 </div>
+
+@if (showIncompleteProfileBanner()) {
+  <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem; background: var(--warning-bg, #fffbeb); border-color: #fde68a; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <i class="bi bi-exclamation-triangle-fill" style="color: #d97706; font-size: 1.3rem;"></i>
+      <div>
+        <strong>Your profile is {{ profileCompletionPercentage() }}% complete.</strong>
+        <span class="muted"> Please fill in the required information to finish setting up your profile.</span>
+      </div>
+    </div>
+    <a routerLink="/my-profile" class="btn btn-primary btn-sm">Complete My Profile</a>
+  </div>
+}
 
 @if (canSelfMark() || hasEventReadPermission) {
   <div class="dashboard-top-row">
@@ -163,4 +179,5 @@
     <i class="bi bi-emoji-smile"></i>
     <p>You're all signed in and ready to go. Use the menu on the left to get started.</p>
   </div>
+}
 }

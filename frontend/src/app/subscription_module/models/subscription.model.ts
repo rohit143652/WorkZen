@@ -92,3 +92,18 @@ export interface FeatureEffectiveStatus {
   clientOverride: boolean | null;
   effective: boolean;
 }
+
+export interface ExpiringSubscription {
+  clientCompanyId: number;
+  companyName: string;
+  planName: string;
+  endDate: string;
+  daysRemaining: number;
+  status: SubscriptionStatus;
+}
+
+export interface SuperAdminDashboardSummary {
+  totalCompanies: number;
+  activeCompanies: number;
+  expiringSoon: ExpiringSubscription[];
+}

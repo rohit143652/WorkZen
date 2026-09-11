@@ -1,0 +1,38 @@
+<div class="page-header"><h1>Dashboard</h1></div>
+
+@if (loading()) {
+  <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 160px;"></div></div>
+} @else {
+@if (summary(); as s) {
+  <div class="form-grid" style="margin-bottom: 1.5rem;">
+    <div class="card" style="padding: 1.1rem;"><div class="muted">Total Companies</div><strong style="font-size: 1.5rem;">{{ s.totalCompanies }}</strong></div>
+    <div class="card" style="padding: 1.1rem;"><div class="muted">Active Companies</div><strong style="font-size: 1.5rem;">{{ s.activeCompanies }}</strong></div>
+    <div class="card" style="padding: 1.1rem;"><div class="muted">Expiring in 30 Days</div><strong style="font-size: 1.5rem;">{{ s.expiringSoon.length }}</strong></div>
+  </div>
+
+  <div class="card table-card">
+    <div class="section-title" style="padding: 1rem 1rem 0;">Subscriptions Expiring Soon</div>
+    @if (s.expiringSoon.length === 0) {
+      <div class="empty-state">No subscriptions expiring in the next 30 days.</div>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Company</th><th>Plan</th><th>End Date</th><th>Days Remaining</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (e of s.expiringSoon; track e.clientCompanyId) {
+              <tr>
+                <td>{{ e.companyName }}</td>
+                <td>{{ e.planName }}</td>
+                <td>{{ e.endDate }}</td>
+                <td><span class="badge" [class.badge-danger]="e.daysRemaining <= 7">{{ e.daysRemaining }} days</span></td>
+                <td>{{ e.status }}</td>
+                <td><a [routerLink]="['/clients', e.clientCompanyId, 'subscription']" class="btn btn-secondary btn-sm">View</a></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+}

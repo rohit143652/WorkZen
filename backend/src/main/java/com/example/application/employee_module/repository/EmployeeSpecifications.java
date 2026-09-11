@@ -39,6 +39,17 @@ public final class EmployeeSpecifications {
     }
 
     /**
+     * Onboarding progress filter - accepts the exact set of statuses that make up one logical
+     * filter option (see EmployeeService.search()'s onboardingFilter param for what each option
+     * maps to). Passing null/empty is "no filter", matching every other Specification here.
+     */
+    public static Specification<Employee> hasOnboardingStatusIn(java.util.List<String> statuses) {
+        return (root, query, cb) -> (statuses == null || statuses.isEmpty())
+                ? cb.conjunction()
+                : root.get("onboardingStatus").in(statuses);
+    }
+
+    /**
      * Mandatory tenant filter for CLIENT_ADMIN/CLIENT_USER-scoped queries.
      * SUPER_ADMIN callers pass null here and optionally combine with
      * hasClientCompany(filterCompanyId) instead for an explicit cross-tenant filter.

@@ -1,3 +1,4 @@
+@if (!hideInlineControls) {
 <div class="photo-capture-wrap">
   <div class="photo-preview">
     @if (photoData) {
@@ -15,6 +16,7 @@
 
   <input #fileInput type="file" accept="image/*" style="display: none;" (change)="onFileSelected($event)" />
 </div>
+}
 
 @if (showCamera()) {
   <div class="modal-overlay" (click)="closeCamera()">

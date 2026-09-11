@@ -11,11 +11,13 @@ import { CalendarService } from '../../../calendar_module/services/calendar.serv
 import { CalendarItemResponse } from '../../../calendar_module/models/calendar.model';
 import { ToastService } from '../../../shared/services/toast.service';
 import { FeatureStateService } from '../../../core/services/feature-state.service';
+import { SuperAdminDashboardComponent } from '../../../subscription_module/components/super-admin-dashboard/super-admin-dashboard.component';
+import { EmployeeService } from '../../../employee_module/services/employee.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent],
+  imports: [CommonModule, RouterLink, StatusBadgeComponent, SuperAdminDashboardComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -25,6 +27,7 @@ export class DashboardComponent {
   private readonly calendarService = inject(CalendarService);
   private readonly toast = inject(ToastService);
   private readonly featureState = inject(FeatureStateService);
+  private readonly employeeService = inject(EmployeeService);
   readonly authState = inject(AuthStateService);
 
   readonly sites = signal<SiteResponse[]>([]);
@@ -69,7 +72,28 @@ export class DashboardComponent {
   readonly loadingMeetings = signal(true);
   readonly todaysMeetings = signal<CalendarItemResponse[]>([]);
 
+  /** Only meaningful for a real employee account (SUPER_ADMIN has no linked Employee record, so this stays null for them and the banner never shows) - null while loading or not applicable, false once mandatory fields are complete so the banner stops showing for good. */
+  readonly showIncompleteProfileBanner = signal(false);
+  readonly profileCompletionPercentage = signal(0);
+
   constructor() {
+    // Only a real employee account has a profile to complete - SUPER_ADMIN has no linked
+    // Employee record at all (calling this for them would just 404), so this is skipped
+    // entirely based on the same employeeCode presence check used elsewhere (My Profile link,
+    // etc.) rather than a role check, since it's really "does this account have a profile".
+    if (this.authState.currentUser()?.employeeCode) {
+      this.employeeService.getMyProfileCompletion().subscribe({
+        next: c => {
+          this.profileCompletionPercentage.set(c.completionPercentage);
+          // Shows until the MANDATORY fields are done - not full 100%, matching spec section 21
+          // (mandatory-complete and percentage-complete are different things) and section 29
+          // (don't block/nag more than necessary once the required information is in).
+          this.showIncompleteProfileBanner.set(!c.mandatoryComplete);
+        },
+        error: () => { /* Silently skip the banner if this call fails - never blocks the rest of the dashboard from loading. */ }
+      });
+    }
+
     if (this.hasSiteReadPermission) {
       this.loadSites();
     }

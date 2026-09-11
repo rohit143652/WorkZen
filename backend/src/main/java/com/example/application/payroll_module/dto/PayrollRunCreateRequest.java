@@ -15,6 +15,12 @@ public class PayrollRunCreateRequest {
 
     private String remarks;
 
+    /** All Sites / Single Site / Multiple Sites (Phase 4) - empty or omitted means ALL sites, matching every run created before this field existed. This scope is fixed for the run's entire lifecycle once created - see PayrollRun.siteIds javadoc. */
+    private java.util.List<Long> siteIds;
+
+    public java.util.List<Long> getSiteIds() { return siteIds; }
+    public void setSiteIds(java.util.List<Long> siteIds) { this.siteIds = siteIds; }
+
     public Integer getYear() { return year; }
     public void setYear(Integer year) { this.year = year; }
     public Integer getMonth() { return month; }

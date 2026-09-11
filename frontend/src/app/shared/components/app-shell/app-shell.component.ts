@@ -9,6 +9,7 @@ import { FeatureStateService } from '../../../core/services/feature-state.servic
 import { ToastContainerComponent } from '../toast/toast.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../services/toast.service';
+import { EmployeeService } from '../../../employee_module/services/employee.service';
 
 interface NavLeaf {
   label: string;
@@ -135,6 +136,13 @@ export class AppShellComponent {
 
   readonly authState = inject(AuthStateService);
   private readonly featureState = inject(FeatureStateService);
+  private readonly employeeService = inject(EmployeeService);
+
+  /** CLIENT_ADMIN is a company-management account, not a working employee, so "My Profile" (which is about an employee's own personal/onboarding profile) has no meaningful content for them - hidden regardless of whether they happen to have an employeeCode. */
+  readonly showMyProfile = () => !!this.authState.currentUser()?.employeeCode && !this.authState.hasRole('CLIENT_ADMIN');
+
+  /** Small dot shown on "My Profile" when the mandatory profile fields aren't complete yet - a distinct signal from the link's own (always-neutral) color. */
+  readonly profileIncomplete = signal(false);
   /** Defaults closed on narrow (tablet/mobile) screens so the drawer doesn't cover the whole
       page on first load - always effectively "open" on desktop since there's no way to close it
       there (the toggle button is hidden entirely above 900px, see the component CSS). */
@@ -163,6 +171,13 @@ export class AppShellComponent {
   readonly dashboardItem = DASHBOARD_ITEM;
 
   constructor() {
+    if (this.showMyProfile()) {
+      this.employeeService.getMyProfileCompletion().subscribe({
+        next: c => this.profileIncomplete.set(!c.mandatoryComplete),
+        error: () => { /* Non-fatal - the dot just doesn't show if this fails. */ }
+      });
+    }
+
     // Auto-expand whichever group contains the route the user is currently on
     // (covers both first load and any programmatic navigation into a submenu
     // page, e.g. following a link from a card elsewhere in the app).
@@ -214,7 +229,7 @@ export class AppShellComponent {
       manage subscription plans, and manage the permission catalog itself - nothing else should
       ever appear in their sidebar, even though SUPER_ADMIN technically holds every permission
       (the catch-all grant every migration uses) and would otherwise see everything. */
-  private static readonly SUPER_ADMIN_ALLOWED_PATHS = ['/clients', '/subscription-plans', '/permissions'];
+  private static readonly SUPER_ADMIN_ALLOWED_PATHS = ['/dashboard', '/clients', '/subscription-plans', '/permissions'];
 
   isVisible(item: NavLeaf): boolean {
     if (this.authState.hasRole('SUPER_ADMIN') && !AppShellComponent.SUPER_ADMIN_ALLOWED_PATHS.includes(item.path)) {

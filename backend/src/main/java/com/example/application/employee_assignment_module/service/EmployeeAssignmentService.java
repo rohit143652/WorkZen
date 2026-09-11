@@ -67,6 +67,25 @@ public class EmployeeAssignmentService {
                 .stream().map(this::toResponse).toList();
     }
 
+    /**
+     * Self-service - "My assigned site" (spec: employee self-service must include this). Resolved
+     * from the CALLER's own User id, never from a client-supplied employee id, so nobody can look
+     * up another employee's site assignment through this specific endpoint. Returns null (not an
+     * error) if the employee has no active site assignment at all - many companies don't use
+     * multi-site structure, and "no site" is a perfectly normal, expected state, not a fault.
+     */
+    @Transactional(readOnly = true)
+    public com.example.application.site_module.dto.SiteResponse getMyCurrentSite(Long currentUserId) {
+        Long tenantId = tenantContext.requireCurrentTenantId();
+        Employee employee = employeeRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new com.example.application.common.exception.ResourceNotFoundException(
+                        "No employee record linked to this account"));
+        return assignmentRepository
+                .findFirstByEmployeeIdAndClientCompanyIdAndStatusOrderByStartDateDesc(employee.getId(), tenantId, "ACTIVE")
+                .map(assignment -> siteService.findById(assignment.getSiteId()))
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public List<EmployeeAssignmentResponse> findActiveBySite(Long siteId) {
         Long tenantId = tenantContext.requireCurrentTenantId();

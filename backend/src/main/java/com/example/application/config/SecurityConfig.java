@@ -64,6 +64,14 @@ public class SecurityConfig {
             "/api/auth/login",
             "/api/auth/refresh",
             "/api/auth/logout",
+            // Employee self-onboarding: an invited employee has no JWT yet (that's the whole
+            // point - they're setting up their FIRST login), so these three specifically must be
+            // reachable without authentication. Every other /api/onboarding/** path (e.g.
+            // resend-invitation, which is an admin action) is NOT in this list and stays behind
+            // the normal JWT+permission checks.
+            "/api/onboarding/validate/**",
+            "/api/onboarding/verify-code",
+            "/api/onboarding/set-password",
             "/actuator/health",
             "/swagger-ui/**",
             "/swagger-ui.html",

@@ -71,6 +71,10 @@ export interface EmployeeResponse {
   state?: string;
   country?: string;
   pincode?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactMobile?: string;
+  onboardingStatus?: string;
   aadharNumber?: string;
   panNumber?: string;
   uanNumber?: string;
@@ -125,4 +129,30 @@ export interface EmployeeBulkImportResult {
   successCount: number;
   failureCount: number;
   errors: EmployeeBulkImportRowError[];
+}
+
+export interface ProfileCompletion {
+  completionPercentage: number;
+  mandatoryComplete: boolean;
+  missingMandatoryFields: string[];
+  incompleteSections: string[];
+}
+
+export interface SelfProfileUpdateRequest {
+  mobileNumber?: string;
+  alternateMobileNumber?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactMobile?: string;
+  bankAccountHolderName?: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankName?: string;
+  bankBranch?: string;
+  photoData?: string;
 }

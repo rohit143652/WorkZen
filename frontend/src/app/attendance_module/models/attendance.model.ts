@@ -75,11 +75,13 @@ export interface CheckInRequest {
   workMode?: WorkMode;
   latitude?: number;
   longitude?: number;
+  selfieData?: string;
 }
 
 export interface CheckOutRequest {
   latitude?: number;
   longitude?: number;
+  selfieData?: string;
 }
 
 export interface AttendanceResponse {
@@ -108,6 +110,9 @@ export interface AttendanceResponse {
   lateMinutes?: number;
   earlyExit: boolean;
   earlyExitMinutes?: number;
+  /** Presence flags only - fetch the actual image on demand via AttendanceService.getSelfie() only when a viewer opens it. */
+  hasCheckInSelfie: boolean;
+  hasCheckOutSelfie: boolean;
   createdByRole?: string;
   modifiedByRole?: string;
   modificationReason?: string;
@@ -152,6 +157,8 @@ export interface AttendanceRuleConfigResponse {
   lateGraceMinutes: number;
   defaultBreakMinutes: number;
   allowMultipleCheckin: boolean;
+  checkInSelfieRequired: boolean;
+  checkOutSelfieRequired: boolean;
   weeklyOffDays: string;
 }
 
@@ -164,6 +171,8 @@ export interface UpdateAttendanceRuleConfigRequest {
   lateGraceMinutes: number;
   defaultBreakMinutes: number;
   allowMultipleCheckin: boolean;
+  checkInSelfieRequired: boolean;
+  checkOutSelfieRequired: boolean;
   weeklyOffDays: string;
 }
 

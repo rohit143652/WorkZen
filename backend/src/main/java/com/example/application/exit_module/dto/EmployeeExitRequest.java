@@ -9,6 +9,9 @@ public class EmployeeExitRequest {
     @NotNull
     private Long employeeId;
 
+    /** RESIGNATION / TERMINATION / RETIREMENT / END_OF_CONTRACT / OTHER - defaults to RESIGNATION if omitted, matching every exit this module supported before this field existed. */
+    private String exitType = "RESIGNATION";
+
     @NotNull
     private LocalDate resignationDate;
 
@@ -19,6 +22,8 @@ public class EmployeeExitRequest {
 
     public Long getEmployeeId() { return employeeId; }
     public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+    public String getExitType() { return exitType; }
+    public void setExitType(String exitType) { this.exitType = exitType; }
     public LocalDate getResignationDate() { return resignationDate; }
     public void setResignationDate(LocalDate resignationDate) { this.resignationDate = resignationDate; }
     public LocalDate getLastWorkingDay() { return lastWorkingDay; }

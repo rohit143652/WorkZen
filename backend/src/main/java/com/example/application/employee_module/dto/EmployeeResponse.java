@@ -39,6 +39,10 @@ public class EmployeeResponse {
     private String state;
     private String country;
     private String pincode;
+    private String emergencyContactName;
+    private String emergencyContactRelationship;
+    private String emergencyContactMobile;
+    private String onboardingStatus;
     private String aadharNumber;
     private String panNumber;
     private String uanNumber;
@@ -120,6 +124,14 @@ public class EmployeeResponse {
     public void setCountry(String country) { this.country = country; }
     public String getPincode() { return pincode; }
     public void setPincode(String pincode) { this.pincode = pincode; }
+    public String getEmergencyContactName() { return emergencyContactName; }
+    public void setEmergencyContactName(String emergencyContactName) { this.emergencyContactName = emergencyContactName; }
+    public String getEmergencyContactRelationship() { return emergencyContactRelationship; }
+    public void setEmergencyContactRelationship(String emergencyContactRelationship) { this.emergencyContactRelationship = emergencyContactRelationship; }
+    public String getEmergencyContactMobile() { return emergencyContactMobile; }
+    public void setEmergencyContactMobile(String emergencyContactMobile) { this.emergencyContactMobile = emergencyContactMobile; }
+    public String getOnboardingStatus() { return onboardingStatus; }
+    public void setOnboardingStatus(String onboardingStatus) { this.onboardingStatus = onboardingStatus; }
     public String getAadharNumber() { return aadharNumber; }
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }

@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Component, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, ViewChild } from '@angular/core';
 import { AttendanceService } from '../../services/attendance.service';
-import { AttendanceResponse, WORK_MODES, WorkMode } from '../../models/attendance.model';
+import { AttendanceResponse, AttendanceRuleConfigResponse, WORK_MODES, WorkMode } from '../../models/attendance.model';
+import { PhotoCaptureComponent } from '../../../employee_module/components/photo-capture/photo-capture.component';
 import { ToastService } from '../../../shared/services/toast.service';
 import { FeatureStateService } from '../../../core/services/feature-state.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
@@ -19,7 +20,7 @@ import { BadgeKind, StatusBadgeComponent } from '../../../shared/components/stat
 @Component({
   selector: 'app-mark-my-attendance',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, PhotoCaptureComponent],
   templateUrl: './mark-my-attendance.component.html',
   styleUrl: './mark-my-attendance.component.css'
 })
@@ -40,6 +41,8 @@ export class MarkMyAttendanceComponent implements OnDestroy {
   readonly loadingHistory = signal(false);
   readonly historyLoaded = signal(false);
   readonly history = signal<AttendanceResponse[]>([]);
+  readonly viewingSelfie = signal<string | null>(null);
+  readonly loadingSelfie = signal(false);
 
   /** Company Feature Configuration override (see FeatureStateService) - if the Super Admin has
       switched Employee Self Attendance off for this company, Check-In/Check-Out never render at
@@ -58,6 +61,11 @@ export class MarkMyAttendanceComponent implements OnDestroy {
   readonly workModes = WORK_MODES;
   /** Ticks once a minute while checked in but not yet out, purely to force the live duration label to re-render. */
   readonly nowTick = signal(Date.now());
+  readonly ruleConfig = signal<AttendanceRuleConfigResponse | null>(null);
+  checkInSelfie: string | null = null;
+  checkOutSelfie: string | null = null;
+  @ViewChild('checkInPhotoCapture') checkInPhotoCaptureRef?: PhotoCaptureComponent;
+  @ViewChild('checkOutPhotoCapture') checkOutPhotoCaptureRef?: PhotoCaptureComponent;
 
   readonly isCheckedIn = computed(() => {
     const s = this.todayStatus();
@@ -96,6 +104,10 @@ export class MarkMyAttendanceComponent implements OnDestroy {
       next: status => { this.todayStatus.set(status); this.loading.set(false); },
       error: () => this.loading.set(false)
     });
+    this.attendanceService.getRuleConfig().subscribe({
+      next: config => this.ruleConfig.set(config),
+      error: () => { /* Non-fatal - selfie capture just won't be marked as required if this fails. */ }
+    });
   }
 
   formatMinutes(totalMinutes?: number): string {
@@ -106,13 +118,34 @@ export class MarkMyAttendanceComponent implements OnDestroy {
   }
 
   checkIn(): void {
+    if (this.ruleConfig()?.checkInSelfieRequired && !this.checkInSelfie) {
+      // Compulsory selfie: go straight to the camera (same modal used for employee photo
+      // capture elsewhere) instead of asking the employee to separately find/click a capture
+      // widget first - capturing the photo itself is what actually submits the check-in below,
+      // via onCheckInSelfieCaptured().
+      this.checkInPhotoCaptureRef?.openCamera();
+      return;
+    }
+    this.submitCheckIn();
+  }
+
+  /** Fires the instant a required selfie is captured - no separate "now click Check In" step, per the compulsory-selfie flow. */
+  onCheckInSelfieCaptured(photoData: string | null): void {
+    this.checkInSelfie = photoData;
+    if (photoData && this.ruleConfig()?.checkInSelfieRequired) {
+      this.submitCheckIn();
+    }
+  }
+
+  private submitCheckIn(): void {
     this.working.set(true);
     this.locationError.set(null);
     this.withLocation((lat, lng) => {
-      this.attendanceService.checkIn({ workMode: this.selectedWorkMode(), latitude: lat, longitude: lng }).subscribe({
+      this.attendanceService.checkIn({ workMode: this.selectedWorkMode(), latitude: lat, longitude: lng, selfieData: this.checkInSelfie ?? undefined }).subscribe({
         next: response => {
           this.working.set(false);
           this.todayStatus.set(response);
+          this.checkInSelfie = null;
           this.toast.success('Checked in - have a great day!');
         },
         error: err => {
@@ -124,13 +157,30 @@ export class MarkMyAttendanceComponent implements OnDestroy {
   }
 
   checkOut(): void {
+    if (this.ruleConfig()?.checkOutSelfieRequired && !this.checkOutSelfie) {
+      this.checkOutPhotoCaptureRef?.openCamera();
+      return;
+    }
+    this.submitCheckOut();
+  }
+
+  /** Fires the instant a required selfie is captured - see onCheckInSelfieCaptured() for the same reasoning on the check-out side. */
+  onCheckOutSelfieCaptured(photoData: string | null): void {
+    this.checkOutSelfie = photoData;
+    if (photoData && this.ruleConfig()?.checkOutSelfieRequired) {
+      this.submitCheckOut();
+    }
+  }
+
+  private submitCheckOut(): void {
     this.working.set(true);
     this.locationError.set(null);
     this.withLocation((lat, lng) => {
-      this.attendanceService.checkOut({ latitude: lat, longitude: lng }).subscribe({
+      this.attendanceService.checkOut({ latitude: lat, longitude: lng, selfieData: this.checkOutSelfie ?? undefined }).subscribe({
         next: response => {
           this.working.set(false);
           this.todayStatus.set(response);
+          this.checkOutSelfie = null;
           this.toast.success('Checked out - see you next time!');
         },
         error: err => {
@@ -197,6 +247,14 @@ export class MarkMyAttendanceComponent implements OnDestroy {
         this.loadingHistory.set(false);
       },
       error: () => this.loadingHistory.set(false)
+    });
+  }
+
+  viewSelfie(attendanceId: number, checkOut: boolean): void {
+    this.loadingSelfie.set(true);
+    this.attendanceService.getSelfie(attendanceId, checkOut).subscribe({
+      next: data => { this.viewingSelfie.set(data); this.loadingSelfie.set(false); },
+      error: () => { this.toast.error('Unable to load this photo.'); this.loadingSelfie.set(false); }
     });
   }
 

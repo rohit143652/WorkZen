@@ -4,6 +4,8 @@ export interface PayrollRunCreateRequest {
   year: number;
   month: number;
   remarks?: string;
+  /** All Sites / Single Site / Multiple Sites (Phase 4) - omit or leave empty for all sites. Fixed for the run's whole lifecycle once created. */
+  siteIds?: number[];
 }
 
 export interface PayrollRunSummary {
@@ -27,6 +29,8 @@ export interface PayrollRun {
   monthLabel: string;
   status: PayrollRunStatus;
   remarks: string | null;
+  siteIds: string | null;
+  siteNames: string[];
   createdAt: string;
   createdBy: string | null;
   calculatedAt: string | null;

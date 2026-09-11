@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { PayrollRunService } from '../../services/payroll-run.service';
 import { PayrollRun } from '../../models/payroll-run.model';
+import { SiteService } from '../../../site_module/services/site.service';
+import { SiteResponse } from '../../../site_module/models/site.model';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -28,8 +30,14 @@ const MONTH_NAMES = [
 })
 export class PayrollProcessingComponent {
   private readonly payrollRunService = inject(PayrollRunService);
+  private readonly siteService = inject(SiteService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+
+  readonly sites = signal<SiteResponse[]>([]);
+  /** 'ALL' | 'SINGLE' | 'MULTIPLE' (Phase 4: All Sites / Single Site / Multiple Sites). */
+  createScope: 'ALL' | 'SINGLE' | 'MULTIPLE' = 'ALL';
+  createSelectedSiteIds: number[] = [];
 
   readonly months = MONTH_NAMES.map((label, index) => ({ label, value: index + 1 }));
   readonly years: number[] = (() => {
@@ -52,6 +60,7 @@ export class PayrollProcessingComponent {
 
   constructor() {
     this.load();
+    this.siteService.list().subscribe(res => this.sites.set(res.content));
   }
 
   load(): void {
@@ -66,6 +75,8 @@ export class PayrollProcessingComponent {
   openCreateForm(): void {
     this.createYear = new Date().getFullYear();
     this.createMonth = new Date().getMonth() + 1;
+    this.createScope = 'ALL';
+    this.createSelectedSiteIds = [];
     this.showCreateForm.set(true);
   }
 
@@ -73,9 +84,29 @@ export class PayrollProcessingComponent {
     this.showCreateForm.set(false);
   }
 
+  selectSingleSite(value: string): void {
+    this.createSelectedSiteIds = value ? [+value] : [];
+  }
+
+  toggleSite(siteId: number, checked: boolean): void {
+    if (checked) {
+      this.createSelectedSiteIds = [...this.createSelectedSiteIds, siteId];
+    } else {
+      this.createSelectedSiteIds = this.createSelectedSiteIds.filter(id => id !== siteId);
+    }
+  }
+
   createRun(): void {
+    if (this.createScope !== 'ALL' && this.createSelectedSiteIds.length === 0) {
+      this.toast.error('Select at least one site.');
+      return;
+    }
     this.creating.set(true);
-    this.payrollRunService.create({ year: this.createYear, month: this.createMonth }).subscribe({
+    this.payrollRunService.create({
+      year: this.createYear,
+      month: this.createMonth,
+      siteIds: this.createScope === 'ALL' ? undefined : this.createSelectedSiteIds
+    }).subscribe({
       next: run => {
         this.creating.set(false);
         this.showCreateForm.set(false);

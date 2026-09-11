@@ -57,6 +57,8 @@ public class EmployeeService {
     private final EmployeeSalaryStructureService employeeSalaryStructureService;
     private final EmployeeAssignmentService employeeAssignmentService;
     private final com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService;
+    private final EmployeeOnboardingService onboardingService;
+    private final EmployeeProfileCompletionService profileCompletionService;
 
     public EmployeeService(EmployeeRepository employeeRepository, UserRepository userRepository,
                             RoleService roleService, PasswordEncoder passwordEncoder,
@@ -65,7 +67,9 @@ public class EmployeeService {
                             DesignationService designationService,
                             EmployeeSalaryStructureService employeeSalaryStructureService,
                             EmployeeAssignmentService employeeAssignmentService,
-                            com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService) {
+                            com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService,
+                            EmployeeOnboardingService onboardingService,
+                            EmployeeProfileCompletionService profileCompletionService) {
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.roleService = roleService;
@@ -78,11 +82,13 @@ public class EmployeeService {
         this.employeeSalaryStructureService = employeeSalaryStructureService;
         this.employeeAssignmentService = employeeAssignmentService;
         this.clientSubscriptionService = clientSubscriptionService;
+        this.onboardingService = onboardingService;
+        this.profileCompletionService = profileCompletionService;
     }
 
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> search(String search, String status, String department,
-                                          Boolean loginEnabled, Long clientCompanyIdFilter, Pageable pageable) {
+                                          Boolean loginEnabled, String onboardingFilter, Long clientCompanyIdFilter, Pageable pageable) {
         // A caller with their own tenant (CLIENT_ADMIN/CLIENT_USER) is ALWAYS locked to it,
         // regardless of any clientCompanyIdFilter they send - that value is only honored for
         // callers with no tenant of their own (SUPER_ADMIN, and the pre-existing internal
@@ -95,8 +101,25 @@ public class EmployeeService {
                 .and(EmployeeSpecifications.hasStatus(status))
                 .and(EmployeeSpecifications.hasDepartment(department))
                 .and(EmployeeSpecifications.loginEnabled(loginEnabled))
+                .and(EmployeeSpecifications.hasOnboardingStatusIn(onboardingStatusesFor(onboardingFilter)))
                 .and(EmployeeSpecifications.belongsToCompany(effectiveTenantFilter));
         return employeeRepository.findAll(spec, pageable).map(e -> toResponse(e, false));
+    }
+
+    /**
+     * Maps one logical Employee List filter option to the underlying onboardingStatus value(s)
+     * it represents - kept as one small lookup here rather than exposing the raw status enum to
+     * the frontend, so the filter dropdown's options stay meaningful ("Onboarding Pending") and
+     * the actual status names can evolve without a frontend change.
+     */
+    private java.util.List<String> onboardingStatusesFor(String filter) {
+        if (filter == null || filter.isBlank()) return null;
+        return switch (filter) {
+            case "ONBOARDING_PENDING" -> java.util.List.of("NOT_STARTED", "INVITED");
+            case "MANDATORY_PROFILE_INCOMPLETE" -> java.util.List.of("PROFILE_IN_PROGRESS");
+            case "PROFILE_COMPLETE" -> java.util.List.of("PROFILE_COMPLETE");
+            default -> throw new BadRequestException("Unknown onboarding filter: " + filter);
+        };
     }
 
     @Transactional(readOnly = true)
@@ -183,12 +206,14 @@ public class EmployeeService {
                 throw new BadRequestException("Login access details are required when Enable Login is ON");
             }
             EmployeeLoginAccessRequest login = request.getLoginAccess();
-            if (!login.getPassword().equals(login.getConfirmPassword())) {
+            boolean adminSetPassword = login.getPassword() != null && !login.getPassword().isBlank();
+            if (adminSetPassword && !login.getPassword().equals(login.getConfirmPassword())) {
                 throw new BadRequestException("Password and confirm password do not match");
             }
             User user = createLoginUser(login.getUsername(), request.getEmail(), request.getFirstName(),
                     request.getLastName(), login.getPassword(), login.getRoleId(), tenantId);
             employee.setUser(user);
+            employee.setOnboardingStatus(adminSetPassword ? "PROFILE_IN_PROGRESS" : "NOT_STARTED");
         }
 
         Employee saved = employeeRepository.save(employee);
@@ -196,6 +221,12 @@ public class EmployeeService {
         if (saved.hasLogin()) {
             auditService.log(actorId, "LOGIN_ENABLED",
                     "Login account created for employee " + saved.getEmployeeCode(), httpRequest);
+            // Self-onboarding path: no admin-set password means the employee must be invited to
+            // set their own - see EmployeeOnboardingService for the full invitation lifecycle.
+            boolean adminSetPassword = request.getLoginAccess().getPassword() != null && !request.getLoginAccess().getPassword().isBlank();
+            if (!adminSetPassword) {
+                onboardingService.createInvitation(saved, saved.getUser(), actorId, httpRequest);
+            }
         }
 
         if (request.getSalaryStructureId() != null) {
@@ -381,6 +412,9 @@ public class EmployeeService {
                 user.setUsername(request.getUsername());
             }
             if (request.getPassword() != null && !request.getPassword().isBlank()) {
+                if (request.getPassword().length() < 8) {
+                    throw new BadRequestException("Password must be at least 8 characters");
+                }
                 user.setPassword(passwordEncoder.encode(request.getPassword()));
                 user.setPasswordChangedAt(LocalDateTime.now());
             }
@@ -395,15 +429,20 @@ public class EmployeeService {
             if (request.getUsername() == null || request.getUsername().isBlank()) {
                 throw new BadRequestException("Username is required to enable login");
             }
-            if (request.getPassword() == null || request.getPassword().isBlank()) {
-                throw new BadRequestException("Password is required to enable login");
-            }
             if (request.getRoleId() == null) {
                 throw new BadRequestException("A role is required to enable login");
             }
+            boolean adminSetPassword = request.getPassword() != null && !request.getPassword().isBlank();
             User user = createLoginUser(request.getUsername(), employee.getEmail(), employee.getFirstName(),
                     employee.getLastName(), request.getPassword(), request.getRoleId(), employee.getClientCompanyId());
             employee.setUser(user);
+            employee.setOnboardingStatus(adminSetPassword ? "PROFILE_IN_PROGRESS" : "NOT_STARTED");
+            employeeRepository.save(employee);
+            if (!adminSetPassword) {
+                // Self-onboarding path (spec section 37: "Create Login for Existing Employee" -
+                // Enable Login -> invitation, not an admin-set password), same flow create() uses.
+                onboardingService.createInvitation(employee, user, actorId, httpRequest);
+            }
         }
 
         Employee saved = employeeRepository.save(employee);
@@ -505,11 +544,30 @@ public class EmployeeService {
         User user = new User();
         user.setUsername(username);
         user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(rawPassword));
+        boolean adminSetPassword = rawPassword != null && !rawPassword.isBlank();
+        if (adminSetPassword) {
+            // @Size(min=8) was deliberately removed from the request DTOs (it failed even for an
+            // intentionally-empty string, breaking the invitation flow) - this is now the ONLY
+            // place enforcing a minimum length, and only when a password is actually supplied.
+            if (rawPassword.length() < 8) {
+                throw new BadRequestException("Password must be at least 8 characters");
+            }
+            user.setPassword(passwordEncoder.encode(rawPassword));
+            user.setActive(true);
+            user.setMustChangePassword(true);
+        } else {
+            // Self-onboarding path (spec: employee sets their OWN password, never an
+            // admin-supplied one) - a random, never-communicated placeholder is encoded here
+            // purely so the password column is never null/blank, and the account stays
+            // INACTIVE (login blocked entirely) until EmployeeOnboardingService.setPassword()
+            // flips it active once the employee has verified their invitation and chosen a
+            // real password of their own.
+            user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID() + java.util.UUID.randomUUID().toString()));
+            user.setActive(false);
+            user.setMustChangePassword(true);
+        }
         user.setFirstName(firstName);
         user.setLastName(lastName);
-        user.setActive(true);
-        user.setMustChangePassword(true);
         // The login account always inherits its tenant from the employee it belongs
         // to - never accepted as separate input, so it can never drift from it.
         user.setClientCompanyId(tenantId);
@@ -548,6 +606,66 @@ public class EmployeeService {
         // PAN is conventionally written upper-case (ABCDE1234F) - normalized here regardless of
         // how the user typed it, so lookups/uniqueness checks are never case-sensitive by accident.
         e.setPanNumber(panNumber != null ? panNumber.toUpperCase() : null);
+    }
+
+    /** Self view - the CURRENTLY LOGGED IN user's own full employee record (to pre-fill the "My Profile" edit form) - resolved from their User id, never from a client-supplied employee id. */
+    @Transactional(readOnly = true)
+    public EmployeeResponse getMyProfile(Long currentUserId) {
+        Employee employee = employeeRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("No employee record linked to this account"));
+        return toResponse(employee);
+    }
+
+    /** Admin/HR view - profile completion for any employee in the caller's tenant (getEntity() already enforces that scoping). */
+    @Transactional(readOnly = true)
+    public ProfileCompletionResponse getProfileCompletion(Long id) {
+        return profileCompletionService.calculate(getEntity(id));
+    }
+
+    /** Self view - the CURRENTLY LOGGED IN user's own employee record only, resolved from their User id, never from a client-supplied employee id (so nobody can view another employee's completion by guessing an id on this specific endpoint). */
+    @Transactional(readOnly = true)
+    public ProfileCompletionResponse getMyProfileCompletion(Long currentUserId) {
+        Employee employee = employeeRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("No employee record linked to this account"));
+        return profileCompletionService.calculate(employee);
+    }
+
+    /**
+     * Self-service profile update - ONLY the fields an employee is allowed to edit about
+     * themselves (spec sections 23-25: EMPLOYEE_EDITABLE only). Deliberately does NOT accept
+     * employeeCode, department, designation, joiningDate, employmentType, salary/PF/ESI/PT
+     * configuration, or anything else admin-controlled - there is no field on this request DTO
+     * for any of those, so there is nothing for an employee to silently corrupt via direct API
+     * manipulation even if they tried (spec test scenario 13).
+     */
+    @Transactional
+    public ProfileCompletionResponse updateMyProfile(Long currentUserId, SelfProfileUpdateRequest request) {
+        Employee employee = employeeRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("No employee record linked to this account"));
+
+        employee.setMobileNumber(request.getMobileNumber());
+        employee.setAlternateMobileNumber(request.getAlternateMobileNumber());
+        employee.setAddress(request.getAddress());
+        employee.setCity(request.getCity());
+        employee.setState(request.getState());
+        employee.setCountry(request.getCountry());
+        employee.setPincode(request.getPincode());
+        employee.setEmergencyContactName(request.getEmergencyContactName());
+        employee.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
+        employee.setEmergencyContactMobile(request.getEmergencyContactMobile());
+        employee.setBankAccountHolderName(request.getBankAccountHolderName());
+        employee.setBankAccountNumber(request.getBankAccountNumber());
+        employee.setBankIfscCode(request.getBankIfscCode());
+        employee.setBankName(request.getBankName());
+        employee.setBankBranch(request.getBankBranch());
+        if (request.getPhotoData() != null) {
+            employee.setPhotoData(request.getPhotoData());
+        }
+
+        ProfileCompletionResponse completion = profileCompletionService.calculate(employee);
+        profileCompletionService.applyOnboardingStatusTransition(employee, completion);
+        employeeRepository.save(employee);
+        return completion;
     }
 
     private Employee getEntity(Long id) {
@@ -597,6 +715,10 @@ public class EmployeeService {
         r.setState(e.getState());
         r.setCountry(e.getCountry());
         r.setPincode(e.getPincode());
+        r.setEmergencyContactName(e.getEmergencyContactName());
+        r.setEmergencyContactRelationship(e.getEmergencyContactRelationship());
+        r.setEmergencyContactMobile(e.getEmergencyContactMobile());
+        r.setOnboardingStatus(e.getOnboardingStatus());
         r.setAadharNumber(e.getAadharNumber());
         r.setPanNumber(e.getPanNumber());
         r.setUanNumber(e.getUanNumber());

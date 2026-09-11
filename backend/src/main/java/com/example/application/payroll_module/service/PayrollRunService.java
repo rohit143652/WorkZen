@@ -154,10 +154,14 @@ public class PayrollRunService {
         run.setMonth(month);
         run.setStatus("DRAFT");
         run.setRemarks(request.getRemarks());
+        run.setSiteIds(request.getSiteIds() != null && !request.getSiteIds().isEmpty()
+                ? request.getSiteIds().stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","))
+                : null);
         run.setCreatedBy(actorId);
         PayrollRun saved = payrollRunRepository.save(run);
 
-        auditService.log(actorId, "PAYROLL_RUN_CREATED", "Created payroll run for " + monthLabel(year, month), httpRequest);
+        String scopeLabel = saved.getSiteIds() != null ? "sites [" + saved.getSiteIds() + "]" : "all sites";
+        auditService.log(actorId, "PAYROLL_RUN_CREATED", "Created payroll run for " + monthLabel(year, month) + " (" + scopeLabel + ")", httpRequest);
         return toResponse(saved);
     }
 
@@ -187,6 +191,20 @@ public class PayrollRunService {
         int daysInMonth = yearMonth.lengthOfMonth();
 
         List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        if (run.getSiteIds() != null && !run.getSiteIds().isBlank()) {
+            // Site-wise payroll (Phase 4) - only employees currently assigned to one of this
+            // run's selected sites. Uses the CURRENT active assignment (same simplification this
+            // engine already makes for department/designation elsewhere) rather than a full
+            // point-in-time-as-of-this-month lookup - a genuine simplification worth knowing
+            // about if an employee transferred sites mid-month.
+            java.util.Set<Long> eligibleEmployeeIds = new java.util.HashSet<>();
+            for (String siteIdStr : run.getSiteIds().split(",")) {
+                Long siteId = Long.valueOf(siteIdStr.trim());
+                siteAssignmentRepository.findAllBySiteIdAndClientCompanyIdAndStatus(siteId, tenantId, "ACTIVE")
+                        .forEach(a -> eligibleEmployeeIds.add(a.getEmployeeId()));
+            }
+            employees = employees.stream().filter(e -> eligibleEmployeeIds.contains(e.getId())).toList();
+        }
         if (employees.isEmpty()) {
             throw new BadRequestException("No active employees found for this tenant - nothing to calculate");
         }
@@ -524,6 +542,13 @@ public class PayrollRunService {
         r.setMonthLabel(monthLabel(run.getYear(), run.getMonth()));
         r.setStatus(run.getStatus());
         r.setRemarks(run.getRemarks());
+        r.setSiteIds(run.getSiteIds());
+        if (run.getSiteIds() != null && !run.getSiteIds().isBlank()) {
+            java.util.Set<Long> ids = java.util.Arrays.stream(run.getSiteIds().split(","))
+                    .map(String::trim).map(Long::valueOf).collect(java.util.stream.Collectors.toSet());
+            r.setSiteNames(siteRepository.findAllByClientCompanyId(run.getClientCompanyId()).stream()
+                    .filter(s -> ids.contains(s.getId())).map(Site::getSiteName).toList());
+        }
         r.setCreatedAt(run.getCreatedAt());
         r.setCreatedBy(usernameOf(run.getCreatedBy()));
         r.setCalculatedAt(run.getCalculatedAt());

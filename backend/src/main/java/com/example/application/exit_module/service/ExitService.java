@@ -47,6 +47,9 @@ import java.util.List;
 @Service
 public class ExitService {
 
+    private static final java.util.Set<String> VALID_EXIT_TYPES =
+            java.util.Set.of("RESIGNATION", "TERMINATION", "RETIREMENT", "END_OF_CONTRACT", "OTHER");
+
     private final EmployeeExitRepository exitRepository;
     private final EmployeeRepository employeeRepository;
     private final EmployeeSalaryStructureRepository employeeSalaryStructureRepository;
@@ -90,14 +93,19 @@ public class ExitService {
         if (request.getLastWorkingDay().isBefore(request.getResignationDate())) {
             throw new BadRequestException("Last working day cannot be before the resignation date.");
         }
+        String exitType = request.getExitType() != null && !request.getExitType().isBlank() ? request.getExitType() : "RESIGNATION";
+        if (!VALID_EXIT_TYPES.contains(exitType)) {
+            throw new BadRequestException("exitType must be one of: " + VALID_EXIT_TYPES);
+        }
         exitRepository.findFirstByClientCompanyIdAndEmployeeIdAndStatus(tenantId, employee.getId(), "INITIATED")
                 .ifPresent(existing -> {
-                    throw new BadRequestException("This employee already has a resignation in progress (recorded " + existing.getResignationDate() + ").");
+                    throw new BadRequestException("This employee already has an exit in progress (recorded " + existing.getResignationDate() + ").");
                 });
 
         EmployeeExit exit = new EmployeeExit();
         exit.setClientCompanyId(tenantId);
         exit.setEmployeeId(employee.getId());
+        exit.setExitType(exitType);
         exit.setResignationDate(request.getResignationDate());
         exit.setLastWorkingDay(request.getLastWorkingDay());
         exit.setReason(request.getReason());
@@ -188,6 +196,7 @@ public class ExitService {
             response.setEmployeeCode(e.getEmployeeCode());
             response.setEmployeeName(e.getFirstName() + " " + e.getLastName());
         });
+        response.setExitType(exit.getExitType());
         response.setResignationDate(exit.getResignationDate());
         response.setLastWorkingDay(exit.getLastWorkingDay());
         response.setNoticePeriodDays(ChronoUnit.DAYS.between(exit.getResignationDate(), exit.getLastWorkingDay()));

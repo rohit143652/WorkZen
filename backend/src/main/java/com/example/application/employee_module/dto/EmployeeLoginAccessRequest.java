@@ -14,11 +14,16 @@ public class EmployeeLoginAccessRequest {
     @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
     private String username;
 
-    @NotBlank(message = "Password is required when login is enabled")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    /** Optional as of the employee self-onboarding feature - if omitted, the employee is sent a
+        secure invitation to set their OWN password instead of the admin setting one directly
+        (see EmployeeOnboardingService). Still supported if provided, for any workflow that
+        genuinely needs an admin-set password immediately (existing behavior, unchanged).
+        Deliberately NO @Size here - @Size(min=8) fails even for an intentionally-empty string
+        (only @NotBlank/@NotNull skip blank values), which would break the invitation flow this
+        field's absence is supposed to trigger. Length is checked in EmployeeService itself, only
+        when a password is actually supplied. */
     private String password;
 
-    @NotBlank(message = "Confirm password is required when login is enabled")
     private String confirmPassword;
 
     @NotNull(message = "Role is required when login is enabled")

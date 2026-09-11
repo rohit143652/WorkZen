@@ -38,16 +38,43 @@ public class EmployeeController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) Boolean loginEnabled,
+            @RequestParam(required = false) String onboardingFilter,
             @RequestParam(required = false) Long clientCompanyId,
             Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success("OK",
-                employeeService.search(search, status, department, loginEnabled, clientCompanyId, pageable)));
+                employeeService.search(search, status, department, loginEnabled, onboardingFilter, clientCompanyId, pageable)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
     public ResponseEntity<ApiResponse<EmployeeResponse>> findById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("OK", employeeService.findById(id)));
+    }
+
+    /** Admin/HR view of any employee's profile completion - permission-scoped the same as findById() above. */
+    @GetMapping("/{id}/profile-completion")
+    @PreAuthorize("hasAuthority('EMPLOYEE_READ')")
+    public ResponseEntity<ApiResponse<ProfileCompletionResponse>> profileCompletion(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("OK", employeeService.getProfileCompletion(id)));
+    }
+
+    /** Self view - any logged-in user with a linked Employee record can see their OWN full record, no special permission required (used to pre-fill the "My Profile" edit form before Save). */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<EmployeeResponse>> myProfile(@AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", employeeService.getMyProfile(principal.getId())));
+    }
+
+    /** Self view - any logged-in user with a linked Employee record can see their OWN completion, no special permission required (spec section 34: "Employee should see Profile Completion"). */
+    @GetMapping("/me/profile-completion")
+    public ResponseEntity<ApiResponse<ProfileCompletionResponse>> myProfileCompletion(@AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", employeeService.getMyProfileCompletion(principal.getId())));
+    }
+
+    /** Self-service profile update - EMPLOYEE_EDITABLE fields only (see SelfProfileUpdateRequest javadoc), same no-special-permission reasoning as the completion view above. */
+    @PutMapping("/me/profile")
+    public ResponseEntity<ApiResponse<ProfileCompletionResponse>> updateMyProfile(
+            @RequestBody SelfProfileUpdateRequest request, @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", employeeService.updateMyProfile(principal.getId(), request)));
     }
 
     /** Preview of the code the Add form should show (disabled) before the user even submits. */

@@ -1,7 +1,5 @@
 package com.example.application.employee_module.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -9,13 +7,18 @@ import jakarta.validation.constraints.Size;
  * and to reactivate a previously disabled account. When reactivating an
  * existing User, username/password/roleId are optional - only supply them
  * to change credentials at the same time.
+ *
+ * password has NO @Size here deliberately - @Size(min=8) would fail validation even for an
+ * intentionally-empty string (only @NotBlank/@NotNull skip blank values, @Size still checks
+ * length), which breaks the self-onboarding flow where an empty password is exactly what
+ * triggers sending an invitation instead of setting one directly. The minimum-length check for
+ * an ADMIN-SUPPLIED password happens in EmployeeService itself, only when one is actually given.
  */
 public class EnableLoginRequest {
 
     @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
     private String username;
 
-    @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
     private Long roleId;

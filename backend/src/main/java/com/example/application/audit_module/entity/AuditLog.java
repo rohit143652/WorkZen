@@ -16,6 +16,10 @@ public class AuditLog {
     @Column(name = "user_id")
     private Long userId;
 
+    /** Captured at write-time from the actor's own tenant (see AuditService.log()) - NULL for system-triggered events (no user) or genuinely platform-level actions. Never inferred at read-time via a join, so a later-deleted User can't silently orphan this record's tenant scoping. */
+    @Column(name = "client_company_id")
+    private Long clientCompanyId;
+
     @Column(nullable = false, length = 100)
     private String action;
 
@@ -35,6 +39,8 @@ public class AuditLog {
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public Long getClientCompanyId() { return clientCompanyId; }
+    public void setClientCompanyId(Long clientCompanyId) { this.clientCompanyId = clientCompanyId; }
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }
     public String getIpAddress() { return ipAddress; }

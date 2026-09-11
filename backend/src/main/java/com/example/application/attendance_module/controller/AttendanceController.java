@@ -100,6 +100,21 @@ public class AttendanceController {
         return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.findMyHistoryInRange(principal.getId(), from, to)));
     }
 
+    /**
+     * On-demand selfie fetch - deliberately NOT bundled into any list/detail response (see
+     * AttendanceResponse javadoc on hasCheckInSelfie/hasCheckOutSelfie). No @PreAuthorize here:
+     * whether this call is allowed depends on WHOSE attendance record it is (own record: always
+     * allowed; someone else's: needs ATTENDANCE_READ), which is exactly the kind of per-row
+     * check @PreAuthorize's static role/permission expressions can't express - see
+     * AttendanceService.getSelfie() for the actual authorization logic.
+     */
+    @GetMapping("/{id}/selfie")
+    public ResponseEntity<ApiResponse<String>> getSelfie(@PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean checkOut,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.getSelfie(id, checkOut, principal.getId())));
+    }
+
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("hasAuthority('ATTENDANCE_READ')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> byEmployee(

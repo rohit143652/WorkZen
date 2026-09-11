@@ -123,6 +123,23 @@ public class Employee {
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE";
 
+    /** NOT_STARTED / INVITED / PASSWORD_SETUP_PENDING / PROFILE_IN_PROGRESS / MANDATORY_PROFILE_COMPLETE / PROFILE_COMPLETE.
+        Deliberately separate from both `status` above (whether the person still works here) and the linked User's
+        active/locked flags (whether login is enabled) - this tracks progress through the invitation + profile-completion
+        journey specifically. See EmployeeOnboardingService for every transition. */
+    @Column(name = "onboarding_status", nullable = false, length = 30)
+    private String onboardingStatus = "NOT_STARTED";
+
+    /** Emergency Contact - all optional, all employee-editable during onboarding (see EmployeeProfileCompletionService). */
+    @Column(name = "emergency_contact_name", length = 150)
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_relationship", length = 50)
+    private String emergencyContactRelationship;
+
+    @Column(name = "emergency_contact_mobile", length = 20)
+    private String emergencyContactMobile;
+
     /**
      * Per-employee statutory-deduction toggles (spec sections 7-10): "never
      * assume every employee has the same payroll rules". Checked by
@@ -220,6 +237,14 @@ public class Employee {
     public void setPhotoData(String photoData) { this.photoData = photoData; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getOnboardingStatus() { return onboardingStatus; }
+    public void setOnboardingStatus(String onboardingStatus) { this.onboardingStatus = onboardingStatus; }
+    public String getEmergencyContactName() { return emergencyContactName; }
+    public void setEmergencyContactName(String emergencyContactName) { this.emergencyContactName = emergencyContactName; }
+    public String getEmergencyContactRelationship() { return emergencyContactRelationship; }
+    public void setEmergencyContactRelationship(String emergencyContactRelationship) { this.emergencyContactRelationship = emergencyContactRelationship; }
+    public String getEmergencyContactMobile() { return emergencyContactMobile; }
+    public void setEmergencyContactMobile(String emergencyContactMobile) { this.emergencyContactMobile = emergencyContactMobile; }
     public boolean isPfApplicable() { return pfApplicable; }
     public void setPfApplicable(boolean pfApplicable) { this.pfApplicable = pfApplicable; }
     public boolean isEsiApplicable() { return esiApplicable; }

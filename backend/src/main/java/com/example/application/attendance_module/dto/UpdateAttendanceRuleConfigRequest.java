@@ -28,6 +28,8 @@ public class UpdateAttendanceRuleConfigRequest {
     private Integer defaultBreakMinutes;
 
     private boolean allowMultipleCheckin;
+    private boolean checkInSelfieRequired;
+    private boolean checkOutSelfieRequired;
 
     /** Comma-separated DayOfWeek names, e.g. "SATURDAY,SUNDAY". */
     private String weeklyOffDays;
@@ -48,6 +50,10 @@ public class UpdateAttendanceRuleConfigRequest {
     public void setDefaultBreakMinutes(Integer defaultBreakMinutes) { this.defaultBreakMinutes = defaultBreakMinutes; }
     public boolean isAllowMultipleCheckin() { return allowMultipleCheckin; }
     public void setAllowMultipleCheckin(boolean allowMultipleCheckin) { this.allowMultipleCheckin = allowMultipleCheckin; }
+    public boolean isCheckInSelfieRequired() { return checkInSelfieRequired; }
+    public void setCheckInSelfieRequired(boolean checkInSelfieRequired) { this.checkInSelfieRequired = checkInSelfieRequired; }
+    public boolean isCheckOutSelfieRequired() { return checkOutSelfieRequired; }
+    public void setCheckOutSelfieRequired(boolean checkOutSelfieRequired) { this.checkOutSelfieRequired = checkOutSelfieRequired; }
     public String getWeeklyOffDays() { return weeklyOffDays; }
     public void setWeeklyOffDays(String weeklyOffDays) { this.weeklyOffDays = weeklyOffDays; }
 }

@@ -72,6 +72,13 @@ public class Attendance {
     @Column(name = "check_out_time")
     private LocalDateTime checkOutTime;
 
+    /** Base64 data-URI, same convention as Employee.photoData - see V114 migration for why this is stored directly rather than in external file storage. Null unless the company's AttendanceRuleConfig requires it for that action (or the employee provided one even when not required). */
+    @Column(name = "check_in_selfie_data", columnDefinition = "LONGTEXT")
+    private String checkInSelfieData;
+
+    @Column(name = "check_out_selfie_data", columnDefinition = "LONGTEXT")
+    private String checkOutSelfieData;
+
     @Column(name = "gross_work_minutes")
     private Integer grossWorkMinutes;
 
@@ -167,6 +174,10 @@ public class Attendance {
     public void setCheckInTime(LocalDateTime checkInTime) { this.checkInTime = checkInTime; }
     public LocalDateTime getCheckOutTime() { return checkOutTime; }
     public void setCheckOutTime(LocalDateTime checkOutTime) { this.checkOutTime = checkOutTime; }
+    public String getCheckInSelfieData() { return checkInSelfieData; }
+    public void setCheckInSelfieData(String checkInSelfieData) { this.checkInSelfieData = checkInSelfieData; }
+    public String getCheckOutSelfieData() { return checkOutSelfieData; }
+    public void setCheckOutSelfieData(String checkOutSelfieData) { this.checkOutSelfieData = checkOutSelfieData; }
     public Integer getGrossWorkMinutes() { return grossWorkMinutes; }
     public void setGrossWorkMinutes(Integer grossWorkMinutes) { this.grossWorkMinutes = grossWorkMinutes; }
     public Integer getBreakMinutes() { return breakMinutes; }

@@ -95,8 +95,9 @@ export class EmployeeFormComponent {
   readonly enableLoginForm = this.fb.nonNullable.group(
     {
       username: ['', [Validators.required, Validators.minLength(3)]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
-      confirmPassword: ['', Validators.required],
+      sendInvitation: [true],
+      password: [''],
+      confirmPassword: [''],
       roleId: [null as number | null, Validators.required]
     },
     { validators: passwordsMatchValidator }
@@ -144,6 +145,10 @@ export class EmployeeFormComponent {
     loginAccess: this.fb.nonNullable.group(
       {
         username: [''],
+        // Defaults to true - the new self-onboarding flow (employee sets their OWN password via
+        // emailed invitation) is the recommended path; admin-set-password stays available by
+        // switching this off, for any workflow that genuinely needs it immediately.
+        sendInvitation: [true],
         password: [''],
         confirmPassword: [''],
         roleId: [null as number | null]
@@ -161,6 +166,22 @@ export class EmployeeFormComponent {
     }
 
     this.form.controls.enableLogin.valueChanges.subscribe(enabled => this.applyLoginValidators(enabled));
+    this.form.controls.loginAccess.controls.sendInvitation.valueChanges.subscribe(sendInvitation => {
+      if (this.form.controls.enableLogin.value) this.applyPasswordValidators(!sendInvitation);
+    });
+    this.enableLoginForm.controls.sendInvitation.valueChanges.subscribe(sendInvitation => {
+      if (sendInvitation) {
+        this.enableLoginForm.controls.password.clearValidators();
+        this.enableLoginForm.controls.confirmPassword.clearValidators();
+        this.enableLoginForm.controls.password.setValue('');
+        this.enableLoginForm.controls.confirmPassword.setValue('');
+      } else {
+        this.enableLoginForm.controls.password.setValidators([Validators.required, Validators.minLength(8)]);
+        this.enableLoginForm.controls.confirmPassword.setValidators([Validators.required]);
+      }
+      this.enableLoginForm.controls.password.updateValueAndValidity();
+      this.enableLoginForm.controls.confirmPassword.updateValueAndValidity();
+    });
 
     // Keep the auto-generated username in sync if the admin edits the name AFTER already
     // switching Login Enabled on (e.g. fixed a typo in the last name) - a no-op while login is
@@ -196,9 +217,8 @@ export class EmployeeFormComponent {
     const group = this.form.controls.loginAccess;
     if (enabled) {
       group.controls.username.setValidators([Validators.required, Validators.minLength(3)]);
-      group.controls.password.setValidators([Validators.required, Validators.minLength(8)]);
-      group.controls.confirmPassword.setValidators([Validators.required]);
       group.controls.roleId.setValidators([Validators.required]);
+      this.applyPasswordValidators(!group.controls.sendInvitation.value);
       this.autoGenerateUsername();
     } else {
       group.controls.username.clearValidators();
@@ -209,6 +229,22 @@ export class EmployeeFormComponent {
       group.controls.username.setValue('');
     }
     Object.values(group.controls).forEach(c => c.updateValueAndValidity());
+  }
+
+  /** password/confirmPassword are only REQUIRED when the admin is setting one directly (sendInvitation off) - when sendInvitation is on, the employee sets their own via the emailed invitation, so both stay optional and blank. */
+  private applyPasswordValidators(adminSetsPassword: boolean): void {
+    const group = this.form.controls.loginAccess;
+    if (adminSetsPassword) {
+      group.controls.password.setValidators([Validators.required, Validators.minLength(8)]);
+      group.controls.confirmPassword.setValidators([Validators.required]);
+    } else {
+      group.controls.password.clearValidators();
+      group.controls.confirmPassword.clearValidators();
+      group.controls.password.setValue('');
+      group.controls.confirmPassword.setValue('');
+    }
+    group.controls.password.updateValueAndValidity();
+    group.controls.confirmPassword.updateValueAndValidity();
   }
 
   /**

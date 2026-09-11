@@ -46,6 +46,8 @@ public class AttendanceRuleConfigService {
             config.setLateGraceMinutes(10);
             config.setDefaultBreakMinutes(45);
             config.setAllowMultipleCheckin(false);
+            config.setCheckInSelfieRequired(false);
+            config.setCheckOutSelfieRequired(false);
             config.setWeeklyOffDays("SUNDAY");
             return repository.save(config);
         });
@@ -67,6 +69,8 @@ public class AttendanceRuleConfigService {
         config.setLateGraceMinutes(request.getLateGraceMinutes());
         config.setDefaultBreakMinutes(request.getDefaultBreakMinutes());
         config.setAllowMultipleCheckin(request.isAllowMultipleCheckin());
+        config.setCheckInSelfieRequired(request.isCheckInSelfieRequired());
+        config.setCheckOutSelfieRequired(request.isCheckOutSelfieRequired());
         if (request.getWeeklyOffDays() != null && !request.getWeeklyOffDays().isBlank()) {
             config.setWeeklyOffDays(request.getWeeklyOffDays());
         }
@@ -86,6 +90,8 @@ public class AttendanceRuleConfigService {
         response.setLateGraceMinutes(config.getLateGraceMinutes());
         response.setDefaultBreakMinutes(config.getDefaultBreakMinutes());
         response.setAllowMultipleCheckin(config.isAllowMultipleCheckin());
+        response.setCheckInSelfieRequired(config.isCheckInSelfieRequired());
+        response.setCheckOutSelfieRequired(config.isCheckOutSelfieRequired());
         response.setWeeklyOffDays(config.getWeeklyOffDays());
         return response;
     }

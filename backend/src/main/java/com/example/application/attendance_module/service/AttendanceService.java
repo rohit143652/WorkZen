@@ -189,6 +189,10 @@ public class AttendanceService {
 
         checkGeofence(currentAssignment.getSiteId(), request.getLatitude(), request.getLongitude());
 
+        if (config.isCheckInSelfieRequired() && (request.getSelfieData() == null || request.getSelfieData().isBlank())) {
+            throw new BadRequestException("A selfie is required to check in at this company.");
+        }
+
         Attendance attendance = attendanceRepository
                 .findByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employee.getId(), today)
                 .orElseGet(Attendance::new);
@@ -220,6 +224,9 @@ public class AttendanceService {
         attendance.setStatus("WORKING");
         attendance.setMarkedLatitude(request.getLatitude());
         attendance.setMarkedLongitude(request.getLongitude());
+        if (request.getSelfieData() != null && !request.getSelfieData().isBlank()) {
+            attendance.setCheckInSelfieData(request.getSelfieData());
+        }
 
         Attendance saved = attendanceRepository.save(attendance);
         auditService.log(actorId, "CHECK_IN",
@@ -258,11 +265,17 @@ public class AttendanceService {
         }
 
         AttendanceRuleConfig config = ruleConfigService.getOrCreateForCurrentTenant();
+        if (config.isCheckOutSelfieRequired() && (request.getSelfieData() == null || request.getSelfieData().isBlank())) {
+            throw new BadRequestException("A selfie is required to check out at this company.");
+        }
         AttendanceRulesEngine.WorkResult result = ruleEngine.compute(attendance.getCheckInTime(), checkOutTime, config);
 
         attendance.setCheckOutTime(checkOutTime);
         attendance.setCheckOutLatitude(request.getLatitude());
         attendance.setCheckOutLongitude(request.getLongitude());
+        if (request.getSelfieData() != null && !request.getSelfieData().isBlank()) {
+            attendance.setCheckOutSelfieData(request.getSelfieData());
+        }
         attendance.setGrossWorkMinutes(result.grossWorkMinutes);
         attendance.setBreakMinutes(result.breakMinutes);
         attendance.setNetWorkMinutes(result.netWorkMinutes);
@@ -720,6 +733,27 @@ public class AttendanceService {
         }
     }
 
+    /**
+     * On-demand selfie fetch (never bundled into the list/detail response - see AttendanceResponse
+     * javadoc). Access control: the employee whose attendance this is may always view their own
+     * selfie; anyone else needs ATTENDANCE_READ. Returns null (not an error) if no selfie was
+     * captured for that check-in/check-out - a perfectly normal state when the company doesn't
+     * require one.
+     */
+    @Transactional(readOnly = true)
+    public String getSelfie(Long attendanceId, boolean checkOut, Long currentUserId) {
+        Long tenantId = tenantContext.requireCurrentTenantId();
+        Attendance attendance = attendanceRepository.findByIdAndClientCompanyId(attendanceId, tenantId)
+                .orElseThrow(() -> new com.example.application.common.exception.ResourceNotFoundException("Attendance record not found: " + attendanceId));
+
+        boolean isOwnRecord = employeeRepository.findByUserId(currentUserId)
+                .map(e -> e.getId().equals(attendance.getEmployeeId())).orElse(false);
+        if (!isOwnRecord && !tenantContext.currentPermissionNames().contains("ATTENDANCE_READ")) {
+            throw new org.springframework.security.access.AccessDeniedException("Not authorized to view this attendance photo.");
+        }
+        return checkOut ? attendance.getCheckOutSelfieData() : attendance.getCheckInSelfieData();
+    }
+
     private AttendanceResponse toResponse(Attendance a) {
         AttendanceResponse r = new AttendanceResponse();
         r.setId(a.getId());
@@ -758,6 +792,8 @@ public class AttendanceService {
         r.setLateMinutes(a.getLateMinutes());
         r.setEarlyExit(a.isEarlyExit());
         r.setEarlyExitMinutes(a.getEarlyExitMinutes());
+        r.setHasCheckInSelfie(a.getCheckInSelfieData() != null && !a.getCheckInSelfieData().isBlank());
+        r.setHasCheckOutSelfie(a.getCheckOutSelfieData() != null && !a.getCheckOutSelfieData().isBlank());
         r.setCreatedByRole(a.getCreatedByRole());
         r.setModifiedByRole(a.getModifiedByRole());
         r.setModificationReason(a.getModificationReason());

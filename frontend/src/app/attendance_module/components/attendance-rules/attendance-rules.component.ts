@@ -31,7 +31,9 @@ export class AttendanceRulesComponent {
     fullDayMinMinutes: [420, Validators.required],
     lateGraceMinutes: [10, Validators.required],
     defaultBreakMinutes: [45, Validators.required],
-    allowMultipleCheckin: [false]
+    allowMultipleCheckin: [false],
+    checkInSelfieRequired: [false],
+    checkOutSelfieRequired: [false]
   });
 
   readonly selectedWeeklyOffDays = signal<Set<string>>(new Set(['SUNDAY']));
@@ -52,7 +54,9 @@ export class AttendanceRulesComponent {
           fullDayMinMinutes: config.fullDayMinMinutes,
           lateGraceMinutes: config.lateGraceMinutes,
           defaultBreakMinutes: config.defaultBreakMinutes,
-          allowMultipleCheckin: config.allowMultipleCheckin
+          allowMultipleCheckin: config.allowMultipleCheckin,
+          checkInSelfieRequired: config.checkInSelfieRequired,
+          checkOutSelfieRequired: config.checkOutSelfieRequired
         });
         this.selectedWeeklyOffDays.set(new Set((config.weeklyOffDays || '').split(',').map(s => s.trim()).filter(Boolean)));
         this.loading.set(false);
@@ -89,6 +93,8 @@ export class AttendanceRulesComponent {
       lateGraceMinutes: raw.lateGraceMinutes,
       defaultBreakMinutes: raw.defaultBreakMinutes,
       allowMultipleCheckin: raw.allowMultipleCheckin,
+      checkInSelfieRequired: raw.checkInSelfieRequired,
+      checkOutSelfieRequired: raw.checkOutSelfieRequired,
       weeklyOffDays: Array.from(this.selectedWeeklyOffDays()).join(',')
     }).subscribe({
       next: () => {

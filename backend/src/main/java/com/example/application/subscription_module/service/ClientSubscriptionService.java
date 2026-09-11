@@ -9,6 +9,7 @@ import com.example.application.login_module.repository.UserRepository;
 import com.example.application.subscription_module.dto.ClientSubscriptionRequest;
 import com.example.application.subscription_module.dto.ClientSubscriptionResponse;
 import com.example.application.subscription_module.dto.SubscriptionHistoryResponse;
+import com.example.application.subscription_module.dto.SuperAdminDashboardResponse;
 import com.example.application.subscription_module.entity.ClientSubscription;
 import com.example.application.subscription_module.entity.PlanFeature;
 import com.example.application.subscription_module.entity.SubscriptionHistory;
@@ -53,10 +54,12 @@ public class ClientSubscriptionService {
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository;
 
     public ClientSubscriptionService(ClientSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository planRepository,
                                       PlanFeatureRepository planFeatureRepository, SubscriptionHistoryRepository historyRepository,
-                                      EmployeeRepository employeeRepository, UserRepository userRepository, AuditService auditService) {
+                                      EmployeeRepository employeeRepository, UserRepository userRepository, AuditService auditService,
+                                      com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.planRepository = planRepository;
         this.planFeatureRepository = planFeatureRepository;
@@ -64,6 +67,7 @@ public class ClientSubscriptionService {
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
+        this.clientCompanyRepository = clientCompanyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -201,6 +205,42 @@ public class ClientSubscriptionService {
         auditService.log(actorId, "CLIENT_SUBSCRIPTION_DEACTIVATED",
                 "Manually deactivated subscription for client company #" + clientCompanyId, httpRequest);
         return toResponse(saved);
+    }
+
+    private static final int EXPIRING_SOON_WINDOW_DAYS = 30;
+
+    /**
+     * Super Admin's own dashboard data - total companies and which subscriptions are ending
+     * within the next 30 days. Deliberately does NOT include anything about any tenant's
+     * day-to-day operations (attendance, payroll, employee counts, etc.) - that's Client Admin's
+     * dashboard, not the platform owner's, matching the same "Super Admin only sees platform-
+     * level things" boundary already applied to their sidebar.
+     */
+    @Transactional(readOnly = true)
+    public SuperAdminDashboardResponse getDashboardSummary() {
+        SuperAdminDashboardResponse response = new SuperAdminDashboardResponse();
+        response.setTotalCompanies(clientCompanyRepository.count());
+        response.setActiveCompanies(clientCompanyRepository.countByStatus("ACTIVE"));
+
+        LocalDate today = LocalDate.now();
+        LocalDate windowEnd = today.plusDays(EXPIRING_SOON_WINDOW_DAYS);
+        List<ClientSubscription> expiring = subscriptionRepository
+                .findAllByEndDateBetweenAndStatusNotInOrderByEndDateAsc(today, windowEnd, List.of("EXPIRED", "SUSPENDED", "CANCELLED"));
+
+        List<SuperAdminDashboardResponse.ExpiringSubscription> expiringDtos = new java.util.ArrayList<>();
+        for (ClientSubscription s : expiring) {
+            SuperAdminDashboardResponse.ExpiringSubscription dto = new SuperAdminDashboardResponse.ExpiringSubscription();
+            dto.setClientCompanyId(s.getClientCompanyId());
+            clientCompanyRepository.findById(s.getClientCompanyId())
+                    .ifPresent(c -> dto.setCompanyName(c.getCompanyName()));
+            dto.setPlanName(getPlan(s.getPlanId()).getPlanName());
+            dto.setEndDate(s.getEndDate());
+            dto.setDaysRemaining(java.time.temporal.ChronoUnit.DAYS.between(today, s.getEndDate()));
+            dto.setStatus(s.getStatus());
+            expiringDtos.add(dto);
+        }
+        response.setExpiringSoon(expiringDtos);
+        return response;
     }
 
     private void validateRequest(ClientSubscriptionRequest request, SubscriptionPlan plan) {
