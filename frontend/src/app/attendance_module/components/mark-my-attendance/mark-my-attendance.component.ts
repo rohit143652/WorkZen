@@ -100,13 +100,31 @@ export class MarkMyAttendanceComponent implements OnDestroy {
 
   private load(): void {
     this.loading.set(true);
+    let todayDone = false;
+    let configDone = false;
+    const maybeFinishLoading = () => {
+      if (todayDone && configDone) this.loading.set(false);
+    };
+
     this.attendanceService.today().subscribe({
-      next: status => { this.todayStatus.set(status); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      next: status => { this.todayStatus.set(status); todayDone = true; maybeFinishLoading(); },
+      error: () => { todayDone = true; maybeFinishLoading(); }
     });
+    // Deliberately part of the SAME loading gate as today() above - if this hasn't resolved yet,
+    // we genuinely don't know whether a selfie is required, so the Check In/Check Out button
+    // must not be clickable yet either (a race here previously let check-in bypass a required
+    // selfie entirely whenever this call was even slightly slower than today()'s).
     this.attendanceService.getRuleConfig().subscribe({
-      next: config => this.ruleConfig.set(config),
-      error: () => { /* Non-fatal - selfie capture just won't be marked as required if this fails. */ }
+      next: config => { this.ruleConfig.set(config); configDone = true; maybeFinishLoading(); },
+      error: () => {
+        // Fails CLOSED, not open: if we can't confirm the company's selfie policy, assume the
+        // stricter case (both required) rather than silently letting check-in/out through
+        // unprotected - the employee can still retry, but we never skip a possibly-required selfie.
+        this.ruleConfig.set({ checkInSelfieRequired: true, checkOutSelfieRequired: true } as AttendanceRuleConfigResponse);
+        this.toast.error('Unable to confirm this company\'s attendance policy - please refresh and try again.');
+        configDone = true;
+        maybeFinishLoading();
+      }
     });
   }
 
