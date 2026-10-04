@@ -59,6 +59,13 @@ public class EmployeeService {
     private final com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService;
     private final EmployeeOnboardingService onboardingService;
     private final EmployeeProfileCompletionService profileCompletionService;
+    private final com.example.application.site_module.service.SiteAccessService siteAccessService;
+    private final com.example.application.common.email.EmailService emailService;
+    private final com.example.application.common.email.EmailTemplateService emailTemplateService;
+    private final com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository;
+
+    @org.springframework.beans.factory.annotation.Value("${onboarding.frontend-base-url}")
+    private String frontendBaseUrl;
 
     public EmployeeService(EmployeeRepository employeeRepository, UserRepository userRepository,
                             RoleService roleService, PasswordEncoder passwordEncoder,
@@ -69,7 +76,11 @@ public class EmployeeService {
                             EmployeeAssignmentService employeeAssignmentService,
                             com.example.application.subscription_module.service.ClientSubscriptionService clientSubscriptionService,
                             EmployeeOnboardingService onboardingService,
-                            EmployeeProfileCompletionService profileCompletionService) {
+                            EmployeeProfileCompletionService profileCompletionService,
+                            com.example.application.site_module.service.SiteAccessService siteAccessService,
+                            com.example.application.common.email.EmailService emailService,
+                            com.example.application.common.email.EmailTemplateService emailTemplateService,
+                            com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository) {
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.roleService = roleService;
@@ -84,11 +95,15 @@ public class EmployeeService {
         this.clientSubscriptionService = clientSubscriptionService;
         this.onboardingService = onboardingService;
         this.profileCompletionService = profileCompletionService;
+        this.siteAccessService = siteAccessService;
+        this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
+        this.clientCompanyRepository = clientCompanyRepository;
     }
 
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> search(String search, String status, String department,
-                                          Boolean loginEnabled, String onboardingFilter, Long clientCompanyIdFilter, Pageable pageable) {
+                                          Boolean loginEnabled, String onboardingFilter, List<Long> siteIds, Long clientCompanyIdFilter, Pageable pageable) {
         // A caller with their own tenant (CLIENT_ADMIN/CLIENT_USER) is ALWAYS locked to it,
         // regardless of any clientCompanyIdFilter they send - that value is only honored for
         // callers with no tenant of their own (SUPER_ADMIN, and the pre-existing internal
@@ -96,12 +111,19 @@ public class EmployeeService {
         Long currentTenantId = tenantContextService.currentTenantIdOrNull();
         Long effectiveTenantFilter = currentTenantId != null ? currentTenantId : clientCompanyIdFilter;
 
+        // Global Site Context: never trusts the requested siteIds directly - resolved through
+        // the one central authorization check, same as every other site-filterable endpoint.
+        List<Long> validatedSiteIds = currentTenantId != null
+                ? siteAccessService.resolveRequestedSiteIdsOrBadRequest(currentTenantId, siteIds)
+                : (siteIds != null ? siteIds : List.of());
+
         Specification<Employee> spec = Specification
                 .where(EmployeeSpecifications.search(search))
                 .and(EmployeeSpecifications.hasStatus(status))
                 .and(EmployeeSpecifications.hasDepartment(department))
                 .and(EmployeeSpecifications.loginEnabled(loginEnabled))
                 .and(EmployeeSpecifications.hasOnboardingStatusIn(onboardingStatusesFor(onboardingFilter)))
+                .and(EmployeeSpecifications.inSites(validatedSiteIds))
                 .and(EmployeeSpecifications.belongsToCompany(effectiveTenantFilter));
         return employeeRepository.findAll(spec, pageable).map(e -> toResponse(e, false));
     }
@@ -166,7 +188,7 @@ public class EmployeeService {
         } else if (employeeRepository.existsByClientCompanyIdAndEmployeeCode(tenantId, employeeCode)) {
             throw new DuplicateResourceException("Employee code already exists: " + employeeCode);
         }
-        if (employeeRepository.existsByEmail(request.getEmail())) {
+        if (employeeRepository.existsByClientCompanyIdAndEmail(tenantId, request.getEmail())) {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
         if (employeeRepository.existsByClientCompanyIdAndAadharNumber(tenantId, request.getAadharNumber())) {
@@ -187,6 +209,9 @@ public class EmployeeService {
                 request.getDateOfBirth(), request.getGender(), request.getJoiningDate(), request.getDepartment(),
                 request.getDesignation(), request.getEmploymentType(), request.getAddress(), request.getCity(),
                 request.getState(), request.getCountry(), request.getPincode(), request.getAadharNumber(), request.getPanNumber());
+        employee.setEmergencyContactName(request.getEmergencyContactName());
+        employee.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
+        employee.setEmergencyContactMobile(request.getEmergencyContactMobile());
         employee.setUanNumber(request.getUanNumber());
         employee.setPfMemberId(request.getPfMemberId());
         employee.setEsicNumber(request.getEsicNumber());
@@ -218,6 +243,7 @@ public class EmployeeService {
 
         Employee saved = employeeRepository.save(employee);
         auditService.log(actorId, "EMPLOYEE_CREATED", "Created employee " + saved.getEmployeeCode(), httpRequest);
+        Boolean invitationEmailSent = null;
         if (saved.hasLogin()) {
             auditService.log(actorId, "LOGIN_ENABLED",
                     "Login account created for employee " + saved.getEmployeeCode(), httpRequest);
@@ -225,7 +251,7 @@ public class EmployeeService {
             // set their own - see EmployeeOnboardingService for the full invitation lifecycle.
             boolean adminSetPassword = request.getLoginAccess().getPassword() != null && !request.getLoginAccess().getPassword().isBlank();
             if (!adminSetPassword) {
-                onboardingService.createInvitation(saved, saved.getUser(), actorId, httpRequest);
+                invitationEmailSent = onboardingService.createInvitation(saved, saved.getUser(), actorId, httpRequest);
             }
         }
 
@@ -237,13 +263,16 @@ public class EmployeeService {
             employeeSalaryStructureService.assign(saved.getId(), assignRequest, actorId, httpRequest);
         }
 
-        return toResponse(saved);
+        EmployeeResponse response = toResponse(saved);
+        response.setInvitationEmailSent(invitationEmailSent);
+        return response;
     }
 
     @Transactional
     public EmployeeResponse update(Long id, EmployeeUpdateRequest request, Long actorId, HttpServletRequest httpRequest) {
         Employee employee = getEntity(id);
-        if (!employee.getEmail().equals(request.getEmail()) && employeeRepository.existsByEmail(request.getEmail())) {
+        if (!employee.getEmail().equals(request.getEmail())
+                && employeeRepository.existsByClientCompanyIdAndEmail(employee.getClientCompanyId(), request.getEmail())) {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
         String newPan = request.getPanNumber() != null ? request.getPanNumber().toUpperCase() : null;
@@ -260,8 +289,26 @@ public class EmployeeService {
         employee.setMiddleName(request.getMiddleName());
         employee.setLastName(request.getLastName());
         employee.setEmail(request.getEmail());
+        // AUDIT FINDING: Employee.email and the linked User.email are separate columns (the
+        // employee's own profile email vs. the login account's email) - updating one here
+        // previously never touched the other, so an employee's login account could silently keep
+        // using a stale, no-longer-correct email (e.g. the admin password-reset notification
+        // would go to the OLD address). Kept in sync here; validated against the USERS table's
+        // own per-company uniqueness (V118) separately from the employees-table check above,
+        // since they're genuinely different constraints even though they usually hold the same value.
+        if (employee.hasLogin()) {
+            User linkedUser = employee.getUser();
+            if (!linkedUser.getEmail().equals(request.getEmail())
+                    && userRepository.existsByEmailAndClientCompanyId(request.getEmail(), employee.getClientCompanyId())) {
+                throw new DuplicateResourceException("Email already registered to another login account: " + request.getEmail());
+            }
+            linkedUser.setEmail(request.getEmail());
+        }
         employee.setMobileNumber(request.getMobileNumber());
         employee.setAlternateMobileNumber(request.getAlternateMobileNumber());
+        employee.setEmergencyContactName(request.getEmergencyContactName());
+        employee.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
+        employee.setEmergencyContactMobile(request.getEmergencyContactMobile());
         employee.setDateOfBirth(request.getDateOfBirth());
         employee.setGender(request.getGender());
         employee.setJoiningDate(request.getJoiningDate());
@@ -402,6 +449,7 @@ public class EmployeeService {
         if (!"ACTIVE".equals(employee.getStatus())) {
             throw new BadRequestException("Cannot enable login for an inactive employee");
         }
+        Boolean invitationEmailSent = null;
 
         if (employee.hasLogin()) {
             User user = employee.getUser();
@@ -441,13 +489,15 @@ public class EmployeeService {
             if (!adminSetPassword) {
                 // Self-onboarding path (spec section 37: "Create Login for Existing Employee" -
                 // Enable Login -> invitation, not an admin-set password), same flow create() uses.
-                onboardingService.createInvitation(employee, user, actorId, httpRequest);
+                invitationEmailSent = onboardingService.createInvitation(employee, user, actorId, httpRequest);
             }
         }
 
         Employee saved = employeeRepository.save(employee);
         auditService.log(actorId, "LOGIN_ENABLED", "Login enabled for employee " + saved.getEmployeeCode(), httpRequest);
-        return toResponse(saved);
+        EmployeeResponse response = toResponse(saved);
+        response.setInvitationEmailSent(invitationEmailSent);
+        return response;
     }
 
     /** Disables the linked login account and revokes its refresh tokens. The employee record is untouched. */
@@ -482,7 +532,7 @@ public class EmployeeService {
 
     /** Generates and applies a new temporary password; the caller (controller) returns it exactly once. */
     @Transactional
-    public String resetPassword(Long id, Long actorId, HttpServletRequest httpRequest) {
+    public com.example.application.employee_module.dto.PasswordResetResult resetPassword(Long id, Long actorId, HttpServletRequest httpRequest) {
         Employee employee = getEntity(id);
         if (!employee.hasLogin()) {
             throw new BadRequestException("This employee does not have a login account");
@@ -497,7 +547,24 @@ public class EmployeeService {
 
         auditService.log(actorId, "PASSWORD_RESET",
                 "Temporary password issued for employee " + employee.getEmployeeCode(), httpRequest);
-        return tempPassword;
+
+        // Emailed in addition to being returned to the admin once (above) - the admin may not be
+        // the one handing the password to the employee in person, so the employee needs their own
+        // direct way to receive it. Mirrors the onboarding invitation email's "never fail the
+        // actual operation just because the email didn't go out" approach: resetPassword() has
+        // already succeeded by this point regardless of whether sendHtml() below succeeds.
+        String companyName = clientCompanyRepository.findById(employee.getClientCompanyId())
+                .map(c -> c.getCompanyName()).orElse("your company");
+        String employeeName = (employee.getFirstName() + " " + employee.getLastName()).trim();
+        String html = emailTemplateService.render("password-reset", java.util.Map.of(
+                "employeeName", employeeName,
+                "companyName", companyName,
+                "temporaryPassword", tempPassword,
+                "loginUrl", frontendBaseUrl + "/login"
+        ));
+        boolean emailSent = emailService.sendHtml(employee.getEmail(), "Your password has been reset - " + companyName, html);
+
+        return new com.example.application.employee_module.dto.PasswordResetResult(tempPassword, emailSent);
     }
 
     // ---- helpers ----
@@ -539,8 +606,14 @@ public class EmployeeService {
         if (userRepository.existsByUsername(username)) {
             throw new DuplicateResourceException("Username already taken: " + username);
         }
-        // Employees share the users.email uniqueness constraint; an employee's own
-        // email is reused for the User row it owns 1:1, so no extra uniqueness check needed here.
+        // AUDIT FINDING: there was no pre-check for email at all here - a duplicate only ever
+        // surfaced as a raw "Data integrity violation" straight from the database's unique
+        // constraint, with no clear message. Now checked explicitly, same pattern as username
+        // above, and scoped to this tenant specifically (V118: email uniqueness is per-company,
+        // not global - two unrelated client companies may have a login with the same email).
+        if (userRepository.existsByEmailAndClientCompanyId(email, tenantId)) {
+            throw new DuplicateResourceException("Email already registered: " + email);
+        }
         User user = new User();
         user.setUsername(username);
         user.setEmail(email);

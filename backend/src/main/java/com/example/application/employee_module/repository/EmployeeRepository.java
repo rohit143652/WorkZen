@@ -17,7 +17,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
      */
     Optional<Employee> findByIdAndClientCompanyId(Long id, Long clientCompanyId);
     boolean existsByClientCompanyIdAndEmployeeCode(Long clientCompanyId, String employeeCode);
+    /** Global - kept for any genuinely cross-tenant need, but NOT what duplicate-check validation should use. See existsByClientCompanyIdAndEmail below (same per-company-not-global correction already made on users.email, V118). */
     boolean existsByEmail(String email);
+    boolean existsByClientCompanyIdAndEmail(Long clientCompanyId, String email);
 
     boolean existsByClientCompanyIdAndAadharNumber(Long clientCompanyId, String aadharNumber);
     boolean existsByClientCompanyIdAndPanNumber(Long clientCompanyId, String panNumber);

@@ -29,8 +29,9 @@ public class LeaveRequestController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('LEAVE_REQUEST_READ')")
-    public ResponseEntity<ApiResponse<List<LeaveRequestResponse>>> findAll() {
-        return ResponseEntity.ok(ApiResponse.success("OK", leaveRequestService.findAll()));
+    public ResponseEntity<ApiResponse<List<LeaveRequestResponse>>> findAll(
+            @RequestParam(required = false) List<Long> siteIds) {
+        return ResponseEntity.ok(ApiResponse.success("OK", leaveRequestService.findAll(siteIds)));
     }
 
     @GetMapping("/mine")

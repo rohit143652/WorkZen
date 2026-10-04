@@ -157,8 +157,10 @@ public class PayrollInputResolver {
             inputs.setSalaryType(current.getSalaryType());
             SalaryStructureResponse full = structureCache.computeIfAbsent(
                     current.getSalaryStructureId(), salaryStructureService::findById);
-            basic = findSalaryComponent(full, "BASIC");
-            da = findSalaryComponent(full, "DA");
+            BigDecimal fullMonthBasic = findSalaryComponent(full, "BASIC");
+            BigDecimal fullMonthDa = findSalaryComponent(full, "DA");
+            basic = fullMonthBasic;
+            da = fullMonthDa;
             switch (current.getSalaryType()) {
                 case "DAILY" -> {
                     inputs.setRate(full.getDailyRate());
@@ -181,6 +183,32 @@ public class PayrollInputResolver {
                     inputs.setRate(gross == null ? null : gross.divide(BigDecimal.valueOf(daysInMonth), 2, RoundingMode.HALF_UP));
                     inputs.setTotalGross(safeMultiply(inputs.getRate(), payableDays));
                     inputs.setFullGrossEntitlement(gross);
+                    // BUG FIX (verified against SP_College_Aug-26.xlsx reference): Basic and DA
+                    // must be prorated by this same payableDays/daysInMonth ratio before being
+                    // used as PF's calculation base - previously they stayed at their full-month
+                    // entitlement regardless of attendance, so PF was charged on the full month's
+                    // Basic+DA even for an employee who worked only part of it. The blended Gross
+                    // above was already correct (prorating it directly is mathematically
+                    // equivalent to prorating Basic+DA and then adding a percentage-based HRA on
+                    // the prorated figure), but Basic and DA individually were never prorated,
+                    // and PayrollCalculationService.resolveEpfBase() reads them directly.
+                    BigDecimal fullBasicDa = fullMonthBasic.add(fullMonthDa);
+                    if (fullBasicDa.signum() > 0 && daysInMonth > 0) {
+                        BigDecimal proratedBasicDa = fullBasicDa
+                                .divide(BigDecimal.valueOf(daysInMonth), 10, RoundingMode.HALF_UP)
+                                .multiply(payableDays)
+                                .setScale(2, RoundingMode.HALF_UP);
+                        // Split back into Basic/DA in their original proportion so each remains
+                        // independently available (e.g. a payslip line showing them separately)
+                        // while their sum exactly equals the prorated figure used for PF - splitting
+                        // after prorating, rather than prorating each separately and summing,
+                        // avoids the two independently-rounded parts drifting a paisa apart.
+                        basic = proratedBasicDa.multiply(fullMonthBasic).divide(fullBasicDa, 2, RoundingMode.HALF_UP);
+                        da = proratedBasicDa.subtract(basic);
+                    } else {
+                        basic = BigDecimal.ZERO;
+                        da = BigDecimal.ZERO;
+                    }
                 }
             }
             if (unpaidLeave.signum() > 0 && inputs.getNote().isEmpty()) {

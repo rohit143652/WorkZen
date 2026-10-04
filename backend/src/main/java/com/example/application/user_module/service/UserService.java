@@ -62,7 +62,8 @@ public class UserService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Username already taken: " + request.getUsername());
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
+        Long newUserTenantId = tenantContextService.currentTenantIdOrNull();
+        if (userRepository.existsByEmailAndClientCompanyId(request.getEmail(), newUserTenantId)) {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
 
@@ -74,7 +75,7 @@ public class UserService {
         user.setLastName(request.getLastName());
         // Inherited from the creator's own tenant, same rule as employee-linked logins -
         // never accepted as separate input.
-        user.setClientCompanyId(tenantContextService.currentTenantIdOrNull());
+        user.setClientCompanyId(newUserTenantId);
         user.setRoles(resolveRoles(request.getRoleIds()));
 
         User saved = userRepository.save(user);
@@ -85,7 +86,8 @@ public class UserService {
     @Transactional
     public UserResponse update(Long id, UserUpdateRequest request, Long actorId, HttpServletRequest httpRequest) {
         User user = getEntity(id);
-        if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
+        if (!user.getEmail().equals(request.getEmail())
+                && userRepository.existsByEmailAndClientCompanyId(request.getEmail(), user.getClientCompanyId())) {
             throw new DuplicateResourceException("Email already registered: " + request.getEmail());
         }
         user.setEmail(request.getEmail());

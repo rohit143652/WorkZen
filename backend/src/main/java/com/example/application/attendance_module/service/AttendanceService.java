@@ -28,8 +28,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Attendance is intentionally append-mostly: SITE_ADMIN/SITE_SUPERVISOR can
@@ -55,12 +57,14 @@ public class AttendanceService {
     private final AttendanceRuleConfigService ruleConfigService;
     private final AttendanceRulesEngine ruleEngine;
     private final FeatureAccessService featureAccessService;
+    private final com.example.application.site_module.service.SiteAccessService siteAccessService;
 
     public AttendanceService(AttendanceRepository attendanceRepository, EmployeeRepository employeeRepository,
                               EmployeeSiteAssignmentRepository assignmentRepository, SiteService siteService,
                               UserRepository userRepository, TenantContextService tenantContext,
                               AuditService auditService, AttendanceRuleConfigService ruleConfigService,
-                              AttendanceRulesEngine ruleEngine, FeatureAccessService featureAccessService) {
+                              AttendanceRulesEngine ruleEngine, FeatureAccessService featureAccessService,
+                              com.example.application.site_module.service.SiteAccessService siteAccessService) {
         this.attendanceRepository = attendanceRepository;
         this.employeeRepository = employeeRepository;
         this.assignmentRepository = assignmentRepository;
@@ -71,6 +75,7 @@ public class AttendanceService {
         this.ruleConfigService = ruleConfigService;
         this.ruleEngine = ruleEngine;
         this.featureAccessService = featureAccessService;
+        this.siteAccessService = siteAccessService;
     }
 
     /**
@@ -673,7 +678,7 @@ public class AttendanceService {
      * "not checked in" genuinely means "might still show up today", not "confirmed absent".
      */
     @Transactional(readOnly = true)
-    public TodayAttendanceOverviewResponse getTodayOverview() {
+    public TodayAttendanceOverviewResponse getTodayOverview(java.util.List<Long> siteIds) {
         Long tenantId = tenantContext.requireCurrentTenantId();
         // This overview is specifically about check-in/check-out data (who's checked in today,
         // who hasn't) - if the company has EMPLOYEE_SELF_ATTENDANCE off, there's nothing
@@ -684,7 +689,20 @@ public class AttendanceService {
         featureAccessService.requireEnabledForCurrentTenant(FeatureCode.EMPLOYEE_SELF_ATTENDANCE, "Employee Self Attendance");
         LocalDate today = LocalDate.now();
 
+        // Global Site Context - never trusts the requested siteIds directly, resolved through
+        // the same central authorization check every other site-filterable endpoint uses.
+        List<Long> validatedSiteIds = siteAccessService.resolveRequestedSiteIdsOrBadRequest(tenantId, siteIds);
+
         List<Employee> activeEmployees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        if (!validatedSiteIds.isEmpty()) {
+            Set<Long> siteIdSet = new HashSet<>(validatedSiteIds);
+            Set<Long> eligibleEmployeeIds = new HashSet<>();
+            for (Long siteId : siteIdSet) {
+                assignmentRepository.findAllBySiteIdAndClientCompanyIdAndStatus(siteId, tenantId, "ACTIVE")
+                        .forEach(a -> eligibleEmployeeIds.add(a.getEmployeeId()));
+            }
+            activeEmployees = activeEmployees.stream().filter(e -> eligibleEmployeeIds.contains(e.getId())).toList();
+        }
         Map<Long, Attendance> todaysAttendanceByEmployee = new HashMap<>();
         for (Attendance a : attendanceRepository.findAllByClientCompanyIdAndAttendanceDate(tenantId, today)) {
             todaysAttendanceByEmployee.put(a.getEmployeeId(), a);

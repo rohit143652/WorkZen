@@ -404,7 +404,17 @@ export class EmployeeFormComponent {
           : undefined
       };
       this.employeeService.create(payload).subscribe({
-        next: () => { this.toast.success('Employee created successfully.'); this.saving.set(false); this.router.navigateByUrl('/employees'); },
+        next: created => {
+          this.saving.set(false);
+          if (created.invitationEmailSent === true) {
+            this.toast.success('Employee created successfully. Invitation email sent.');
+          } else if (created.invitationEmailSent === false) {
+            this.toast.warning('Employee created, but the invitation email could NOT be sent - use Resend Invitation from the employee\'s page.');
+          } else {
+            this.toast.success('Employee created successfully.');
+          }
+          this.router.navigateByUrl('/employees');
+        },
         error: (err: HttpErrorResponse) => { this.saving.set(false); this.toast.error(err.error?.message ?? 'Unable to save employee.'); }
       });
     }
@@ -545,7 +555,13 @@ export class EmployeeFormComponent {
     this.savingLogin.set(true);
     this.employeeService.enableLogin(id, payload).subscribe({
       next: emp => {
-        this.toast.success('Login access enabled successfully.');
+        if (emp.invitationEmailSent === true) {
+          this.toast.success('Login access enabled. Invitation email sent.');
+        } else if (emp.invitationEmailSent === false) {
+          this.toast.warning('Login access enabled, but the invitation email could NOT be sent - use Resend Invitation from the employee\'s page.');
+        } else {
+          this.toast.success('Login access enabled successfully.');
+        }
         this.hasLoginAccount.set(true);
         this.loginIsActive.set(true);
         this.existingUsername.set(emp.username ?? payload.username ?? null);

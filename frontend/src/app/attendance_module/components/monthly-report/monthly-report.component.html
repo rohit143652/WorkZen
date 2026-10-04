@@ -76,7 +76,7 @@
         <strong>{{ r.monthLabel }}</strong>
         <span class="muted"> &middot; {{ r.rows.length }} employee(s)</span>
       </div>
-      <div class="actions">
+      <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;">
         <button type="button" class="btn btn-secondary btn-sm" [disabled]="downloading() !== null" (click)="download('xlsx')">
           @if (downloading() === 'xlsx') { <span class="btn-spinner"></span> } @else { <i class="bi bi-file-earmark-excel"></i> }
           {{ downloading() === 'xlsx' ? 'Preparing...' : 'Download Excel' }}
@@ -84,6 +84,10 @@
         <button type="button" class="btn btn-secondary btn-sm" [disabled]="downloading() !== null" (click)="download('pdf')">
           @if (downloading() === 'pdf') { <span class="btn-spinner"></span> } @else { <i class="bi bi-file-earmark-pdf"></i> }
           {{ downloading() === 'pdf' ? 'Preparing...' : 'Download PDF' }}
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="downloading() !== null" (click)="downloadMusterBook()" title="Day-by-day attendance grid, matching a traditional muster book layout">
+          @if (downloading() === 'muster') { <span class="btn-spinner"></span> } @else { <i class="bi bi-table"></i> }
+          {{ downloading() === 'muster' ? 'Preparing...' : 'Download Muster Book' }}
         </button>
       </div>
     </div>

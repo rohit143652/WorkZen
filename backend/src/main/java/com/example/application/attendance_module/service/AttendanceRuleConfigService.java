@@ -5,6 +5,8 @@ import com.example.application.attendance_module.dto.UpdateAttendanceRuleConfigR
 import com.example.application.attendance_module.entity.AttendanceRuleConfig;
 import com.example.application.attendance_module.repository.AttendanceRuleConfigRepository;
 import com.example.application.audit_module.service.AuditService;
+import com.example.application.client_company_module.feature.FeatureAccessService;
+import com.example.application.client_company_module.feature.FeatureCode;
 import com.example.application.common.tenant.TenantContextService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
@@ -24,12 +26,14 @@ public class AttendanceRuleConfigService {
     private final AttendanceRuleConfigRepository repository;
     private final TenantContextService tenantContext;
     private final AuditService auditService;
+    private final FeatureAccessService featureAccessService;
 
     public AttendanceRuleConfigService(AttendanceRuleConfigRepository repository, TenantContextService tenantContext,
-                                        AuditService auditService) {
+                                        AuditService auditService, FeatureAccessService featureAccessService) {
         this.repository = repository;
         this.tenantContext = tenantContext;
         this.auditService = auditService;
+        this.featureAccessService = featureAccessService;
     }
 
     @Transactional
@@ -53,13 +57,30 @@ public class AttendanceRuleConfigService {
         });
     }
 
+    /**
+     * AUDIT FINDING: this (and update() below) had NO feature check at all - anyone holding
+     * ATTENDANCE_READ or ATTENDANCE_SELF_MARK could successfully call this even for a company
+     * with Attendance Management/Employee Self Attendance completely switched off, since the
+     * permission check alone doesn't know anything about the company's feature state. Deliberately
+     * added HERE and not inside getOrCreateForCurrentTenant() - that lower-level method is also
+     * used internally by Payroll (working-days resolution) and the actual check-in/check-out flow,
+     * both of which legitimately need this config regardless of whether the "view/manage rules"
+     * feature itself is on for this company.
+     */
     @Transactional(readOnly = true)
     public AttendanceRuleConfigResponse getForCurrentTenant() {
+        // Matches the frontend route's exact requirement (attendance.routes.ts: feature:
+        // ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE']) - both, not just one, so the
+        // backend never allows something the frontend route guard would have blocked.
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.ATTENDANCE_MANAGEMENT, "Attendance Management");
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.EMPLOYEE_SELF_ATTENDANCE, "Employee Self Attendance");
         return toResponse(getOrCreateForCurrentTenant());
     }
 
     @Transactional
     public AttendanceRuleConfigResponse update(UpdateAttendanceRuleConfigRequest request, Long actorId, HttpServletRequest httpRequest) {
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.ATTENDANCE_MANAGEMENT, "Attendance Management");
+        featureAccessService.requireEnabledForCurrentTenant(FeatureCode.EMPLOYEE_SELF_ATTENDANCE, "Employee Self Attendance");
         AttendanceRuleConfig config = getOrCreateForCurrentTenant();
         config.setOfficeStartTime(request.getOfficeStartTime());
         config.setOfficeEndTime(request.getOfficeEndTime());

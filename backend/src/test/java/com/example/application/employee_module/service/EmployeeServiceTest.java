@@ -58,6 +58,10 @@ class EmployeeServiceTest {
     @Mock private ClientSubscriptionService clientSubscriptionService;
     @Mock private EmployeeOnboardingService onboardingService;
     @Mock private EmployeeProfileCompletionService profileCompletionService;
+    @Mock private com.example.application.site_module.service.SiteAccessService siteAccessService;
+    @Mock private com.example.application.common.email.EmailService emailService;
+    @Mock private com.example.application.common.email.EmailTemplateService emailTemplateService;
+    @Mock private com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository;
 
     @InjectMocks
     private EmployeeService service;

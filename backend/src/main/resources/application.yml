@@ -74,7 +74,7 @@ jwt:
   # tokens with an empty/weak key.
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000}      # 15 minutes
-  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:31536000000} # 365 days - session now persists until an explicit logout, not a short rolling window
 
 app:
   cors:

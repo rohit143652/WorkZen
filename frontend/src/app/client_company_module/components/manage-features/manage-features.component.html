@@ -10,6 +10,12 @@
       <em>who</em> can use a feature; this page decides <em>whether the feature exists for the company at all</em>.
       Both must say yes - if a feature is off here, no role's permission can turn it back on.
     </p>
+    <p class="muted">
+      <i class="bi bi-info-circle"></i> Every feature below starts from this company's
+      <strong>Subscription Plan</strong> ("Plan" below) - this page lets you <strong>override</strong> individual
+      features just for this one company, beyond what the plan normally includes.
+      <a [routerLink]="['/clients', companyIdForLink, 'subscription']">View or change the Subscription Plan &rarr;</a>
+    </p>
   </div>
   <a routerLink="/clients" class="btn btn-secondary">Back to Client Companies</a>
 </div>

@@ -28,6 +28,9 @@ public class EmployeeUpdateRequest {
 
     private String mobileNumber;
     private String alternateMobileNumber;
+    private String emergencyContactName;
+    private String emergencyContactRelationship;
+    private String emergencyContactMobile;
     private LocalDate dateOfBirth;
     private String gender;
 
@@ -95,6 +98,12 @@ public class EmployeeUpdateRequest {
     public void setMobileNumber(String mobileNumber) { this.mobileNumber = mobileNumber; }
     public String getAlternateMobileNumber() { return alternateMobileNumber; }
     public void setAlternateMobileNumber(String alternateMobileNumber) { this.alternateMobileNumber = alternateMobileNumber; }
+    public String getEmergencyContactName() { return emergencyContactName; }
+    public void setEmergencyContactName(String emergencyContactName) { this.emergencyContactName = emergencyContactName; }
+    public String getEmergencyContactRelationship() { return emergencyContactRelationship; }
+    public void setEmergencyContactRelationship(String emergencyContactRelationship) { this.emergencyContactRelationship = emergencyContactRelationship; }
+    public String getEmergencyContactMobile() { return emergencyContactMobile; }
+    public void setEmergencyContactMobile(String emergencyContactMobile) { this.emergencyContactMobile = emergencyContactMobile; }
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
     public String getGender() { return gender; }

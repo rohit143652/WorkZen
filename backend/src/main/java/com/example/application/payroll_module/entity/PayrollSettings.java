@@ -73,13 +73,25 @@ public class PayrollSettings {
     @Column(name = "pt_enabled", nullable = false)
     private boolean ptEnabled = true;
 
-    /** Flat monthly amount. A slab-based table is a reasonable future enhancement, not implemented here - no existing state-specific PT slab structure was found in the project to reuse (spec section 11). */
+    /** FLAT (default - every existing company's prior, only behavior) uses professionalTax directly below; SLAB looks up ProfessionalTaxSlabService for the matching band by that month's Gross salary. */
+    @Column(name = "pt_calculation_mode", nullable = false, length = 20)
+    private String ptCalculationMode = "FLAT";
+
+    /** Flat monthly amount - only used when ptCalculationMode is FLAT. */
     @Column(name = "professional_tax", nullable = false, precision = 10, scale = 2)
     private BigDecimal professionalTax = new BigDecimal("200.00");
 
     /** Client-configured choice of what PF is a percentage OF - see PayrollCalculationService.resolveEpfBase(). */
     @Column(name = "pf_calculation_base", nullable = false, length = 20)
     private String pfCalculationBase = "BASIC_PLUS_DA";
+
+    /** CALENDAR_DAYS (default, prior-only behavior) / WORKING_DAYS (calendar days minus that month's configured weekly offs) / FIXED (always fixedWorkingDays, regardless of the actual month). See PayrollWorkingDaysResolver. */
+    @Column(name = "working_days_basis", nullable = false, length = 20)
+    private String workingDaysBasis = "CALENDAR_DAYS";
+
+    /** Only meaningful when workingDaysBasis is FIXED - common conventions are 26 or 30, but any company-chosen value is accepted. */
+    @Column(name = "fixed_working_days")
+    private Integer fixedWorkingDays;
 
     /** Legacy, unused - overtime is now gated solely by the Super Admin's OVERTIME_MANAGEMENT
         company feature (see FeatureAccessService/PayrollRunService); this second, redundant
@@ -135,10 +147,16 @@ public class PayrollSettings {
     public void setEsiWageCeiling(BigDecimal esiWageCeiling) { this.esiWageCeiling = esiWageCeiling; }
     public boolean isPtEnabled() { return ptEnabled; }
     public void setPtEnabled(boolean ptEnabled) { this.ptEnabled = ptEnabled; }
+    public String getPtCalculationMode() { return ptCalculationMode; }
+    public void setPtCalculationMode(String ptCalculationMode) { this.ptCalculationMode = ptCalculationMode; }
     public BigDecimal getProfessionalTax() { return professionalTax; }
     public void setProfessionalTax(BigDecimal professionalTax) { this.professionalTax = professionalTax; }
     public String getPfCalculationBase() { return pfCalculationBase; }
     public void setPfCalculationBase(String pfCalculationBase) { this.pfCalculationBase = pfCalculationBase; }
+    public String getWorkingDaysBasis() { return workingDaysBasis; }
+    public void setWorkingDaysBasis(String workingDaysBasis) { this.workingDaysBasis = workingDaysBasis; }
+    public Integer getFixedWorkingDays() { return fixedWorkingDays; }
+    public void setFixedWorkingDays(Integer fixedWorkingDays) { this.fixedWorkingDays = fixedWorkingDays; }
     public boolean isOvertimeEnabled() { return overtimeEnabled; }
     public void setOvertimeEnabled(boolean overtimeEnabled) { this.overtimeEnabled = overtimeEnabled; }
     public BigDecimal getOvertimeRatePerHour() { return overtimeRatePerHour; }

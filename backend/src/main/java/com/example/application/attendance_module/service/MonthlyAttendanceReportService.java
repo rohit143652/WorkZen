@@ -18,6 +18,7 @@ import com.example.application.salary_structure_module.dto.SalaryStructureRespon
 import com.example.application.site_module.entity.Site;
 import com.example.application.site_module.repository.SiteRepository;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +75,11 @@ public class MonthlyAttendanceReportService {
     private final EmployeePaidLeaveService paidLeaveService;
     private final LeavePolicyResolver leavePolicyResolver;
     private final TenantContextService tenantContext;
+    private final com.example.application.site_module.service.SiteAccessService siteAccessService;
+    private final com.example.application.payroll_module.service.PayrollSettingsResolver payrollSettingsResolver;
+    private final com.example.application.payroll_module.service.PayrollWorkingDaysResolver payrollWorkingDaysResolver;
+    private final com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository;
+    private final com.example.application.attendance_module.service.AttendanceRuleConfigService attendanceRuleConfigService;
 
     public MonthlyAttendanceReportService(EmployeeRepository employeeRepository,
                                            AttendanceRepository attendanceRepository,
@@ -82,7 +88,12 @@ public class MonthlyAttendanceReportService {
                                            PayrollInputResolver payrollInputResolver,
                                            EmployeePaidLeaveService paidLeaveService,
                                            LeavePolicyResolver leavePolicyResolver,
-                                           TenantContextService tenantContext) {
+                                           TenantContextService tenantContext,
+                                           com.example.application.site_module.service.SiteAccessService siteAccessService,
+                                           com.example.application.payroll_module.service.PayrollSettingsResolver payrollSettingsResolver,
+                                           com.example.application.payroll_module.service.PayrollWorkingDaysResolver payrollWorkingDaysResolver,
+                                           com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository,
+                                           com.example.application.attendance_module.service.AttendanceRuleConfigService attendanceRuleConfigService) {
         this.employeeRepository = employeeRepository;
         this.attendanceRepository = attendanceRepository;
         this.siteAssignmentRepository = siteAssignmentRepository;
@@ -91,6 +102,11 @@ public class MonthlyAttendanceReportService {
         this.paidLeaveService = paidLeaveService;
         this.leavePolicyResolver = leavePolicyResolver;
         this.tenantContext = tenantContext;
+        this.siteAccessService = siteAccessService;
+        this.payrollSettingsResolver = payrollSettingsResolver;
+        this.payrollWorkingDaysResolver = payrollWorkingDaysResolver;
+        this.clientCompanyRepository = clientCompanyRepository;
+        this.attendanceRuleConfigService = attendanceRuleConfigService;
     }
 
     /** Read-only: previewEmployeeInputs() below never writes to Leave, Salary Structure, or Payroll data. */
@@ -100,10 +116,18 @@ public class MonthlyAttendanceReportService {
             throw new BadRequestException("Month must be between 1 and 12");
         }
         Long tenantId = tenantContext.requireCurrentTenantId();
+        // Global Site Context: never trusts the requested siteIds directly - resolves them
+        // through the one central authorization check (empty/null becomes "everything this user
+        // is allowed to see", and any explicitly-requested site the user ISN'T authorized for is
+        // rejected outright rather than silently dropped or silently allowed).
+        siteIds = siteAccessService.resolveRequestedSiteIdsOrBadRequest(tenantId, siteIds);
         YearMonth yearMonth = YearMonth.of(year, month);
         LocalDate monthStart = yearMonth.atDay(1);
         LocalDate monthEnd = yearMonth.atEndOfMonth();
-        int daysInMonth = yearMonth.lengthOfMonth();
+        // Same configurable basis (Calendar / Working / Fixed) a real Payroll Run uses - this is
+        // a PREVIEW of what payroll would compute, so it must use the identical denominator or
+        // the two would silently disagree.
+        int daysInMonth = payrollWorkingDaysResolver.resolve(payrollSettingsResolver.resolve(tenantId, year, month), yearMonth);
 
         List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
 
@@ -267,6 +291,202 @@ public class MonthlyAttendanceReportService {
             return out.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to generate the monthly attendance report workbook", e);
+        }
+    }
+
+    /**
+     * "Monthly Muster Book" - a day-by-day attendance grid (SR NO | Employee Name | 1 | 2 | ... |
+     * N | Total Present Days), matching the format many outsourced-staffing/contractor clients
+     * expect, as opposed to generateExcel() above's per-employee SUMMARY format (Present/Half/
+     * Leave/Absent counts) - both exports stay available side by side, since they serve different
+     * audiences and neither replaces the other.
+     *
+     * Each day's cell is 1 (a paid day - PRESENT, ON_LEAVE if paid, or a weekly-off/holiday with
+     * no explicit ABSENT record), 0.5 (HALF_DAY), 0 (ABSENT), or blank (the employee had not yet
+     * joined, or had already exited, on that date). Weekly-off day-of-week columns are shaded
+     * gray, matching the reference's convention.
+     */
+    @Transactional(readOnly = true)
+    public byte[] generateMusterBook(int year, int month, List<Long> siteIds) {
+        if (month < 1 || month > 12) {
+            throw new BadRequestException("Month must be between 1 and 12");
+        }
+        Long tenantId = tenantContext.requireCurrentTenantId();
+        siteIds = siteAccessService.resolveRequestedSiteIdsOrBadRequest(tenantId, siteIds);
+        YearMonth yearMonth = YearMonth.of(year, month);
+        LocalDate monthStart = yearMonth.atDay(1);
+        LocalDate monthEnd = yearMonth.atEndOfMonth();
+        int daysInMonth = yearMonth.lengthOfMonth(); // The muster book always shows every calendar day as its own column, regardless of the company's payroll working-days-basis setting - that setting affects payroll MATH, not how many day-columns a muster book has.
+
+        List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+
+        Map<Long, EmployeeSiteAssignment> currentSiteByEmployee = new HashMap<>();
+        for (EmployeeSiteAssignment a : siteAssignmentRepository.findAllByClientCompanyIdAndStatus(tenantId, "ACTIVE")) {
+            currentSiteByEmployee.merge(a.getEmployeeId(), a,
+                    (existing, candidate) -> (candidate.isPrimary() && !existing.isPrimary()) ? candidate : existing);
+        }
+
+        String siteNameForHeader = null;
+        if (siteIds != null && siteIds.size() == 1) {
+            siteNameForHeader = siteRepository.findById(siteIds.get(0)).map(Site::getSiteName).orElse(null);
+        }
+        if (siteIds != null && !siteIds.isEmpty()) {
+            Set<Long> siteIdSet = new HashSet<>(siteIds);
+            employees = employees.stream()
+                    .filter(e -> {
+                        EmployeeSiteAssignment a = currentSiteByEmployee.get(e.getId());
+                        return a != null && siteIdSet.contains(a.getSiteId());
+                    })
+                    .toList();
+        }
+
+        Map<Long, Map<Integer, Attendance>> attendanceByEmployeeAndDay = attendanceRepository
+                .findAllByClientCompanyIdAndAttendanceDateBetweenOrderByEmployeeIdAscAttendanceDateAsc(tenantId, monthStart, monthEnd)
+                .stream().collect(Collectors.groupingBy(Attendance::getEmployeeId,
+                        Collectors.toMap(a -> a.getAttendanceDate().getDayOfMonth(), a -> a, (x, y) -> x)));
+
+        String weeklyOffDaysCsv = attendanceRuleConfigService.getOrCreateForCurrentTenant().getWeeklyOffDays();
+        Set<java.time.DayOfWeek> weeklyOffs = (weeklyOffDaysCsv == null || weeklyOffDaysCsv.isBlank())
+                ? Set.of()
+                : Arrays.stream(weeklyOffDaysCsv.split(",")).map(String::trim).filter(s -> !s.isEmpty())
+                        .map(java.time.DayOfWeek::valueOf).collect(Collectors.toSet());
+
+        String companyName = clientCompanyRepository.findById(tenantId).map(c -> c.getCompanyName()).orElse("");
+        String headerTitle = siteNameForHeader != null ? (companyName + " - " + siteNameForHeader) : companyName;
+        String monthLabel = yearMonth.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH) + "-" + yearMonth.getYear();
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Muster Book");
+
+            CellStyle titleStyle = workbook.createCellStyle();
+            Font titleFont = workbook.createFont();
+            titleFont.setBold(true);
+            titleFont.setFontHeightInPoints((short) 14);
+            titleStyle.setFont(titleFont);
+            titleStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setBorderBottom(BorderStyle.THIN);
+            headerStyle.setBorderTop(BorderStyle.THIN);
+            headerStyle.setBorderLeft(BorderStyle.THIN);
+            headerStyle.setBorderRight(BorderStyle.THIN);
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle weeklyOffHeaderStyle = workbook.createCellStyle();
+            weeklyOffHeaderStyle.cloneStyleFrom(headerStyle);
+            weeklyOffHeaderStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            weeklyOffHeaderStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            CellStyle dayCellStyle = workbook.createCellStyle();
+            dayCellStyle.setBorderBottom(BorderStyle.THIN);
+            dayCellStyle.setBorderTop(BorderStyle.THIN);
+            dayCellStyle.setBorderLeft(BorderStyle.THIN);
+            dayCellStyle.setBorderRight(BorderStyle.THIN);
+            dayCellStyle.setAlignment(HorizontalAlignment.CENTER);
+
+            CellStyle weeklyOffDayStyle = workbook.createCellStyle();
+            weeklyOffDayStyle.cloneStyleFrom(dayCellStyle);
+            weeklyOffDayStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            weeklyOffDayStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            CellStyle nameCellStyle = workbook.createCellStyle();
+            nameCellStyle.setBorderBottom(BorderStyle.THIN);
+            nameCellStyle.setBorderTop(BorderStyle.THIN);
+            nameCellStyle.setBorderLeft(BorderStyle.THIN);
+            nameCellStyle.setBorderRight(BorderStyle.THIN);
+
+            int totalCols = 2 + daysInMonth + 1; // SR NO, Name, each day, Total
+
+            Row titleRow = sheet.createRow(0);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue(headerTitle + "   MONTHLY MUSTER BOOK   (" + monthLabel + ")");
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, totalCols - 1));
+
+            Row headerRow = sheet.createRow(1);
+            Cell srCell = headerRow.createCell(0); srCell.setCellValue("SR NO"); srCell.setCellStyle(headerStyle);
+            Cell nameCell = headerRow.createCell(1); nameCell.setCellValue("EMPLOYEE'S NAME"); nameCell.setCellStyle(headerStyle);
+            for (int day = 1; day <= daysInMonth; day++) {
+                java.time.DayOfWeek dow = LocalDate.of(year, month, day).getDayOfWeek();
+                Cell dayHeader = headerRow.createCell(1 + day);
+                dayHeader.setCellValue(day);
+                dayHeader.setCellStyle(weeklyOffs.contains(dow) ? weeklyOffHeaderStyle : headerStyle);
+            }
+            Cell totalHeader = headerRow.createCell(1 + daysInMonth + 1);
+            totalHeader.setCellValue("TOTAL PRESENT DAYS");
+            totalHeader.setCellStyle(headerStyle);
+
+            double[] columnTotals = new double[daysInMonth + 1];
+            int rowIdx = 2;
+            int sr = 1;
+            for (Employee e : employees) {
+                Map<Integer, Attendance> byDay = attendanceByEmployeeAndDay.getOrDefault(e.getId(), Map.of());
+                Row row = sheet.createRow(rowIdx++);
+                Cell srNoCell = row.createCell(0); srNoCell.setCellValue(sr++); srNoCell.setCellStyle(nameCellStyle);
+                Cell empNameCell = row.createCell(1);
+                empNameCell.setCellValue(e.getFirstName() + " " + e.getLastName());
+                empNameCell.setCellStyle(nameCellStyle);
+
+                double employeeTotal = 0;
+                for (int day = 1; day <= daysInMonth; day++) {
+                    LocalDate date = LocalDate.of(year, month, day);
+                    Cell dayCell = row.createCell(1 + day);
+                    boolean isWeeklyOff = weeklyOffs.contains(date.getDayOfWeek());
+                    dayCell.setCellStyle(isWeeklyOff ? weeklyOffDayStyle : dayCellStyle);
+
+                    if (e.getJoiningDate() != null && date.isBefore(e.getJoiningDate())) {
+                        continue; // Blank - not yet employed on this date. (An already-exited employee wouldn't appear in this query at all, since it's scoped to status="ACTIVE".)
+                    }
+                    Attendance a = byDay.get(day);
+                    double value;
+                    if (a == null) {
+                        value = 1; // No explicit record - treated as a paid day (weekly-off/holiday/unrecorded working day), matching the reference convention of defaulting to 1 unless explicitly marked absent.
+                    } else if ("ABSENT".equals(a.getStatus())) {
+                        value = 0;
+                    } else if ("HALF_DAY".equals(a.getStatus())) {
+                        value = 0.5;
+                    } else {
+                        value = 1; // PRESENT, ON_LEAVE (paid), or any other recorded status - treated as a paid day.
+                    }
+                    dayCell.setCellValue(value);
+                    employeeTotal += value;
+                    columnTotals[day] += value;
+                }
+                Cell totalCell = row.createCell(1 + daysInMonth + 1);
+                totalCell.setCellValue(employeeTotal);
+                totalCell.setCellStyle(nameCellStyle);
+                columnTotals[0] += employeeTotal;
+            }
+
+            Row totalRow = sheet.createRow(rowIdx);
+            Cell totalLabelCell = totalRow.createCell(0);
+            totalLabelCell.setCellValue("TOTAL");
+            totalLabelCell.setCellStyle(headerStyle);
+            sheet.addMergedRegion(new CellRangeAddress(rowIdx, rowIdx, 0, 1));
+            totalRow.createCell(1).setCellStyle(headerStyle);
+            for (int day = 1; day <= daysInMonth; day++) {
+                Cell c = totalRow.createCell(1 + day);
+                c.setCellValue(columnTotals[day]);
+                c.setCellStyle(headerStyle);
+            }
+            Cell grandTotalCell = totalRow.createCell(1 + daysInMonth + 1);
+            grandTotalCell.setCellValue(columnTotals[0]);
+            grandTotalCell.setCellStyle(headerStyle);
+
+            sheet.setColumnWidth(0, 2000);
+            sheet.setColumnWidth(1, 7000);
+            for (int day = 1; day <= daysInMonth; day++) {
+                sheet.setColumnWidth(1 + day, 1200);
+            }
+            sheet.setColumnWidth(1 + daysInMonth + 1, 4000);
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to generate the monthly muster book workbook", e);
         }
     }
 

@@ -48,23 +48,39 @@ public class LeaveRequestService {
     private final AttendanceService attendanceService;
     private final TenantContextService tenantContext;
     private final AuditService auditService;
+    private final com.example.application.site_module.service.SiteAccessService siteAccessService;
+    private final com.example.application.employee_assignment_module.repository.EmployeeSiteAssignmentRepository siteAssignmentRepository;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository, EmployeeRepository employeeRepository,
                                 UserRepository userRepository, AttendanceService attendanceService,
-                                TenantContextService tenantContext, AuditService auditService) {
+                                TenantContextService tenantContext, AuditService auditService,
+                                com.example.application.site_module.service.SiteAccessService siteAccessService,
+                                com.example.application.employee_assignment_module.repository.EmployeeSiteAssignmentRepository siteAssignmentRepository) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.attendanceService = attendanceService;
         this.tenantContext = tenantContext;
         this.auditService = auditService;
+        this.siteAccessService = siteAccessService;
+        this.siteAssignmentRepository = siteAssignmentRepository;
     }
 
     @Transactional(readOnly = true)
-    public List<LeaveRequestResponse> findAll() {
+    public List<LeaveRequestResponse> findAll(List<Long> siteIds) {
         Long tenantId = tenantContext.requireCurrentTenantId();
-        return leaveRequestRepository.findAllByClientCompanyIdOrderByCreatedAtDesc(tenantId).stream()
-                .map(this::toResponse).toList();
+        // Global Site Context: never trusts the requested siteIds directly.
+        List<Long> validatedSiteIds = siteAccessService.resolveRequestedSiteIdsOrBadRequest(tenantId, siteIds);
+        List<LeaveRequest> requests = leaveRequestRepository.findAllByClientCompanyIdOrderByCreatedAtDesc(tenantId);
+        if (!validatedSiteIds.isEmpty()) {
+            java.util.Set<Long> eligibleEmployeeIds = new java.util.HashSet<>();
+            for (Long siteId : validatedSiteIds) {
+                siteAssignmentRepository.findAllBySiteIdAndClientCompanyIdAndStatus(siteId, tenantId, "ACTIVE")
+                        .forEach(a -> eligibleEmployeeIds.add(a.getEmployeeId()));
+            }
+            requests = requests.stream().filter(r -> eligibleEmployeeIds.contains(r.getEmployeeId())).toList();
+        }
+        return requests.stream().map(this::toResponse).toList();
     }
 
     /** The logged-in employee's own leave requests - resolved from their User account, same pattern as PayslipService.generateMyPayslip(). */

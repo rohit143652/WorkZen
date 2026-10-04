@@ -232,7 +232,14 @@ export class EmployeeDetailsComponent {
   resendInvitation(): void {
     this.resendingInvitation.set(true);
     this.employeeService.resendInvitation(this.id).subscribe({
-      next: () => { this.resendingInvitation.set(false); this.toast.success('Invitation resent successfully.'); },
+      next: emailSent => {
+        this.resendingInvitation.set(false);
+        if (emailSent) {
+          this.toast.success('Invitation resent successfully.');
+        } else {
+          this.toast.warning('Invitation was regenerated, but the email could NOT be sent - please check the employee\'s email address.');
+        }
+      },
       error: err => { this.resendingInvitation.set(false); this.toast.error(err.error?.message ?? 'Unable to resend the invitation.'); }
     });
   }
@@ -254,11 +261,13 @@ export class EmployeeDetailsComponent {
       next: emp => {
         const username = emp.username;
         this.employeeService.resetPassword(this.id).subscribe({
-          next: temp => {
+          next: result => {
             this.employee.set(emp);
-            this.lastTempPassword.set(temp);
+            this.lastTempPassword.set(result.temporaryPassword);
             this.savingLogin.set(false);
-            this.toast.success(`Login re-enabled for ${username} with a new temporary password.`);
+            this.toast.success(result.emailSent
+              ? `Login re-enabled for ${username} with a new temporary password. The employee has also been emailed it.`
+              : `Login re-enabled for ${username} with a new temporary password. The employee could NOT be emailed - please share it with them directly.`);
           },
           error: () => {
             // Reactivation itself succeeded even if the follow-up password reset call failed -
@@ -346,7 +355,12 @@ export class EmployeeDetailsComponent {
     });
     if (!ok) return;
     this.employeeService.resetPassword(this.id).subscribe({
-      next: temp => { this.lastTempPassword.set(temp); this.toast.success('Temporary password issued.'); },
+      next: result => {
+        this.lastTempPassword.set(result.temporaryPassword);
+        this.toast.success(result.emailSent
+          ? 'Temporary password issued. The employee has also been emailed it.'
+          : 'Temporary password issued, but the employee could NOT be emailed - please share it with them directly.');
+      },
       error: err => this.toast.error(err.error?.message ?? 'Unable to reset password.')
     });
   }

@@ -75,6 +75,8 @@ export interface EmployeeResponse {
   emergencyContactRelationship?: string;
   emergencyContactMobile?: string;
   onboardingStatus?: string;
+  /** Only set right after create/enable-login when a login was enabled without an admin-set password (an invitation email was just attempted) - true/false means sent/failed, undefined means no invitation email was part of this particular action. */
+  invitationEmailSent?: boolean;
   aadharNumber?: string;
   panNumber?: string;
   uanNumber?: string;

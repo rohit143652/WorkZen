@@ -81,6 +81,19 @@ public class MonthlyAttendanceReportController {
                 .body(file);
     }
 
+    /** Day-by-day Muster Book format (SR NO | Name | 1..N | Total Present Days) - a separate export alongside the per-employee summary above, not a replacement for it. siteIds with exactly one site shows that site's name in the header; empty/multiple shows a combined muster across all authorized sites. */
+    @GetMapping("/muster-book")
+    @PreAuthorize("hasAuthority('MONTHLY_PAYMENT_REPORT_EXPORT')")
+    public ResponseEntity<byte[]> musterBook(@RequestParam int year, @RequestParam int month,
+                                              @RequestParam(required = false) List<Long> siteIds) {
+        byte[] file = reportService.generateMusterBook(year, month, siteIds);
+        String filename = String.format("Monthly-Muster-Book-%04d-%02d.xlsx", year, month);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
+                .body(file);
+    }
+
     /** paidDaysUsed = null clears the manual adjustment, reverting to the auto-calculated figure. */
     @PutMapping("/leave-adjustment")
     @PreAuthorize("hasAuthority('MONTHLY_PAYMENT_REPORT_EXPORT')")

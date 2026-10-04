@@ -16,8 +16,12 @@
       <div class="form-grid">
         <div class="form-field"><label>EPF</label><div>{{ c.epfEnabled ? (c.epfEmployeePercent + '% / ' + c.epfEmployerPercent + '% (employee/employer)') : 'Disabled' }}</div></div>
         <div class="form-field"><label>ESI</label><div>{{ c.esiEnabled ? (c.esiEmployeePercent + '% / ' + c.esiEmployerPercent + '%' + (c.esiWageCeiling != null ? ' up to ₹' + c.esiWageCeiling : '')) : 'Disabled' }}</div></div>
-        <div class="form-field"><label>Professional Tax</label><div>{{ c.ptEnabled ? ('₹' + c.professionalTax + '/month') : 'Disabled' }}</div></div>
+        <div class="form-field"><label>Professional Tax</label><div>{{ c.ptEnabled ? (c.ptCalculationMode === 'SLAB' ? 'Slab-Based' : ('₹' + c.professionalTax + '/month')) : 'Disabled' }}</div></div>
         <div class="form-field"><label>PF Calculated On</label><div>{{ pfBaseLabel(c.pfCalculationBase) }}</div></div>
+        <div class="form-field">
+          <label>Working Days Basis</label>
+          <div>{{ workingDaysBasisLabel(c.workingDaysBasis) }}{{ c.workingDaysBasis === 'FIXED' ? ' (' + c.fixedWorkingDays + ' days)' : '' }}</div>
+        </div>
         @if (overtimeFeatureEnabled()) {
           <div class="form-field"><label>Overtime</label><div><a routerLink="/payroll/overtime">Manage in Overtime Register</a></div></div>
         }
@@ -43,6 +47,20 @@
         <input type="date" [(ngModel)]="effectiveFrom" />
       </div>
       <p class="muted" style="font-size: 0.85rem;">This configuration will apply from the selected effective date onward, until superseded. Historical payroll will not be changed.</p>
+
+      <div class="section-title"><i class="bi bi-calendar-week"></i> Working Days Basis</div>
+      <div class="form-grid" style="margin-bottom: 0.9rem;">
+        <div class="form-field">
+          <label>Days in Month, for Proration</label>
+          <select [(ngModel)]="workingDaysBasis">
+            @for (b of workingDaysBases; track b.value) { <option [value]="b.value">{{ b.label }}</option> }
+          </select>
+        </div>
+        @if (workingDaysBasis === 'FIXED') {
+          <div class="form-field"><label>Fixed Days per Month</label><input type="number" min="1" max="31" [(ngModel)]="fixedWorkingDays" /></div>
+        }
+      </div>
+      <p class="muted" style="margin-top: -0.5rem;">Basic/DA/Gross are divided by this figure, then multiplied by an employee's payable days, for every Monthly-type salary structure.</p>
 
       <div class="section-title"><i class="bi bi-piggy-bank"></i> EPF (Provident Fund)</div>
       <div class="toggle-row" style="margin-bottom: 0.9rem;">
@@ -92,10 +110,23 @@
         <span class="toggle-label">Deduct Professional Tax</span>
       </div>
       @if (ptEnabled) {
-        <div class="form-field" style="max-width: 220px;">
-          <label>Flat Amount (₹/month)</label>
-          <input type="number" min="0" [(ngModel)]="professionalTax" />
+        <div class="form-field" style="max-width: 320px;">
+          <label>Calculation Mode</label>
+          <select [(ngModel)]="ptCalculationMode">
+            @for (m of ptCalculationModes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
+          </select>
         </div>
+        @if (ptCalculationMode === 'FLAT') {
+          <div class="form-field" style="max-width: 220px;">
+            <label>Flat Amount (₹/month)</label>
+            <input type="number" min="0" [(ngModel)]="professionalTax" />
+          </div>
+        } @else {
+          <p class="muted" style="font-size: 0.82rem;">
+            <i class="bi bi-info-circle"></i> PT will be looked up from your
+            <a routerLink="/payroll/pt-slabs">Professional Tax Slabs</a> by each employee's gross salary.
+          </p>
+        }
       }
 
       @if (overtimeFeatureEnabled()) {

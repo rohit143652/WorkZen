@@ -55,6 +55,7 @@ public class EmployeeOnboardingService {
     private final ClientCompanyRepository clientCompanyRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final com.example.application.common.email.EmailTemplateService emailTemplateService;
     private final AuditService auditService;
     private final com.example.application.common.tenant.TenantContextService tenantContext;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -74,7 +75,8 @@ public class EmployeeOnboardingService {
     public EmployeeOnboardingService(EmployeeOnboardingInvitationRepository invitationRepository,
                                       EmployeeRepository employeeRepository, UserRepository userRepository,
                                       ClientCompanyRepository clientCompanyRepository, PasswordEncoder passwordEncoder,
-                                      EmailService emailService, AuditService auditService,
+                                      EmailService emailService, com.example.application.common.email.EmailTemplateService emailTemplateService,
+                                      AuditService auditService,
                                       com.example.application.common.tenant.TenantContextService tenantContext) {
         this.invitationRepository = invitationRepository;
         this.employeeRepository = employeeRepository;
@@ -82,6 +84,7 @@ public class EmployeeOnboardingService {
         this.clientCompanyRepository = clientCompanyRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
         this.auditService = auditService;
         this.tenantContext = tenantContext;
     }
@@ -95,7 +98,7 @@ public class EmployeeOnboardingService {
      * leaving two working links.
      */
     @Transactional
-    public void createInvitation(Employee employee, User user, Long actorId, HttpServletRequest httpRequest) {
+    public boolean createInvitation(Employee employee, User user, Long actorId, HttpServletRequest httpRequest) {
         invitationRepository.findAllByEmployeeIdAndStatus(employee.getId(), "PENDING")
                 .forEach(existing -> {
                     existing.setStatus("SUPERSEDED");
@@ -118,24 +121,30 @@ public class EmployeeOnboardingService {
         employee.setOnboardingStatus("INVITED");
         employeeRepository.save(employee);
 
-        sendInvitationEmail(employee, token, code);
+        boolean emailSent = sendInvitationEmail(employee, token, code);
 
+        // The email's actual success/failure is recorded here (viewable on the Audit Logs page)
+        // specifically because it was previously only ever visible in the backend's own console
+        // output - an admin had no practical way to check whether an invitation really went out.
         auditService.log(actorId, "ONBOARDING_INVITATION_SENT",
-                "Sent onboarding invitation to employee " + employee.getEmployeeCode(), httpRequest);
+                "Sent onboarding invitation to employee " + employee.getEmployeeCode()
+                        + (emailSent ? "" : " - EMAIL FAILED TO SEND, please use Resend Invitation"), httpRequest);
+        return emailSent;
     }
 
-    /** Admin action - invalidates any existing invitation and sends a completely new one. Reuses createInvitation()'s own supersede logic, so there is never a stale still-working link left behind. */
+    /** Admin action - invalidates any existing invitation and sends a completely new one. Reuses createInvitation()'s own supersede logic, so there is never a stale still-working link left behind. Returns whether the email actually sent - previously discarded, leaving the admin no way to know a "resend" had silently failed to deliver. */
     @Transactional
-    public void resendInvitation(Long employeeId, Long actorId, HttpServletRequest httpRequest) {
+    public boolean resendInvitation(Long employeeId, Long actorId, HttpServletRequest httpRequest) {
         Long tenantId = tenantContext.requireCurrentTenantId();
         Employee employee = employeeRepository.findByIdAndClientCompanyId(employeeId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
         if (!employee.hasLogin()) {
             throw new BadRequestException("This employee does not have a login account - use Enable Login first.");
         }
-        createInvitation(employee, employee.getUser(), actorId, httpRequest);
+        boolean emailSent = createInvitation(employee, employee.getUser(), actorId, httpRequest);
         invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(employeeId)
                 .ifPresent(inv -> { inv.setResentAt(LocalDateTime.now()); invitationRepository.save(inv); });
+        return emailSent;
     }
 
     /** Public (unauthenticated) - the onboarding landing page's first call. Exposes only what's needed to greet the employee safely: their name, the company name, and whether the link is already expired/used. Never exposes the employee id, user id, or anything else. */
@@ -242,27 +251,22 @@ public class EmployeeOnboardingService {
                 .orElseThrow(() -> new BadRequestException("This invitation link is invalid or no longer active."));
     }
 
-    private void sendInvitationEmail(Employee employee, String token, String code) {
+    private boolean sendInvitationEmail(Employee employee, String token, String code) {
         ClientCompany company = clientCompanyRepository.findById(employee.getClientCompanyId()).orElse(null);
         String companyName = company != null ? company.getCompanyName() : "your company";
         String link = frontendBaseUrl + "/employee-onboarding/" + token;
         String employeeName = (employee.getFirstName() + " " + employee.getLastName()).trim();
 
-        String html = "<div style=\"font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;\">"
-                + "<h2>Welcome to " + escapeHtml(companyName) + "</h2>"
-                + "<p>Hello " + escapeHtml(employeeName) + ",</p>"
-                + "<p>Your employee account has been created.</p>"
-                + "<p><strong>Employee Number:</strong> " + escapeHtml(employee.getEmployeeCode()) + "</p>"
-                + "<p>Click the secure link below to activate your account and complete your profile:</p>"
-                + "<p><a href=\"" + link + "\" style=\"display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;"
-                + "text-decoration:none;border-radius:6px;\">Activate My Account</a></p>"
-                + "<p>You'll be asked to enter this one-time verification code before setting your password:</p>"
-                + "<p style=\"font-size: 28px; font-weight: bold; letter-spacing: 4px;\">" + code + "</p>"
-                + "<p style=\"color:#666; font-size: 13px;\">This code and link expire in " + invitationExpiryHours + " hours.</p>"
-                + "<p style=\"color:#666; font-size: 13px;\">If you did not expect this email, you can safely ignore it.</p>"
-                + "</div>";
+        String html = emailTemplateService.render("employee-invitation", java.util.Map.of(
+                "companyName", companyName,
+                "employeeName", employeeName,
+                "employeeCode", employee.getEmployeeCode(),
+                "link", link,
+                "code", code,
+                "expiryHours", String.valueOf(invitationExpiryHours)
+        ));
 
-        emailService.sendHtml(employee.getEmail(), "Activate your account - " + companyName, html);
+        return emailService.sendHtml(employee.getEmail(), "Activate your account - " + companyName, html);
     }
 
     private static String escapeHtml(String s) {

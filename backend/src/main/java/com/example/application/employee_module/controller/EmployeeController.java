@@ -39,10 +39,11 @@ public class EmployeeController {
             @RequestParam(required = false) String department,
             @RequestParam(required = false) Boolean loginEnabled,
             @RequestParam(required = false) String onboardingFilter,
+            @RequestParam(required = false) java.util.List<Long> siteIds,
             @RequestParam(required = false) Long clientCompanyId,
             Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success("OK",
-                employeeService.search(search, status, department, loginEnabled, onboardingFilter, clientCompanyId, pageable)));
+                employeeService.search(search, status, department, loginEnabled, onboardingFilter, siteIds, clientCompanyId, pageable)));
     }
 
     @GetMapping("/{id}")
@@ -90,7 +91,13 @@ public class EmployeeController {
                                                                   @AuthenticationPrincipal CustomUserPrincipal principal,
                                                                   HttpServletRequest httpRequest) {
         EmployeeResponse created = employeeService.create(request, principal.getId(), httpRequest);
-        return ResponseEntity.status(201).body(ApiResponse.success("Employee created successfully", created));
+        String message = "Employee created successfully";
+        if (Boolean.TRUE.equals(created.getInvitationEmailSent())) {
+            message += ". Invitation email sent.";
+        } else if (Boolean.FALSE.equals(created.getInvitationEmailSent())) {
+            message += ", but the invitation email could NOT be sent - use Resend Invitation from the employee's page.";
+        }
+        return ResponseEntity.status(201).body(ApiResponse.success(message, created));
     }
 
     @PutMapping("/{id}")
@@ -147,8 +154,14 @@ public class EmployeeController {
                                                                        @Valid @RequestBody EnableLoginRequest request,
                                                                        @AuthenticationPrincipal CustomUserPrincipal principal,
                                                                        HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(ApiResponse.success("Login access enabled successfully",
-                employeeService.enableLogin(id, request, principal.getId(), httpRequest)));
+        EmployeeResponse updated = employeeService.enableLogin(id, request, principal.getId(), httpRequest);
+        String message = "Login access enabled successfully";
+        if (Boolean.TRUE.equals(updated.getInvitationEmailSent())) {
+            message += ". Invitation email sent.";
+        } else if (Boolean.FALSE.equals(updated.getInvitationEmailSent())) {
+            message += ", but the invitation email could NOT be sent - use Resend Invitation from the employee's page.";
+        }
+        return ResponseEntity.ok(ApiResponse.success(message, updated));
     }
 
     @PostMapping("/{id}/disable-login")
@@ -172,14 +185,16 @@ public class EmployeeController {
 
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAuthority('EMPLOYEE_RESET_PASSWORD')")
-    public ResponseEntity<ApiResponse<Map<String, String>>> resetPassword(@PathVariable Long id,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resetPassword(@PathVariable Long id,
                                                                             @AuthenticationPrincipal CustomUserPrincipal principal,
                                                                             HttpServletRequest httpRequest) {
-        String tempPassword = employeeService.resetPassword(id, principal.getId(), httpRequest);
-        // Returned exactly once, here, and never logged or persisted in plain text.
-        return ResponseEntity.ok(ApiResponse.success(
-                "Temporary password issued. It will not be shown again.",
-                Map.of("temporaryPassword", tempPassword)));
+        var result = employeeService.resetPassword(id, principal.getId(), httpRequest);
+        // Password returned exactly once, here, and never logged or persisted in plain text.
+        String message = result.emailSent()
+                ? "Temporary password issued. It will not be shown again. The employee has also been emailed this password."
+                : "Temporary password issued. It will not be shown again. The employee could NOT be emailed - please share this password with them directly.";
+        return ResponseEntity.ok(ApiResponse.success(message,
+                Map.of("temporaryPassword", result.temporaryPassword(), "emailSent", result.emailSent())));
     }
 
     /** A downloadable starting point with the exact expected headers plus one example row. */

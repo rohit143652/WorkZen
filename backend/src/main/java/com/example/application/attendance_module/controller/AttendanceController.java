@@ -155,8 +155,9 @@ public class AttendanceController {
     /** Company-wide "who's checked in today" snapshot for the admin dashboard - see AttendanceService.getTodayOverview(). */
     @GetMapping("/today-overview")
     @PreAuthorize("hasAuthority('ATTENDANCE_READ')")
-    public ResponseEntity<ApiResponse<TodayAttendanceOverviewResponse>> todayOverview() {
-        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.getTodayOverview()));
+    public ResponseEntity<ApiResponse<TodayAttendanceOverviewResponse>> todayOverview(
+            @RequestParam(required = false) java.util.List<Long> siteIds) {
+        return ResponseEntity.ok(ApiResponse.success("OK", attendanceService.getTodayOverview(siteIds)));
     }
 
     @PostMapping("/check-in")

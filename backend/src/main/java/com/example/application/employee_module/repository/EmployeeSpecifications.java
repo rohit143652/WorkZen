@@ -39,6 +39,28 @@ public final class EmployeeSpecifications {
     }
 
     /**
+     * Global Site Context (empty/null = no filter, every employee in the company). Employee has
+     * no direct siteId column - site membership lives in the separate EmployeeSiteAssignment
+     * table, so this is a subquery: "this employee has a currently-ACTIVE assignment to one of
+     * the given sites". An employee with no site assignment at all is correctly excluded once a
+     * specific site filter is applied, matching how the Monthly Attendance Report already treats
+     * unassigned employees (only shown under "All Sites", never under a specific one).
+     */
+    public static Specification<Employee> inSites(java.util.List<Long> siteIds) {
+        return (root, query, cb) -> {
+            if (siteIds == null || siteIds.isEmpty()) return cb.conjunction();
+            var subquery = query.subquery(Long.class);
+            var assignmentRoot = subquery.from(com.example.application.employee_assignment_module.entity.EmployeeSiteAssignment.class);
+            subquery.select(assignmentRoot.get("employeeId"))
+                    .where(cb.and(
+                            assignmentRoot.get("siteId").in(siteIds),
+                            cb.equal(assignmentRoot.get("status"), "ACTIVE")
+                    ));
+            return root.get("id").in(subquery);
+        };
+    }
+
+    /**
      * Onboarding progress filter - accepts the exact set of statuses that make up one logical
      * filter option (see EmployeeService.search()'s onboardingFilter param for what each option
      * maps to). Passing null/empty is "no filter", matching every other Specification here.

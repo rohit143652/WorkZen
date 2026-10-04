@@ -77,7 +77,10 @@ public class PayrollRunService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeSiteAssignmentRepository siteAssignmentRepository;
     private final SiteRepository siteRepository;
+    private final com.example.application.site_module.service.SiteAccessService siteAccessService;
     private final PayrollSettingsResolver payrollSettingsResolver;
+    private final PayrollWorkingDaysResolver payrollWorkingDaysResolver;
+    private final ProfessionalTaxSlabService professionalTaxSlabService;
     private final EmployeePayrollAdjustmentRepository payrollAdjustmentRepository;
     private final PayrollInputResolver payrollInputResolver;
     private final PayrollCalculationService payrollCalculationService;
@@ -95,7 +98,10 @@ public class PayrollRunService {
                               AttendanceRepository attendanceRepository,
                               EmployeeSiteAssignmentRepository siteAssignmentRepository,
                               SiteRepository siteRepository,
+                              com.example.application.site_module.service.SiteAccessService siteAccessService,
                               PayrollSettingsResolver payrollSettingsResolver,
+                              PayrollWorkingDaysResolver payrollWorkingDaysResolver,
+                              ProfessionalTaxSlabService professionalTaxSlabService,
                               EmployeePayrollAdjustmentRepository payrollAdjustmentRepository,
                               PayrollInputResolver payrollInputResolver,
                               PayrollCalculationService payrollCalculationService,
@@ -112,7 +118,10 @@ public class PayrollRunService {
         this.attendanceRepository = attendanceRepository;
         this.siteAssignmentRepository = siteAssignmentRepository;
         this.siteRepository = siteRepository;
+        this.siteAccessService = siteAccessService;
         this.payrollSettingsResolver = payrollSettingsResolver;
+        this.payrollWorkingDaysResolver = payrollWorkingDaysResolver;
+        this.professionalTaxSlabService = professionalTaxSlabService;
         this.payrollAdjustmentRepository = payrollAdjustmentRepository;
         this.payrollInputResolver = payrollInputResolver;
         this.payrollCalculationService = payrollCalculationService;
@@ -154,8 +163,11 @@ public class PayrollRunService {
         run.setMonth(month);
         run.setStatus("DRAFT");
         run.setRemarks(request.getRemarks());
-        run.setSiteIds(request.getSiteIds() != null && !request.getSiteIds().isEmpty()
-                ? request.getSiteIds().stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","))
+        // Global Site Context: never trusts the requested scope directly - validated through the
+        // one central authorization check first (rejects any site the caller isn't authorized for).
+        java.util.List<Long> validatedSiteIds = siteAccessService.resolveRequestedSiteIdsOrBadRequest(tenantId, request.getSiteIds());
+        run.setSiteIds(!validatedSiteIds.isEmpty()
+                ? validatedSiteIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","))
                 : null);
         run.setCreatedBy(actorId);
         PayrollRun saved = payrollRunRepository.save(run);
@@ -188,7 +200,14 @@ public class PayrollRunService {
         YearMonth yearMonth = YearMonth.of(run.getYear(), run.getMonth());
         LocalDate monthStart = yearMonth.atDay(1);
         LocalDate monthEnd = yearMonth.atEndOfMonth();
-        int daysInMonth = yearMonth.lengthOfMonth();
+        int calendarDaysInMonth = yearMonth.lengthOfMonth();
+        // Resolved earlier than before so the configurable working-days basis (Calendar / Working
+        // / Fixed - spec section 3) is known before any proration math runs. Kept distinct from
+        // calendarDaysInMonth above: that figure is still shown to the user as "N calendar days in
+        // this month" (e.g. on the payslip), while THIS one is what Basic/DA/Gross are actually
+        // divided by - they're only ever equal under the (default) CALENDAR_DAYS basis.
+        PayrollSettings payrollSettings = payrollSettingsResolver.resolve(tenantId, run.getYear(), run.getMonth());
+        int daysInMonth = payrollWorkingDaysResolver.resolve(payrollSettings, yearMonth);
 
         List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
         if (run.getSiteIds() != null && !run.getSiteIds().isBlank()) {
@@ -223,7 +242,6 @@ public class PayrollRunService {
         }
 
         Map<Long, SalaryStructureResponse> structureCache = new HashMap<>();
-        PayrollSettings payrollSettings = payrollSettingsResolver.resolve(tenantId, run.getYear(), run.getMonth());
         Map<Long, EmployeePayrollAdjustment> adjustmentByEmployee = payrollAdjustmentRepository
                 .findAllByClientCompanyIdAndYearAndMonth(tenantId, run.getYear(), run.getMonth())
                 .stream().collect(Collectors.toMap(EmployeePayrollAdjustment::getEmployeeId, a -> a));
@@ -254,13 +272,20 @@ public class PayrollRunService {
             BigDecimal overtimeAmount = overtimeTotals.amount();
             BigDecimal overtimeHours = overtimeTotals.hours();
 
+            // Professional Tax (spec section 12): SLAB mode looks up the matching band by this
+            // employee's Gross for the month; FLAT (the default, unchanged prior behavior) uses
+            // the single company-wide amount directly.
+            BigDecimal ptAmount = "SLAB".equals(payrollSettings.getPtCalculationMode())
+                    ? professionalTaxSlabService.resolveAmount(tenantId, in.getTotalGross(), monthEnd)
+                    : payrollSettings.getProfessionalTax();
+
             PayrollCalculationInput calcInput = PayrollCalculationInput.builder()
                     .tenantId(tenantId).employeeId(e.getId()).year(run.getYear()).month(run.getMonth()).payrollRunId(run.getId())
                     .basicSalary(in.getBasicSalary()).da(in.getDa()).totalGross(in.getTotalGross())
                     .pf(payrollSettings.isEpfEnabled() && e.isPfApplicable(), payrollSettings.getEpfEmployeePercent(), payrollSettings.getEpfEmployerPercent())
                     .pfCalculationBase(payrollSettings.getPfCalculationBase())
                     .esi(payrollSettings.isEsiEnabled() && e.isEsiApplicable(), payrollSettings.getEsiEmployeePercent(), payrollSettings.getEsiEmployerPercent(), payrollSettings.getEsiWageCeiling())
-                    .pt(payrollSettings.isPtEnabled() && e.isPtApplicable(), payrollSettings.getProfessionalTax())
+                    .pt(payrollSettings.isPtEnabled() && e.isPtApplicable(), ptAmount)
                     .otherManualDeduction(manualDeduction).allowance(manualAllowance)
                     .overtime(overtimeAmount)
                     .build();
@@ -290,7 +315,7 @@ public class PayrollRunService {
             pre.setSalaryStructureName(in.getStructureName());
             pre.setSalaryType(in.getSalaryType());
 
-            pre.setTotalCalendarDays(daysInMonth);
+            pre.setTotalCalendarDays(calendarDaysInMonth);
             pre.setPresentDays((int) in.getPresentDays());
             pre.setHalfDays((int) in.getHalfDays());
             pre.setOnLeaveDays((int) in.getOnLeaveDays());

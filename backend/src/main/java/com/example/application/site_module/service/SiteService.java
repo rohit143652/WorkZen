@@ -25,13 +25,28 @@ public class SiteService {
     private final EmployeeSiteAssignmentRepository assignmentRepository;
     private final TenantContextService tenantContext;
     private final AuditService auditService;
+    private final com.example.application.site_module.service.SiteAccessService siteAccessService;
 
     public SiteService(SiteRepository siteRepository, EmployeeSiteAssignmentRepository assignmentRepository,
-                        TenantContextService tenantContext, AuditService auditService) {
+                        TenantContextService tenantContext, AuditService auditService,
+                        com.example.application.site_module.service.SiteAccessService siteAccessService) {
         this.siteRepository = siteRepository;
         this.assignmentRepository = assignmentRepository;
         this.tenantContext = tenantContext;
         this.auditService = auditService;
+        this.siteAccessService = siteAccessService;
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<SiteResponse> findMyAccessibleSites() {
+        Long tenantId = tenantContext.currentTenantIdOrNull();
+        if (tenantId == null) return java.util.List.of(); // SUPER_ADMIN has no single company's sites to list here.
+        java.util.Set<Long> authorized = siteAccessService.getAuthorizedSiteIds(tenantId);
+        java.util.List<Site> sites = siteRepository.findAllByClientCompanyId(tenantId);
+        if (authorized != null) {
+            sites = sites.stream().filter(s -> authorized.contains(s.getId())).toList();
+        }
+        return sites.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)

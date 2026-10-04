@@ -21,14 +21,23 @@
 @if (showCamera()) {
   <div class="modal-overlay" (click)="closeCamera()">
     <div class="modal-box card" style="max-width: 420px; text-align: center;" (click)="$event.stopPropagation()">
-      <div class="section-title" style="margin-top: 0;">Take a Photo</div>
-      <video #videoEl autoplay playsinline [class.mirrored]="isFrontCamera"
-             style="width: 100%; border-radius: var(--radius-sm); background: #000;"></video>
-      <div class="form-actions" style="justify-content: center; margin-top: 1rem;">
-        <button type="button" class="btn btn-secondary" (click)="closeCamera()">Cancel</button>
-        <button type="button" class="btn btn-secondary" (click)="switchCamera()" title="Switch Camera"><i class="bi bi-arrow-repeat"></i> Switch Camera</button>
-        <button type="button" class="btn btn-primary" (click)="capturePhoto()"><i class="bi bi-camera-fill"></i> Take Photo</button>
-      </div>
+      @if (reviewingPhoto(); as photo) {
+        <div class="section-title" style="margin-top: 0;">Review Photo</div>
+        <img [src]="photo" style="width: 100%; border-radius: var(--radius-sm); display: block;" alt="Captured photo" />
+        <div class="form-actions" style="justify-content: center; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" (click)="retake()"><i class="bi bi-arrow-counterclockwise"></i> Retake</button>
+          <button type="button" class="btn btn-primary" (click)="confirmPhoto()"><i class="bi bi-check-lg"></i> Confirm</button>
+        </div>
+      } @else {
+        <div class="section-title" style="margin-top: 0;">Take a Photo</div>
+        <video #videoEl autoplay playsinline [class.mirrored]="isFrontCamera"
+               style="width: 100%; border-radius: var(--radius-sm); background: #000;"></video>
+        <div class="form-actions" style="justify-content: center; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" (click)="closeCamera()">Cancel</button>
+          <button type="button" class="btn btn-secondary" (click)="switchCamera()" title="Switch Camera"><i class="bi bi-arrow-repeat"></i> Switch Camera</button>
+          <button type="button" class="btn btn-primary" (click)="capturePhoto()"><i class="bi bi-camera-fill"></i> Take Photo</button>
+        </div>
+      }
     </div>
   </div>
 }

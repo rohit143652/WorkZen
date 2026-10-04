@@ -18,11 +18,15 @@ public class PayrollSettingsResponse {
     private boolean ptEnabled;
     private BigDecimal professionalTax;
     private String pfCalculationBase;
+    private String workingDaysBasis;
+    private Integer fixedWorkingDays;
+    private String ptCalculationMode;
 
     public PayrollSettingsResponse(boolean epfEnabled, BigDecimal epfEmployeePercent, BigDecimal epfEmployerPercent,
                                     boolean esiEnabled, BigDecimal esiEmployeePercent, BigDecimal esiEmployerPercent,
                                     BigDecimal esiWageCeiling, boolean ptEnabled, BigDecimal professionalTax,
-                                    String pfCalculationBase) {
+                                    String pfCalculationBase, String workingDaysBasis, Integer fixedWorkingDays,
+                                    String ptCalculationMode) {
         this.epfEnabled = epfEnabled;
         this.epfEmployeePercent = epfEmployeePercent;
         this.epfEmployerPercent = epfEmployerPercent;
@@ -33,6 +37,9 @@ public class PayrollSettingsResponse {
         this.ptEnabled = ptEnabled;
         this.professionalTax = professionalTax;
         this.pfCalculationBase = pfCalculationBase;
+        this.workingDaysBasis = workingDaysBasis;
+        this.fixedWorkingDays = fixedWorkingDays;
+        this.ptCalculationMode = ptCalculationMode;
     }
 
     public Long getId() { return id; }
@@ -53,4 +60,7 @@ public class PayrollSettingsResponse {
     public boolean isPtEnabled() { return ptEnabled; }
     public BigDecimal getProfessionalTax() { return professionalTax; }
     public String getPfCalculationBase() { return pfCalculationBase; }
+    public String getWorkingDaysBasis() { return workingDaysBasis; }
+    public Integer getFixedWorkingDays() { return fixedWorkingDays; }
+    public String getPtCalculationMode() { return ptCalculationMode; }
 }

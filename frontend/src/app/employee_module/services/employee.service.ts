@@ -14,6 +14,8 @@ export interface EmployeeSearchParams {
   loginEnabled?: boolean;
   /** 'ONBOARDING_PENDING' | 'MANDATORY_PROFILE_INCOMPLETE' | 'PROFILE_COMPLETE' - see backend EmployeeService.onboardingStatusesFor() for exactly what each maps to. */
   onboardingFilter?: string;
+  /** Global Site Context - empty/omitted means every site the caller is authorized to see. */
+  siteIds?: number[];
   page?: number;
   size?: number;
   sort?: string;
@@ -27,7 +29,10 @@ export class EmployeeService {
   search(params: EmployeeSearchParams): Observable<PageResult<EmployeeResponse>> {
     let httpParams = new HttpParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value === undefined || value === null || value === '') return;
+      if (Array.isArray(value)) {
+        value.forEach(v => { httpParams = httpParams.append(key, String(v)); });
+      } else {
         httpParams = httpParams.set(key, String(value));
       }
     });
@@ -78,10 +83,10 @@ export class EmployeeService {
     return this.http.put<ApiEnvelope<EmployeeResponse>>(`${this.baseUrl}/${id}/role`, request).pipe(map(e => e.data));
   }
 
-  resetPassword(id: number): Observable<string> {
+  resetPassword(id: number): Observable<{ temporaryPassword: string; emailSent: boolean }> {
     return this.http
-      .post<ApiEnvelope<{ temporaryPassword: string }>>(`${this.baseUrl}/${id}/reset-password`, {})
-      .pipe(map(e => e.data.temporaryPassword));
+      .post<ApiEnvelope<{ temporaryPassword: string; emailSent: boolean }>>(`${this.baseUrl}/${id}/reset-password`, {})
+      .pipe(map(e => e.data));
   }
 
   downloadImportTemplate(): Observable<Blob> {
@@ -97,8 +102,8 @@ export class EmployeeService {
   }
 
   /** Admin/HR action - invalidates any existing invitation for this employee and sends a fresh one (see backend EmployeeOnboardingService.resendInvitation()). */
-  resendInvitation(employeeId: number): Observable<void> {
-    return this.http.post<ApiEnvelope<void>>(`${environment.apiUrl}/onboarding/resend-invitation/${employeeId}`, {}).pipe(map(() => void 0));
+  resendInvitation(employeeId: number): Observable<boolean> {
+    return this.http.post<ApiEnvelope<boolean>>(`${environment.apiUrl}/onboarding/resend-invitation/${employeeId}`, {}).pipe(map(e => e.data));
   }
 
   /** The logged-in user's OWN full employee record - used to pre-fill the "My Profile" edit form before Save, so unedited fields aren't accidentally blanked out. */

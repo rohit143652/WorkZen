@@ -31,13 +31,15 @@ export class PhotoCaptureComponent implements OnDestroy {
   @Output() photoDataChange = new EventEmitter<string | null>();
   /** When true, hides the upload/preview/capture-button UI entirely - only the camera modal itself (triggered externally via a parent calling openCamera() through a ViewChild reference) is available. Used for flows like "selfie required for check-in" where the camera should open directly on a single button click, with no separate capture-widget step first. */
   @Input() hideInlineControls = false;
+  /** Which camera opens by default when openCamera() is called - 'user' (front) for selfie-style captures like attendance check-in/out, 'environment' (back) for employee ID-style photos where someone else usually takes the shot. Callers can still switch cameras manually via the Switch Camera button either way. */
+  @Input() defaultFacingMode: 'user' | 'environment' = 'environment';
 
   @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
   @ViewChild('videoEl') videoRef?: ElementRef<HTMLVideoElement>;
 
   readonly showCamera = signal(false);
-  /** Starts on the back camera - more useful default for an employee ID-style photo (someone
-      else usually takes it), with an explicit switch button for the front/selfie camera. */
+  /** The just-captured photo, shown full-screen with Retake/Confirm before it's actually committed (photoDataChange only fires on Confirm) - null while the live camera preview is showing, or after the modal is fully closed. */
+  readonly reviewingPhoto = signal<string | null>(null);
   private facingMode: 'user' | 'environment' = 'environment';
   private stream: MediaStream | null = null;
 
@@ -67,10 +69,11 @@ export class PhotoCaptureComponent implements OnDestroy {
 
   async openCamera(): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
-      this.toast.error('Camera access is not available on this device/browser.');
+      this.toast.error('Camera access is not available on this device/browser. Please use a browser that supports camera capture.');
       return;
     }
-    this.facingMode = 'environment';
+    this.facingMode = this.defaultFacingMode;
+    this.reviewingPhoto.set(null);
     this.showCamera.set(true);
     await this.startStream();
   }
@@ -92,12 +95,24 @@ export class PhotoCaptureComponent implements OnDestroy {
       setTimeout(() => {
         if (this.videoRef) this.videoRef.nativeElement.srcObject = this.stream;
       });
-    } catch {
-      this.toast.error(
-        this.facingMode === 'environment'
-          ? 'Unable to access the back camera - your device may only have a front camera, or check camera permissions.'
-          : 'Unable to access the camera - check your browser/device camera permissions.'
-      );
+    } catch (err: any) {
+      // Distinguishes "you said no" from "there's genuinely no camera" from anything else -
+      // a generic message for all three would leave someone who just needs to grant permission
+      // no idea that's all that's wrong.
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        this.toast.error('Camera access was denied. Please allow camera permission in your browser settings and try again.');
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        this.toast.error('No camera was found on this device. Please connect a camera or use a device with one.');
+      } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+        this.toast.error('The camera is already in use by another application. Please close it and try again.');
+      } else {
+        this.toast.error(
+          this.facingMode === 'environment'
+            ? 'Unable to access the back camera - your device may only have a front camera, or check camera permissions.'
+            : 'Unable to access the camera - check your browser/device camera permissions.'
+        );
+      }
+      this.showCamera.set(false);
     }
   }
 
@@ -119,13 +134,32 @@ export class PhotoCaptureComponent implements OnDestroy {
       ctx?.scale(-1, 1);
     }
     ctx?.drawImage(video, 0, 0);
-    this.compressAndSet(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+    // Stops the live stream immediately (no need to keep the camera running while reviewing),
+    // but keeps the modal itself open to show the review step - closeCamera() is only called
+    // once the employee actually confirms or cancels below.
+    this.stream?.getTracks().forEach(track => track.stop());
+    this.stream = null;
+    this.reviewingPhoto.set(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+  }
+
+  /** Discards the just-captured photo and restarts the live camera - lets the employee try again without leaving the modal. */
+  async retake(): Promise<void> {
+    this.reviewingPhoto.set(null);
+    await this.startStream();
+  }
+
+  /** Explicit commit step - only now does the captured photo actually become this component's value and get emitted to the parent. Compulsory-selfie flows (e.g. attendance check-in) key their auto-submit off THIS event, never off the raw capture, so nothing is finalized until the employee has reviewed and accepted the photo. */
+  confirmPhoto(): void {
+    const photo = this.reviewingPhoto();
+    if (!photo) return;
+    this.compressAndSet(photo);
     this.closeCamera();
   }
 
   closeCamera(): void {
     this.stream?.getTracks().forEach(track => track.stop());
     this.stream = null;
+    this.reviewingPhoto.set(null);
     this.showCamera.set(false);
   }
 

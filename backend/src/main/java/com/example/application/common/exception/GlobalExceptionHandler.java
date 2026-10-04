@@ -85,6 +85,20 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, GENERIC_AUTH_MESSAGE, req);
     }
 
+    /**
+     * "No credentials were presented at all" (e.g. the refresh endpoint got no cookie and no body
+     * token) is a DIFFERENT situation from "wrong username/password" - there's no username-
+     * enumeration risk in saying so, since nothing was guessed. Needs its own handler (more
+     * specific than the plain AuthenticationException one below, so Spring prefers this one)
+     * because this was previously masked behind the generic login message, making a missing
+     * refresh-token cookie indistinguishable from an actually-invalid one in the response.
+     */
+    @ExceptionHandler(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCredentialsNotFound(
+            org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), req);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, GENERIC_AUTH_MESSAGE, req);

@@ -23,7 +23,9 @@ export class ManageFeaturesComponent {
   private readonly clientCompanyService = inject(ClientCompanyService);
   private readonly toast = inject(ToastService);
 
-  private readonly companyId = Number(this.route.snapshot.paramMap.get('id'));
+  readonly companyId = Number(this.route.snapshot.paramMap.get('id'));
+  /** Alias for template readability where "for this link" matters more than the raw field name. */
+  get companyIdForLink(): number { return this.companyId; }
 
   readonly loading = signal(true);
   readonly saving = signal(false);

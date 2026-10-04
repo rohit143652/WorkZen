@@ -10,7 +10,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+        name = "uq_users_company_email", columnNames = {"client_company_id", "email"}))
 public class User {
 
     @Id
@@ -33,7 +34,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
-    @Column(nullable = false, unique = true, length = 150)
+    /** Unique per-company, not globally - see the class-level @Table uniqueConstraints (V118 migration). Two unrelated client companies may have a user with the same email; two users within the SAME company may not. */
+    @Column(nullable = false, length = 150)
     private String email;
 
     @Column(nullable = false)

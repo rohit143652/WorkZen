@@ -123,7 +123,7 @@ export class MonthlyReportComponent {
   }
 
   readonly loading = signal(false);
-  readonly downloading = signal<'xlsx' | 'pdf' | null>(null);
+  readonly downloading = signal<'xlsx' | 'pdf' | 'muster' | null>(null);
   readonly report = signal<MonthlyAttendanceReportResponse | null>(null);
 
   // ---- Inline "edit paid leave" directly in the report table ----
@@ -168,6 +168,28 @@ export class MonthlyReportComponent {
       error: err => {
         this.downloading.set(null);
         extractBlobErrorMessage(err, 'Unable to generate the report. Please try again.').then(message => this.toast.error(message));
+      }
+    });
+  }
+
+  downloadMusterBook(): void {
+    this.downloading.set('muster');
+    this.attendanceService.downloadMusterBook(this.year, this.month, this.currentSiteIdsParam()).subscribe({
+      next: blob => {
+        const monthLabel = String(this.month).padStart(2, '0');
+        const filename = `Monthly-Muster-Book-${this.year}-${monthLabel}.xlsx`;
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        this.downloading.set(null);
+        this.toast.success('Muster book downloaded.');
+      },
+      error: err => {
+        this.downloading.set(null);
+        extractBlobErrorMessage(err, 'Unable to generate the muster book. Please try again.').then(message => this.toast.error(message));
       }
     });
   }

@@ -56,6 +56,7 @@ class EmployeeOnboardingServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private ClientCompanyRepository clientCompanyRepository;
     @Mock private EmailService emailService;
+    @Mock private com.example.application.common.email.EmailTemplateService emailTemplateService;
     @Mock private AuditService auditService;
     @Mock private TenantContextService tenantContext;
 
@@ -68,7 +69,7 @@ class EmployeeOnboardingServiceTest {
     @BeforeEach
     void setUp() {
         service = new EmployeeOnboardingService(invitationRepository, employeeRepository, userRepository,
-                clientCompanyRepository, passwordEncoder, emailService, auditService, tenantContext);
+                clientCompanyRepository, passwordEncoder, emailService, emailTemplateService, auditService, tenantContext);
         ReflectionTestUtils.setField(service, "frontendBaseUrl", "http://localhost:4200");
         ReflectionTestUtils.setField(service, "invitationExpiryHours", 24L);
         ReflectionTestUtils.setField(service, "maxCodeAttempts", 5);

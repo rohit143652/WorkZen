@@ -30,6 +30,12 @@ public class TenantContextService {
         return principal;
     }
 
+    /** Null-safe counterpart to currentPrincipal() above - for callers (like SiteAccessService) that may run in a context with no authenticated principal at all and need to handle that gracefully rather than throw. */
+    public CustomUserPrincipal currentPrincipalOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (authentication != null && authentication.getPrincipal() instanceof CustomUserPrincipal principal) ? principal : null;
+    }
+
     public boolean isSuperAdmin() {
         return currentPrincipal().getRoleNames().contains("SUPER_ADMIN");
     }

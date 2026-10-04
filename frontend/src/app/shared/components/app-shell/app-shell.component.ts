@@ -73,7 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Attendance', icon: 'clock-history',
     children: [
       { label: 'Mark Attendance', path: '/attendance', icon: 'check2-square', permission: 'ATTENDANCE_CREATE', feature: 'ATTENDANCE_MANAGEMENT' },
-      { label: "Today's Attendance", path: '/attendance/my', icon: 'geo-alt', permission: 'ATTENDANCE_SELF_MARK', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
+      { label: 'My Attendance History', path: '/attendance/my', icon: 'geo-alt', permission: 'ATTENDANCE_SELF_MARK', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
       { label: 'Attendance History', path: '/attendance/history', icon: 'clock-history', permission: 'ATTENDANCE_READ', feature: 'ATTENDANCE_MANAGEMENT' },
       { label: 'Correction Requests', path: '/attendance/correction-requests', icon: 'pencil-square', permission: 'ATTENDANCE_CORRECTION_REQUEST', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
       { label: 'Review Corrections', path: '/attendance/correction-review', icon: 'clipboard-check', permission: 'ATTENDANCE_CORRECTION_REVIEW', feature: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'] },
@@ -98,6 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Salary Structures', path: '/salary-structures', icon: 'cash-stack', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Salary Components', path: '/salary-components', icon: 'sliders', permission: 'SALARY_STRUCTURE_READ' },
       { label: 'Payroll Settings', path: '/payroll/settings', icon: 'gear', permission: 'PAYROLL_REGISTER_EXPORT' },
+      { label: 'Professional Tax Slabs', path: '/payroll/pt-slabs', icon: 'receipt', permission: 'PAYROLL_REGISTER_EXPORT' },
       { label: 'Payroll Processing', path: '/payroll/runs', icon: 'journal-check', permission: 'PAYROLL_RUN_READ' },
       { label: 'Overtime Register', path: '/payroll/overtime', icon: 'clock-history', permission: ['OVERTIME_RECORD_MANAGE', 'OVERTIME_RECORD_READ'], feature: 'OVERTIME_MANAGEMENT' },
       { label: 'My Payslip', path: '/payroll/my-payslip', icon: 'receipt', permission: 'PAYSLIP_SELF_VIEW' }

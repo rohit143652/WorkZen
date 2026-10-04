@@ -61,6 +61,8 @@ class PayrollRunServiceTest {
     @Mock private FeatureAccessService featureAccessService;
     @Mock private EmployeeOvertimeService overtimeService;
     @Mock private com.example.application.advance_module.service.EmployeeAdvanceService advanceService;
+    @Mock private PayrollWorkingDaysResolver payrollWorkingDaysResolver;
+    @Mock private ProfessionalTaxSlabService professionalTaxSlabService;
 
     @InjectMocks
     private PayrollRunService service;
@@ -260,6 +262,7 @@ class PayrollRunServiceTest {
         when(siteRepository.findAllByClientCompanyId(TENANT_ID)).thenReturn(List.of());
         when(siteAssignmentRepository.findAllByClientCompanyIdAndStatus(TENANT_ID, "ACTIVE")).thenReturn(List.of());
         when(payrollSettingsResolver.resolve(TENANT_ID, 2026, 8)).thenReturn(new PayrollSettings());
+        when(payrollWorkingDaysResolver.resolve(any(PayrollSettings.class), any(java.time.YearMonth.class))).thenReturn(31);
         when(payrollAdjustmentRepository.findAllByClientCompanyIdAndYearAndMonth(TENANT_ID, 2026, 8)).thenReturn(List.of());
 
         EmployeePayrollInputs inputs = new EmployeePayrollInputs();

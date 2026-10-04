@@ -186,6 +186,16 @@ public class PayrollSettingsService {
         if (!java.util.Set.of("GROSS", "BASIC", "BASIC_PLUS_DA").contains(request.getPfCalculationBase())) {
             throw new BadRequestException("pfCalculationBase must be one of: GROSS, BASIC, BASIC_PLUS_DA");
         }
+        if (!java.util.Set.of("CALENDAR_DAYS", "WORKING_DAYS", "FIXED").contains(request.getWorkingDaysBasis())) {
+            throw new BadRequestException("workingDaysBasis must be one of: CALENDAR_DAYS, WORKING_DAYS, FIXED");
+        }
+        if ("FIXED".equals(request.getWorkingDaysBasis())
+                && (request.getFixedWorkingDays() == null || request.getFixedWorkingDays() <= 0)) {
+            throw new BadRequestException("fixedWorkingDays must be a positive number when workingDaysBasis is FIXED");
+        }
+        if (!java.util.Set.of("FLAT", "SLAB").contains(request.getPtCalculationMode())) {
+            throw new BadRequestException("ptCalculationMode must be one of: FLAT, SLAB");
+        }
     }
 
     private void applyRequest(PayrollSettings settings, PayrollSettingsRequest request) {
@@ -199,12 +209,16 @@ public class PayrollSettingsService {
         settings.setPtEnabled(request.getPtEnabled());
         settings.setProfessionalTax(request.getProfessionalTax());
         settings.setPfCalculationBase(request.getPfCalculationBase());
+        settings.setWorkingDaysBasis(request.getWorkingDaysBasis());
+        settings.setFixedWorkingDays(request.getFixedWorkingDays());
+        settings.setPtCalculationMode(request.getPtCalculationMode());
     }
 
     private PayrollSettingsResponse toResponse(PayrollSettings s) {
         PayrollSettingsResponse r = new PayrollSettingsResponse(s.isEpfEnabled(), s.getEpfEmployeePercent(), s.getEpfEmployerPercent(),
                 s.isEsiEnabled(), s.getEsiEmployeePercent(), s.getEsiEmployerPercent(), s.getEsiWageCeiling(),
-                s.isPtEnabled(), s.getProfessionalTax(), s.getPfCalculationBase());
+                s.isPtEnabled(), s.getProfessionalTax(), s.getPfCalculationBase(),
+                s.getWorkingDaysBasis(), s.getFixedWorkingDays(), s.getPtCalculationMode());
         r.setId(s.getId());
         r.setEffectiveFrom(s.getEffectiveFrom());
         r.setEffectiveTo(s.getEffectiveTo());

@@ -1,23 +1,24 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { SiteService } from '../../../site_module/services/site.service';
 import { SiteResponse } from '../../../site_module/models/site.model';
 import { StatusBadgeComponent, BadgeKind } from '../../../shared/components/status-badge/status-badge.component';
 import { AttendanceService } from '../../../attendance_module/services/attendance.service';
-import { AttendanceResponse, TodayAttendanceOverviewResponse } from '../../../attendance_module/models/attendance.model';
+import { AttendanceResponse, AttendanceRuleConfigResponse, TodayAttendanceOverviewResponse } from '../../../attendance_module/models/attendance.model';
 import { CalendarService } from '../../../calendar_module/services/calendar.service';
 import { CalendarItemResponse } from '../../../calendar_module/models/calendar.model';
 import { ToastService } from '../../../shared/services/toast.service';
 import { FeatureStateService } from '../../../core/services/feature-state.service';
 import { SuperAdminDashboardComponent } from '../../../subscription_module/components/super-admin-dashboard/super-admin-dashboard.component';
 import { EmployeeService } from '../../../employee_module/services/employee.service';
+import { PhotoCaptureComponent } from '../../../employee_module/components/photo-capture/photo-capture.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent, SuperAdminDashboardComponent],
+  imports: [CommonModule, RouterLink, StatusBadgeComponent, SuperAdminDashboardComponent, PhotoCaptureComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -62,6 +63,11 @@ export class DashboardComponent {
   // ---- Check-in / Check-out (everyone with ATTENDANCE_SELF_MARK) ----
   readonly loadingToday = signal(true);
   readonly todayStatus = signal<AttendanceResponse | null>(null);
+  readonly ruleConfig = signal<AttendanceRuleConfigResponse | null>(null);
+  @ViewChild('quickCheckInPhotoCapture') quickCheckInPhotoCaptureRef?: PhotoCaptureComponent;
+  @ViewChild('quickCheckOutPhotoCapture') quickCheckOutPhotoCaptureRef?: PhotoCaptureComponent;
+  private quickCheckInSelfie: string | null = null;
+  private quickCheckOutSelfie: string | null = null;
   readonly checkingInOut = signal(false);
 
   // ---- Present / Not-checked-in overview (admins with ATTENDANCE_READ) ----
@@ -120,15 +126,48 @@ export class DashboardComponent {
       next: status => { this.todayStatus.set(status); this.loadingToday.set(false); },
       error: () => this.loadingToday.set(false)
     });
+    // Needed so the quick check-in/out card here can tell whether a selfie is required BEFORE
+    // attempting the call - see quickCheckIn()/quickCheckOut() below. This card intentionally
+    // does NOT duplicate the full camera-capture UI (that lives on the Mark My Attendance page)
+    // - when a selfie turns out to be required, this just hands off to that page instead.
+    this.attendanceService.getRuleConfig().subscribe({
+      next: config => this.ruleConfig.set(config),
+      error: () => { /* Non-fatal - falls back to allowing the quick action, same as before this existed. */ }
+    });
   }
 
   quickCheckIn(): void {
+    if (this.ruleConfig()?.checkInSelfieRequired && !this.quickCheckInSelfie) {
+      // Opens the camera directly, right here on the dashboard - capturing and confirming the
+      // photo (see onQuickCheckInSelfieCaptured()) is what actually submits the check-in below,
+      // so this stays the one-click action it's meant to be instead of sending the employee to
+      // a different page just to take a selfie.
+      this.quickCheckInPhotoCaptureRef?.openCamera();
+      return;
+    }
+    this.submitQuickCheckIn();
+  }
+
+  /** Fires the instant a required selfie is captured AND confirmed (see PhotoCaptureComponent - photoDataChange only emits on Confirm, never on the raw capture) - immediately completes the check-in with no further click needed. */
+  onQuickCheckInSelfieCaptured(photoData: string | null): void {
+    this.quickCheckInSelfie = photoData;
+    if (photoData && this.ruleConfig()?.checkInSelfieRequired) {
+      this.submitQuickCheckIn();
+    }
+  }
+
+  private submitQuickCheckIn(): void {
+    if (this.ruleConfig()?.checkInSelfieRequired && !this.quickCheckInSelfie) {
+      this.quickCheckInPhotoCaptureRef?.openCamera();
+      return;
+    }
     this.checkingInOut.set(true);
     const submit = (lat?: number, lng?: number) => {
-      this.attendanceService.checkIn({ workMode: 'OFFICE', latitude: lat, longitude: lng }).subscribe({
+      this.attendanceService.checkIn({ workMode: 'OFFICE', latitude: lat, longitude: lng, selfieData: this.quickCheckInSelfie ?? undefined }).subscribe({
         next: response => {
           this.checkingInOut.set(false);
           this.todayStatus.set(response);
+          this.quickCheckInSelfie = null;
           this.toast.success('Checked in!');
           this.refreshOverviewIfVisible();
         },
@@ -140,13 +179,34 @@ export class DashboardComponent {
   }
 
   quickCheckOut(): void {
+    if (this.ruleConfig()?.checkOutSelfieRequired && !this.quickCheckOutSelfie) {
+      this.quickCheckOutPhotoCaptureRef?.openCamera();
+      return;
+    }
+    this.submitQuickCheckOut();
+  }
+
+  /** Same reasoning as onQuickCheckInSelfieCaptured() above, for check-out. */
+  onQuickCheckOutSelfieCaptured(photoData: string | null): void {
+    this.quickCheckOutSelfie = photoData;
+    if (photoData && this.ruleConfig()?.checkOutSelfieRequired) {
+      this.submitQuickCheckOut();
+    }
+  }
+
+  private submitQuickCheckOut(): void {
+    if (this.ruleConfig()?.checkOutSelfieRequired && !this.quickCheckOutSelfie) {
+      this.quickCheckOutPhotoCaptureRef?.openCamera();
+      return;
+    }
     this.checkingInOut.set(true);
     const submit = (lat?: number, lng?: number) => {
-      this.attendanceService.checkOut({ latitude: lat, longitude: lng }).subscribe({
+      this.attendanceService.checkOut({ latitude: lat, longitude: lng, selfieData: this.quickCheckOutSelfie ?? undefined }).subscribe({
         next: response => {
           this.checkingInOut.set(false);
           this.todayStatus.set(response);
           this.toast.success('Checked out!');
+          this.quickCheckOutSelfie = null;
           this.refreshOverviewIfVisible();
         },
         error: err => { this.checkingInOut.set(false); this.toast.error(err.error?.message ?? 'Unable to check out.'); }

@@ -37,6 +37,8 @@
               @if (checkingInOut()) { <span class="btn-spinner"></span> }
               <i class="bi bi-box-arrow-in-right"></i> {{ checkingInOut() ? 'Checking in...' : 'Check In' }}
             </button>
+            <app-photo-capture #quickCheckInPhotoCapture [hideInlineControls]="true" defaultFacingMode="user"
+                                (photoDataChange)="onQuickCheckInSelfieCaptured($event)"></app-photo-capture>
           </div>
         } @else if (!todayStatus()!.checkOutTime) {
           <div class="checkin-row">
@@ -48,6 +50,8 @@
               @if (checkingInOut()) { <span class="btn-spinner"></span> }
               <i class="bi bi-box-arrow-right"></i> {{ checkingInOut() ? 'Checking out...' : 'Check Out' }}
             </button>
+            <app-photo-capture #quickCheckOutPhotoCapture [hideInlineControls]="true" defaultFacingMode="user"
+                                (photoDataChange)="onQuickCheckOutSelfieCaptured($event)"></app-photo-capture>
           </div>
         } @else {
           <div class="checkin-row">

@@ -22,12 +22,23 @@ public class PayrollSettingsRequest {
 
     @NotNull private Boolean ptEnabled;
     @NotNull @DecimalMin("0") private BigDecimal professionalTax;
+    /** FLAT or SLAB - see ProfessionalTaxSlabService. */
+    @NotNull private String ptCalculationMode;
 
     /** GROSS, BASIC, or BASIC_PLUS_DA - see PayrollCalculationService.resolveEpfBase(). Required like every other field here - this whole request is always a full resend of the complete configuration (the frontend pre-fills from the currently-open config), never a partial patch, so there's no safe "leave unchanged" meaning for a missing value. */
     @NotNull private String pfCalculationBase;
 
+    /** CALENDAR_DAYS, WORKING_DAYS, or FIXED - see PayrollWorkingDaysResolver. */
+    @NotNull private String workingDaysBasis;
+    /** Required (and only meaningful) when workingDaysBasis is FIXED - common conventions are 26 or 30, but any company-chosen positive value is accepted. */
+    private Integer fixedWorkingDays;
+
     public String getPfCalculationBase() { return pfCalculationBase; }
     public void setPfCalculationBase(String pfCalculationBase) { this.pfCalculationBase = pfCalculationBase; }
+    public String getWorkingDaysBasis() { return workingDaysBasis; }
+    public void setWorkingDaysBasis(String workingDaysBasis) { this.workingDaysBasis = workingDaysBasis; }
+    public Integer getFixedWorkingDays() { return fixedWorkingDays; }
+    public void setFixedWorkingDays(Integer fixedWorkingDays) { this.fixedWorkingDays = fixedWorkingDays; }
 
     public Boolean getEpfEnabled() { return epfEnabled; }
     public void setEpfEnabled(Boolean epfEnabled) { this.epfEnabled = epfEnabled; }
@@ -49,4 +60,6 @@ public class PayrollSettingsRequest {
     public void setPtEnabled(Boolean ptEnabled) { this.ptEnabled = ptEnabled; }
     public BigDecimal getProfessionalTax() { return professionalTax; }
     public void setProfessionalTax(BigDecimal professionalTax) { this.professionalTax = professionalTax; }
+    public String getPtCalculationMode() { return ptCalculationMode; }
+    public void setPtCalculationMode(String ptCalculationMode) { this.ptCalculationMode = ptCalculationMode; }
 }

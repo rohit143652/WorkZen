@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { PayrollSettings, PayrollSettingsCreateRequest } from '../models/payroll.model';
+import { PayrollSettings, PayrollSettingsCreateRequest, ProfessionalTaxSlab, ProfessionalTaxSlabRequest } from '../models/payroll.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 
@@ -53,5 +53,22 @@ export class PayrollService {
   downloadEmployeePayslip(employeeId: number, year: number, month: number): Observable<Blob> {
     const params = new HttpParams().set('year', year).set('month', month);
     return this.http.get(`${this.baseUrl}/payslip/employee/${employeeId}`, { params, responseType: 'blob' });
+  }
+
+  /** Professional Tax slabs - only consulted by payroll calculation when PayrollSettings.ptCalculationMode is SLAB. */
+  getPtSlabs(): Observable<ProfessionalTaxSlab[]> {
+    return this.http.get<ApiEnvelope<ProfessionalTaxSlab[]>>(`${this.baseUrl}/pt-slabs`).pipe(map(e => e.data));
+  }
+
+  createPtSlab(request: ProfessionalTaxSlabRequest): Observable<ProfessionalTaxSlab> {
+    return this.http.post<ApiEnvelope<ProfessionalTaxSlab>>(`${this.baseUrl}/pt-slabs`, request).pipe(map(e => e.data));
+  }
+
+  updatePtSlab(id: number, request: ProfessionalTaxSlabRequest): Observable<ProfessionalTaxSlab> {
+    return this.http.put<ApiEnvelope<ProfessionalTaxSlab>>(`${this.baseUrl}/pt-slabs/${id}`, request).pipe(map(e => e.data));
+  }
+
+  deletePtSlab(id: number): Observable<void> {
+    return this.http.delete<ApiEnvelope<void>>(`${this.baseUrl}/pt-slabs/${id}`).pipe(map(() => void 0));
   }
 }

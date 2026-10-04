@@ -1,130 +1,51 @@
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Component, OnDestroy, inject, signal, computed, ViewChild } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { AttendanceService } from '../../services/attendance.service';
-import { AttendanceResponse, AttendanceRuleConfigResponse, WORK_MODES, WorkMode } from '../../models/attendance.model';
-import { PhotoCaptureComponent } from '../../../employee_module/components/photo-capture/photo-capture.component';
+import { AttendanceResponse } from '../../models/attendance.model';
 import { ToastService } from '../../../shared/services/toast.service';
-import { FeatureStateService } from '../../../core/services/feature-state.service';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { BadgeKind, StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 /**
- * "Today's Attendance" - the employee's centralized check-in/check-out card. This is the new
- * primary flow (see AttendanceService.checkIn()/checkOut() on the backend); the OLD one-click
- * "mark myself Present, no times" flow (markMine()) is kept available as a secondary option
- * below it for anyone who genuinely doesn't want time-tracking for a given day - both write to
- * the exact same centralized attendance row, never two separate records.
+ * "My Attendance History" - the employee's own past attendance records, including any captured
+ * selfies (viewed on demand, never loaded into the list itself).
+ *
+ * Check-in/check-out itself now lives ENTIRELY on the Dashboard's one-click quick-action card
+ * (including the full camera-capture flow when a selfie is required) - kept there deliberately
+ * so daily attendance marking stays the single click it's meant to be, rather than needing a
+ * separate page visit. This page's job is purely to look back at what's already been recorded.
  */
 @Component({
   selector: 'app-mark-my-attendance',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, PhotoCaptureComponent],
+  imports: [CommonModule, RouterLink, StatusBadgeComponent],
   templateUrl: './mark-my-attendance.component.html',
   styleUrl: './mark-my-attendance.component.css'
 })
-export class MarkMyAttendanceComponent implements OnDestroy {
+export class MarkMyAttendanceComponent {
   private readonly attendanceService = inject(AttendanceService);
   private readonly toast = inject(ToastService);
-  private readonly featureState = inject(FeatureStateService);
   readonly authState = inject(AuthStateService);
 
-  /** Whether this account can reach the separate, admin-facing "Attendance History" page
-      (requires ATTENDANCE_READ) - most self-service employees only have ATTENDANCE_SELF_MARK,
-      so without this section here they'd have no way to see their own past attendance at all.
-      Not permission-gated itself - ATTENDANCE_SELF_MARK (already required for this whole page)
-      is enough, since myHistory() on the backend is hard-scoped to the caller's own records. */
-  readonly hasSeparateHistoryPage = computed(() => this.authState.hasPermission('ATTENDANCE_READ'));
-
-  readonly showHistory = signal(false);
-  readonly loadingHistory = signal(false);
-  readonly historyLoaded = signal(false);
+  readonly loading = signal(true);
   readonly history = signal<AttendanceResponse[]>([]);
   readonly viewingSelfie = signal<string | null>(null);
   readonly loadingSelfie = signal(false);
 
-  /** Company Feature Configuration override (see FeatureStateService) - if the Super Admin has
-      switched Employee Self Attendance off for this company, Check-In/Check-Out never render at
-      all here, matching the spec's "Employees must not see Check In/Check Out buttons" exactly.
-      The backend independently rejects the API calls too - this is purely so a disabled feature
-      never even LOOKS available in the first place. */
-  readonly selfAttendanceEnabled = computed(() =>
-    this.featureState.isEnabled('ATTENDANCE_MANAGEMENT') && this.featureState.isEnabled('EMPLOYEE_SELF_ATTENDANCE'));
-  private tickHandle: ReturnType<typeof setInterval> | null = null;
-
-  readonly loading = signal(true);
-  readonly working = signal(false);
-  readonly todayStatus = signal<AttendanceResponse | null>(null);
-  readonly locationError = signal<string | null>(null);
-  readonly selectedWorkMode = signal<WorkMode>('OFFICE');
-  readonly workModes = WORK_MODES;
-  /** Ticks once a minute while checked in but not yet out, purely to force the live duration label to re-render. */
-  readonly nowTick = signal(Date.now());
-  readonly ruleConfig = signal<AttendanceRuleConfigResponse | null>(null);
-  checkInSelfie: string | null = null;
-  checkOutSelfie: string | null = null;
-  @ViewChild('checkInPhotoCapture') checkInPhotoCaptureRef?: PhotoCaptureComponent;
-  @ViewChild('checkOutPhotoCapture') checkOutPhotoCaptureRef?: PhotoCaptureComponent;
-
-  readonly isCheckedIn = computed(() => {
-    const s = this.todayStatus();
-    return !!s && !!s.checkInTime && !s.checkOutTime;
-  });
-  readonly isCompleted = computed(() => {
-    const s = this.todayStatus();
-    return !!s && !!s.checkOutTime;
-  });
-  readonly isLegacyMarked = computed(() => {
-    const s = this.todayStatus();
-    return !!s && !s.checkInTime;
-  });
-
-  readonly liveWorkingDuration = computed(() => {
-    const s = this.todayStatus();
-    this.nowTick(); // dependency, so this recomputes every tick
-    if (!s?.checkInTime) return '';
-    const start = new Date(s.checkInTime).getTime();
-    const minutes = Math.max(0, Math.floor((Date.now() - start) / 60000));
-    return this.formatMinutes(minutes);
-  });
-
   constructor() {
-    this.load();
-    this.tickHandle = setInterval(() => this.nowTick.set(Date.now()), 60_000);
+    this.loadHistory();
   }
 
-  ngOnDestroy(): void {
-    if (this.tickHandle) clearInterval(this.tickHandle);
-  }
-
-  private load(): void {
+  private loadHistory(): void {
     this.loading.set(true);
-    let todayDone = false;
-    let configDone = false;
-    const maybeFinishLoading = () => {
-      if (todayDone && configDone) this.loading.set(false);
-    };
-
-    this.attendanceService.today().subscribe({
-      next: status => { this.todayStatus.set(status); todayDone = true; maybeFinishLoading(); },
-      error: () => { todayDone = true; maybeFinishLoading(); }
-    });
-    // Deliberately part of the SAME loading gate as today() above - if this hasn't resolved yet,
-    // we genuinely don't know whether a selfie is required, so the Check In/Check Out button
-    // must not be clickable yet either (a race here previously let check-in bypass a required
-    // selfie entirely whenever this call was even slightly slower than today()'s).
-    this.attendanceService.getRuleConfig().subscribe({
-      next: config => { this.ruleConfig.set(config); configDone = true; maybeFinishLoading(); },
-      error: () => {
-        // Fails CLOSED, not open: if we can't confirm the company's selfie policy, assume the
-        // stricter case (both required) rather than silently letting check-in/out through
-        // unprotected - the employee can still retry, but we never skip a possibly-required selfie.
-        this.ruleConfig.set({ checkInSelfieRequired: true, checkOutSelfieRequired: true } as AttendanceRuleConfigResponse);
-        this.toast.error('Unable to confirm this company\'s attendance policy - please refresh and try again.');
-        configDone = true;
-        maybeFinishLoading();
-      }
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    this.attendanceService.myHistory(iso(from), iso(to)).subscribe({
+      next: records => { this.history.set(records); this.loading.set(false); },
+      error: () => { this.toast.error('Unable to load your attendance history.'); this.loading.set(false); }
     });
   }
 
@@ -133,139 +54,6 @@ export class MarkMyAttendanceComponent implements OnDestroy {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return `${h}h ${m}m`;
-  }
-
-  checkIn(): void {
-    if (this.ruleConfig()?.checkInSelfieRequired && !this.checkInSelfie) {
-      // Compulsory selfie: go straight to the camera (same modal used for employee photo
-      // capture elsewhere) instead of asking the employee to separately find/click a capture
-      // widget first - capturing the photo itself is what actually submits the check-in below,
-      // via onCheckInSelfieCaptured().
-      this.checkInPhotoCaptureRef?.openCamera();
-      return;
-    }
-    this.submitCheckIn();
-  }
-
-  /** Fires the instant a required selfie is captured - no separate "now click Check In" step, per the compulsory-selfie flow. */
-  onCheckInSelfieCaptured(photoData: string | null): void {
-    this.checkInSelfie = photoData;
-    if (photoData && this.ruleConfig()?.checkInSelfieRequired) {
-      this.submitCheckIn();
-    }
-  }
-
-  private submitCheckIn(): void {
-    this.working.set(true);
-    this.locationError.set(null);
-    this.withLocation((lat, lng) => {
-      this.attendanceService.checkIn({ workMode: this.selectedWorkMode(), latitude: lat, longitude: lng, selfieData: this.checkInSelfie ?? undefined }).subscribe({
-        next: response => {
-          this.working.set(false);
-          this.todayStatus.set(response);
-          this.checkInSelfie = null;
-          this.toast.success('Checked in - have a great day!');
-        },
-        error: err => {
-          this.working.set(false);
-          this.toast.error(err.error?.message ?? 'Unable to check in.');
-        }
-      });
-    });
-  }
-
-  checkOut(): void {
-    if (this.ruleConfig()?.checkOutSelfieRequired && !this.checkOutSelfie) {
-      this.checkOutPhotoCaptureRef?.openCamera();
-      return;
-    }
-    this.submitCheckOut();
-  }
-
-  /** Fires the instant a required selfie is captured - see onCheckInSelfieCaptured() for the same reasoning on the check-out side. */
-  onCheckOutSelfieCaptured(photoData: string | null): void {
-    this.checkOutSelfie = photoData;
-    if (photoData && this.ruleConfig()?.checkOutSelfieRequired) {
-      this.submitCheckOut();
-    }
-  }
-
-  private submitCheckOut(): void {
-    this.working.set(true);
-    this.locationError.set(null);
-    this.withLocation((lat, lng) => {
-      this.attendanceService.checkOut({ latitude: lat, longitude: lng, selfieData: this.checkOutSelfie ?? undefined }).subscribe({
-        next: response => {
-          this.working.set(false);
-          this.todayStatus.set(response);
-          this.checkOutSelfie = null;
-          this.toast.success('Checked out - see you next time!');
-        },
-        error: err => {
-          this.working.set(false);
-          this.toast.error(err.error?.message ?? 'Unable to check out.');
-        }
-      });
-    });
-  }
-
-  /** Kept for anyone who wants the old no-time-tracking one-click mark instead. */
-  markMineOldFlow(): void {
-    this.working.set(true);
-    this.locationError.set(null);
-    this.withLocation((lat, lng) => {
-      this.attendanceService.markMine(lat, lng).subscribe({
-        next: response => {
-          this.working.set(false);
-          this.todayStatus.set(response);
-          this.toast.success('Your attendance has been marked for today.');
-        },
-        error: err => {
-          this.working.set(false);
-          this.toast.error(err.error?.message ?? 'Unable to mark your attendance.');
-        }
-      });
-    });
-  }
-
-  private withLocation(action: (lat?: number, lng?: number) => void): void {
-    if (!navigator.geolocation) {
-      action();
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      position => action(position.coords.latitude, position.coords.longitude),
-      () => {
-        this.locationError.set('Could not access your location - trying anyway (this only matters if your site requires it).');
-        action();
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  }
-
-  /** Loads on first expand only - a self-service employee opening this once per visit doesn't need it re-fetched every render. */
-  toggleHistory(): void {
-    const opening = !this.showHistory();
-    this.showHistory.set(opening);
-    if (opening && !this.historyLoaded()) {
-      this.loadHistory();
-    }
-  }
-
-  private loadHistory(): void {
-    this.loadingHistory.set(true);
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 30);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    this.attendanceService.myHistory(iso(from), iso(to)).subscribe({
-      next: records => {
-        this.history.set(records);
-        this.historyLoaded.set(true);
-        this.loadingHistory.set(false);
-      },
-      error: () => this.loadingHistory.set(false)
-    });
   }
 
   viewSelfie(attendanceId: number, checkOut: boolean): void {

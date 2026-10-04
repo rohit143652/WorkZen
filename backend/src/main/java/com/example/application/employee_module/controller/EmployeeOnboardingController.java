@@ -52,10 +52,13 @@ public class EmployeeOnboardingController {
 
     @PostMapping("/resend-invitation/{employeeId}")
     @PreAuthorize("hasAuthority('EMPLOYEE_ONBOARDING_MANAGE')")
-    public ResponseEntity<ApiResponse<Void>> resendInvitation(@PathVariable Long employeeId,
+    public ResponseEntity<ApiResponse<Boolean>> resendInvitation(@PathVariable Long employeeId,
                                                                 @AuthenticationPrincipal CustomUserPrincipal principal,
                                                                 HttpServletRequest httpRequest) {
-        onboardingService.resendInvitation(employeeId, principal.getId(), httpRequest);
-        return ResponseEntity.ok(ApiResponse.success("Invitation resent successfully", null));
+        boolean emailSent = onboardingService.resendInvitation(employeeId, principal.getId(), httpRequest);
+        String message = emailSent
+                ? "Invitation resent successfully."
+                : "Invitation was regenerated, but the email could NOT be sent - please check the employee's email address or try again.";
+        return ResponseEntity.ok(ApiResponse.success(message, emailSent));
     }
 }

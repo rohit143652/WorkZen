@@ -30,6 +30,12 @@ public class SiteController {
         return ResponseEntity.ok(ApiResponse.success("OK", siteService.findAll(pageable)));
     }
 
+    /** For the Global Site Selector (spec: "every user needs to know which sites they can pick from") - no SITE_READ requirement, since plenty of roles that need to filter attendance/leave/payroll by site don't manage sites themselves. Already scoped to exactly what SiteAccessService says this user may see. */
+    @GetMapping("/my-accessible")
+    public ResponseEntity<ApiResponse<java.util.List<SiteResponse>>> myAccessibleSites() {
+        return ResponseEntity.ok(ApiResponse.success("OK", siteService.findMyAccessibleSites()));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SITE_READ')")
     public ResponseEntity<ApiResponse<SiteResponse>> findById(@PathVariable Long id) {

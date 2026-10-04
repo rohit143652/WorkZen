@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -15,8 +15,10 @@ export class LeaveRequestService {
   private readonly baseUrl = `${environment.apiUrl}/leave-requests`;
 
   /** Every leave request for the tenant - admin view. */
-  findAll(): Observable<LeaveRequestResponse[]> {
-    return this.http.get<ApiEnvelope<LeaveRequestResponse[]>>(this.baseUrl).pipe(map(e => e.data));
+  findAll(siteIds?: number[]): Observable<LeaveRequestResponse[]> {
+    let params = new HttpParams();
+    (siteIds ?? []).forEach(id => { params = params.append('siteIds', id); });
+    return this.http.get<ApiEnvelope<LeaveRequestResponse[]>>(this.baseUrl, { params }).pipe(map(e => e.data));
   }
 
   /** The logged-in employee's own leave requests. */

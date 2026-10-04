@@ -3,7 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { PayrollService } from '../../services/payroll.service';
-import { PayrollSettings, PayrollSettingsCreateRequest, PF_CALCULATION_BASES, PfCalculationBase } from '../../models/payroll.model';
+import { PayrollSettings, PayrollSettingsCreateRequest, PF_CALCULATION_BASES, PfCalculationBase, WORKING_DAYS_BASES, WorkingDaysBasis, PT_CALCULATION_MODES, PtCalculationMode } from '../../models/payroll.model';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogService } from '../../../shared/services/confirm-dialog.service';
 import { FeatureStateService } from '../../../core/services/feature-state.service';
@@ -32,9 +32,20 @@ export class PayrollSettingsComponent {
   /** Whether to show the "Overtime is managed in the Overtime Register" note at all - this component no longer configures overtime itself in any way (see the Overtime Register instead). */
   readonly overtimeFeatureEnabled = () => this.featureState.isEnabled('OVERTIME_MANAGEMENT');
   readonly pfCalculationBases = PF_CALCULATION_BASES;
+  readonly workingDaysBases = WORKING_DAYS_BASES;
 
   pfBaseLabel(base: PfCalculationBase): string {
     return this.pfCalculationBases.find(b => b.value === base)?.label ?? base;
+  }
+
+  readonly ptCalculationModes = PT_CALCULATION_MODES;
+
+  ptModeLabel(mode: PtCalculationMode): string {
+    return this.ptCalculationModes.find(m => m.value === mode)?.label ?? mode;
+  }
+
+  workingDaysBasisLabel(basis: WorkingDaysBasis): string {
+    return this.workingDaysBases.find(b => b.value === basis)?.label ?? basis;
   }
 
   readonly loading = signal(true);
@@ -58,8 +69,11 @@ export class PayrollSettingsComponent {
 
   ptEnabled = true;
   professionalTax = 200;
+  ptCalculationMode: PtCalculationMode = 'FLAT';
 
   pfCalculationBase: PfCalculationBase = 'BASIC_PLUS_DA';
+  workingDaysBasis: WorkingDaysBasis = 'CALENDAR_DAYS';
+  fixedWorkingDays = 26;
 
   constructor() {
     this.load();
@@ -103,7 +117,10 @@ export class PayrollSettingsComponent {
       this.esiWageCeiling = c.esiWageCeiling ?? 21000;
       this.ptEnabled = c.ptEnabled;
       this.professionalTax = c.professionalTax;
+      this.ptCalculationMode = c.ptCalculationMode ?? 'FLAT';
       this.pfCalculationBase = c.pfCalculationBase ?? 'BASIC_PLUS_DA';
+      this.workingDaysBasis = c.workingDaysBasis ?? 'CALENDAR_DAYS';
+      this.fixedWorkingDays = c.fixedWorkingDays ?? 26;
     }
     this.showScheduleForm.set(true);
   }
@@ -117,6 +134,10 @@ export class PayrollSettingsComponent {
       this.toast.warning('An effective date is required.');
       return;
     }
+    if (this.workingDaysBasis === 'FIXED' && (!this.fixedWorkingDays || this.fixedWorkingDays <= 0)) {
+      this.toast.warning('Enter a positive number of fixed working days.');
+      return;
+    }
     const request: PayrollSettingsCreateRequest = {
       effectiveFrom: this.effectiveFrom,
       epfEnabled: this.epfEnabled,
@@ -128,7 +149,10 @@ export class PayrollSettingsComponent {
       esiWageCeiling: this.hasEsiCeiling ? this.esiWageCeiling : null,
       ptEnabled: this.ptEnabled,
       professionalTax: this.professionalTax,
-      pfCalculationBase: this.pfCalculationBase
+      ptCalculationMode: this.ptCalculationMode,
+      pfCalculationBase: this.pfCalculationBase,
+      workingDaysBasis: this.workingDaysBasis,
+      fixedWorkingDays: this.workingDaysBasis === 'FIXED' ? this.fixedWorkingDays : null
     };
     this.saving.set(true);
     this.payrollService.createConfig(request).subscribe({

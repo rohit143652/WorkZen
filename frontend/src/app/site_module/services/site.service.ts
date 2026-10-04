@@ -48,4 +48,11 @@ export class SiteService {
       .get<ApiEnvelope<any[]>>(`${environment.apiUrl}/sites/${siteId}/employees`)
       .pipe(map(e => e.data));
   }
+
+  /** Only the sites the CURRENT user is authorized to select from (see backend SiteAccessService) - used by the Global Site Selector, not gated behind SITE_READ since many roles that need to filter by site don't manage sites themselves. */
+  myAccessibleSites(): Observable<SiteResponse[]> {
+    return this.http
+      .get<ApiEnvelope<SiteResponse[]>>(`${environment.apiUrl}/sites/my-accessible`)
+      .pipe(map(e => e.data));
+  }
 }

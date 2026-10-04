@@ -30,55 +30,19 @@ export class RoleListComponent {
 
   /**
    * Company Feature Configuration (Super Admin, "Manage Features") is the upper-level control -
-   * a role can hold ATTENDANCE_SELF_MARK, but that's meaningless if the company itself has
-   * Employee Self Attendance switched off. This maps the permissions where that distinction
-   * actually matters to the company feature code(s) they depend on, purely so this screen can
-   * show a Client Admin (who usually can't see the Manage Features screen at all) WHY a
-   * permission they've granted doesn't seem to do anything - not a security boundary, just a
-   * "here's the other half of the picture" hint. */
-  private readonly PERMISSION_FEATURE_DEPENDENCIES: Record<string, { codes: string[]; note: string }> = {
-    ATTENDANCE_SELF_MARK: {
-      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-      note: 'Check-in/check-out only works if your company has Attendance Management AND Employee Self Attendance turned on.'
-    },
-    ATTENDANCE_CREATE: {
-      codes: ['ATTENDANCE_MANAGEMENT'],
-      note: 'Manually marking attendance only works if your company has Attendance Management turned on.'
-    },
-    ATTENDANCE_CORRECTION_REQUEST: {
-      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-      note: 'Correction requests only work if Employee Self Attendance is on (there is nothing self-service to correct otherwise).'
-    },
-    ATTENDANCE_CORRECTION_REVIEW: {
-      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-      note: 'Reviewing correction requests only matters if Employee Self Attendance is on.'
-    },
-    ATTENDANCE_RULES_MANAGE: {
-      codes: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-      note: 'Attendance rules (office hours, grace period, etc.) only apply if Employee Self Attendance is on.'
-    }
+   * a role holding ATTENDANCE_SELF_MARK is meaningless if the company itself has Employee Self
+   * Attendance switched off, so a permission here isn't even OFFERED as a checkbox while its
+   * feature is off (see isPermissionFeatureAvailable()) - not shown-but-disabled with an
+   * explanation, hidden outright, since there's nothing useful to do with it either way while the
+   * feature remains off. Multiple codes are AND'd: every one of them must be on for the
+   * permission to appear. */
+  private readonly PERMISSION_FEATURE_DEPENDENCIES: Record<string, string[]> = {
+    ATTENDANCE_SELF_MARK: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+    ATTENDANCE_CREATE: ['ATTENDANCE_MANAGEMENT'],
+    ATTENDANCE_CORRECTION_REQUEST: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+    ATTENDANCE_CORRECTION_REVIEW: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
+    ATTENDANCE_RULES_MANAGE: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE']
   };
-
-  /** Helper for the template - featureWarningsForGroup() takes plain names, not the group's {id, name, ...} objects. */
-  groupPermissionNames(group: { permissions: { name: string }[] }): string[] {
-    return group.permissions.map(p => p.name);
-  }
-
-  /** Any dependency notes relevant to a permission GROUP (called once per category header, not per checkbox, so this doesn't repeat itself once per row). Returns only the ones where the underlying company feature is currently OFF - a permission whose feature is already on has nothing worth flagging. */
-  featureWarningsForGroup(permissionNames: string[]): string[] {
-    const seen = new Set<string>();
-    const warnings: string[] = [];
-    for (const name of permissionNames) {
-      const dep = this.PERMISSION_FEATURE_DEPENDENCIES[name];
-      if (!dep) continue;
-      const anyOff = dep.codes.some(code => !this.featureState.isEnabled(code));
-      if (anyOff && !seen.has(dep.note)) {
-        seen.add(dep.note);
-        warnings.push(dep.note);
-      }
-    }
-    return warnings;
-  }
 
   readonly roles = signal<RoleOption[]>([]);
   readonly loading = signal(true);
@@ -95,8 +59,16 @@ export class RoleListComponent {
    */
   readonly selectablePermissions = signal<PermissionOption[]>([]);
 
+  /** False only for a permission whose dependent company feature(s) are currently OFF (see PERMISSION_FEATURE_DEPENDENCIES) - a permission with no such dependency is always available. AND logic across multiple codes: any one of them being off is enough to hide it. */
+  private isPermissionFeatureAvailable(name: string): boolean {
+    const codes = this.PERMISSION_FEATURE_DEPENDENCIES[name];
+    if (!codes) return true;
+    return codes.every(code => this.featureState.isEnabled(code));
+  }
+
   get groupedSelectablePermissions() {
-    return groupPermissionsByCategory(this.selectablePermissions());
+    const available = this.selectablePermissions().filter(p => this.isPermissionFeatureAvailable(p.name));
+    return groupPermissionsByCategory(available);
   }
 
   newRoleName = '';

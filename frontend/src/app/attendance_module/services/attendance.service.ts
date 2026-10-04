@@ -56,8 +56,10 @@ export class AttendanceService {
   }
 
   /** Company-wide "who's checked in today" snapshot for the admin dashboard widget. */
-  todayOverview(): Observable<TodayAttendanceOverviewResponse> {
-    return this.http.get<ApiEnvelope<TodayAttendanceOverviewResponse>>(`${this.baseUrl}/today-overview`).pipe(map(e => e.data));
+  todayOverview(siteIds?: number[]): Observable<TodayAttendanceOverviewResponse> {
+    let params = new HttpParams();
+    (siteIds ?? []).forEach(id => { params = params.append('siteIds', id); });
+    return this.http.get<ApiEnvelope<TodayAttendanceOverviewResponse>>(`${this.baseUrl}/today-overview`, { params }).pipe(map(e => e.data));
   }
 
   /** Company attendance rules (office hours, grace period, thresholds, weekly off) - readable by anyone who can see attendance. */
@@ -145,6 +147,15 @@ export class AttendanceService {
       siteIds.forEach(id => { params = params.append('siteIds', id); });
     }
     return this.http.get(`${this.baseUrl}/monthly-report/download`, { params, responseType: 'blob' });
+  }
+
+  /** Day-by-day Muster Book format (SR NO | Name | 1..N | Total Present Days) - a separate export from downloadMonthlyReport() above, not a replacement for it. */
+  downloadMusterBook(year: number, month: number, siteIds?: number[]): Observable<Blob> {
+    let params = new HttpParams().set('year', year).set('month', month);
+    if (siteIds && siteIds.length > 0) {
+      siteIds.forEach(id => { params = params.append('siteIds', id); });
+    }
+    return this.http.get(`${this.baseUrl}/monthly-report/muster-book`, { params, responseType: 'blob' });
   }
 
   /** Direct edit from the Monthly Report table. paidDaysUsed: null clears the adjustment (reverts to auto-calculated). */

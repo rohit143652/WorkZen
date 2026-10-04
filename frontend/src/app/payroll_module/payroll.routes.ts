@@ -6,6 +6,7 @@ import { PayrollProcessingComponent } from './components/payroll-processing/payr
 import { PayrollRunDetailsComponent } from './components/payroll-run-details/payroll-run-details.component';
 import { MyPayslipComponent } from './components/my-payslip/my-payslip.component';
 import { OvertimeRegisterComponent } from './components/overtime-register/overtime-register.component';
+import { PtSlabsComponent } from './components/pt-slabs/pt-slabs.component';
 
 /**
  * The Payroll Register itself was folded into the Monthly Attendance &
@@ -24,6 +25,10 @@ export const PAYROLL_ROUTES: Routes = [
   },
   {
     path: 'settings', component: PayrollSettingsComponent,
+    canActivate: [permissionGuard], data: { permission: 'PAYROLL_REGISTER_EXPORT' }
+  },
+  {
+    path: 'pt-slabs', component: PtSlabsComponent,
     canActivate: [permissionGuard], data: { permission: 'PAYROLL_REGISTER_EXPORT' }
   },
   {

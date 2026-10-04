@@ -123,11 +123,16 @@ public class AuthService {
         CustomUserPrincipal principal = new CustomUserPrincipal(user);
         String newAccessToken = jwtService.generateAccessToken(principal);
 
-        // Refresh token rotation: revoke the presented token, issue a new one.
-        RefreshToken rotated = refreshTokenService.rotate(validated);
-
+        // Deliberately NOT rotating the refresh token here (previously: revoke + issue a new one
+        // on every single refresh). That rotation meant the moment any one refresh succeeded, the
+        // token the user had just presented stopped working - safe when every refresh always
+        // lands exactly once, but a real risk of an unintended logout the instant two refresh
+        // attempts ever overlap even slightly (a retried request, a flaky connection, anything).
+        // The user asked for a simple guarantee: logged in stays logged in until they explicitly
+        // log out. Keeping the SAME refresh token alive across refreshes - rather than swapping it
+        // for a new one every time - is what actually delivers that guarantee.
         RefreshTokenResponse response = new RefreshTokenResponse(newAccessToken, jwtService.getAccessTokenExpirySeconds());
-        return new AuthResult<>(response, rotated.getToken());
+        return new AuthResult<>(response, validated.getToken());
     }
 
     @Transactional

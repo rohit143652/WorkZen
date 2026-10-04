@@ -9,7 +9,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "employees")
+@Table(name = "employees", uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+        name = "uq_employees_company_email", columnNames = {"client_company_id", "email"}))
 public class Employee {
 
     @Id
@@ -37,7 +38,8 @@ public class Employee {
     @Column(name = "last_name", nullable = false, length = 100)
     private String lastName;
 
-    @Column(nullable = false, unique = true, length = 150)
+    /** Unique per-company, not globally - see the class-level @Table uniqueConstraints (V119 migration). */
+    @Column(nullable = false, length = 150)
     private String email;
 
     @Column(name = "mobile_number", length = 30)

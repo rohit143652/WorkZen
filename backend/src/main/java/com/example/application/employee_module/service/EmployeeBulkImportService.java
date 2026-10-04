@@ -62,12 +62,32 @@ public class EmployeeBulkImportService {
             "First Name*", "Middle Name", "Last Name*", "Email*", "Mobile Number",
             "Date of Birth (YYYY-MM-DD)", "Gender", "Joining Date (YYYY-MM-DD)*",
             "Department*", "Designation*", "Employment Type", "Address", "City", "State", "Country", "Pincode",
-            "Aadhar Number*", "PAN Number*"
+            "Aadhar Number*", "PAN Number*",
+            // Added later than the columns above (this template was originally built before these
+            // fields existed on the Employee form's Statutory & Bank Details / Personal Info tabs)
+            // - salary structure, PF/ESI/PT applicability, and login are still deliberately left
+            // out of bulk import (see class javadoc: handled per-employee afterward), but these
+            // are plain profile data with no such dependency, so there's no reason to exclude them.
+            "Alternate Mobile Number", "UAN Number", "PF Member ID", "ESIC Number",
+            "Bank Account Holder Name", "Bank Account Number", "Bank IFSC Code", "Bank Name", "Bank Branch",
+            "Emergency Contact Name", "Emergency Contact Relationship", "Emergency Contact Mobile"
     };
     private static final int DEPARTMENT_COL = 8;
     private static final int DESIGNATION_COL = 9;
     private static final int AADHAR_COL = 16;
     private static final int PAN_COL = 17;
+    private static final int ALTERNATE_MOBILE_COL = 18;
+    private static final int UAN_COL = 19;
+    private static final int PF_MEMBER_ID_COL = 20;
+    private static final int ESIC_COL = 21;
+    private static final int BANK_HOLDER_COL = 22;
+    private static final int BANK_ACCOUNT_COL = 23;
+    private static final int BANK_IFSC_COL = 24;
+    private static final int BANK_NAME_COL = 25;
+    private static final int BANK_BRANCH_COL = 26;
+    private static final int EMERGENCY_NAME_COL = 27;
+    private static final int EMERGENCY_RELATIONSHIP_COL = 28;
+    private static final int EMERGENCY_MOBILE_COL = 29;
     private static final double FUZZY_MATCH_THRESHOLD = 90.0;
 
     private final EmployeeService employeeService;
@@ -154,7 +174,10 @@ public class EmployeeBulkImportService {
                     "Rohit", "", "Patil", "rohit.patil.example@company.com", "9876543210",
                     "1995-06-15", "Male", "2026-01-15", "Operations", "Site Supervisor",
                     "FULL_TIME", "123 MG Road", "Pune", "Maharashtra", "India", "411001",
-                    "123456789012", "ABCDE1234F"
+                    "123456789012", "ABCDE1234F",
+                    "", "123456789012", "PF1234567890", "1234567890",
+                    "Rohit Patil", "123456789012", "HDFC0001234", "HDFC Bank", "Pune MG Road",
+                    "Suresh Patil", "Father", "9876500000"
             };
             for (int i = 0; i < example.length; i++) {
                 exampleRow.createCell(i).setCellValue(example[i]);
@@ -315,9 +338,21 @@ public class EmployeeBulkImportService {
         request.setPincode(blankToNull(getCellString(row, 15)));
         request.setAadharNumber(getCellString(row, AADHAR_COL));
         request.setPanNumber(getCellString(row, PAN_COL));
-        // Employee code, salary structure, and login are deliberately left unset here - see
-        // class javadoc. EmployeeService.create() auto-generates the code when left blank,
-        // exactly as it does for a single manually-added employee.
+        request.setAlternateMobileNumber(blankToNull(getCellString(row, ALTERNATE_MOBILE_COL)));
+        request.setUanNumber(blankToNull(getCellString(row, UAN_COL)));
+        request.setPfMemberId(blankToNull(getCellString(row, PF_MEMBER_ID_COL)));
+        request.setEsicNumber(blankToNull(getCellString(row, ESIC_COL)));
+        request.setBankAccountHolderName(blankToNull(getCellString(row, BANK_HOLDER_COL)));
+        request.setBankAccountNumber(blankToNull(getCellString(row, BANK_ACCOUNT_COL)));
+        request.setBankIfscCode(blankToNull(getCellString(row, BANK_IFSC_COL)));
+        request.setBankName(blankToNull(getCellString(row, BANK_NAME_COL)));
+        request.setBankBranch(blankToNull(getCellString(row, BANK_BRANCH_COL)));
+        request.setEmergencyContactName(blankToNull(getCellString(row, EMERGENCY_NAME_COL)));
+        request.setEmergencyContactRelationship(blankToNull(getCellString(row, EMERGENCY_RELATIONSHIP_COL)));
+        request.setEmergencyContactMobile(blankToNull(getCellString(row, EMERGENCY_MOBILE_COL)));
+        // Employee code, salary structure, PF/ESI/PT applicability, and login are deliberately
+        // left unset here - see class javadoc. EmployeeService.create() auto-generates the code
+        // when left blank, exactly as it does for a single manually-added employee.
 
         // A clear, actionable error instead of a raw MySQL "data too long" exception if a cell
         // holds far more text than any real name/field ever would (e.g. a stray note or comment

@@ -1,0 +1,86 @@
+<div class="page-header">
+  <div>
+    <h1>Professional Tax Slabs</h1>
+    <p class="muted">Only used when Payroll Settings' Professional Tax calculation mode is Slab-Based. <a routerLink="/payroll/settings">Back to Payroll Settings</a></p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openAddForm()">
+    <i class="bi bi-plus-lg"></i> Add Slab
+  </button>
+</div>
+
+@if (showForm()) {
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem; max-width: 520px;">
+    <div class="section-title" style="margin-top: 0;">{{ editingId() != null ? 'Edit Slab' : 'New Slab' }}</div>
+    <div class="form-field">
+      <label>State <span class="muted">(optional - leave blank to apply regardless of state)</span></label>
+      <input type="text" [(ngModel)]="state" placeholder="e.g. Maharashtra" />
+    </div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Minimum Salary (₹)</label>
+        <input type="number" min="0" [(ngModel)]="minSalary" />
+      </div>
+      <div class="form-field">
+        <label>Maximum Salary (₹) <span class="muted">(blank = unbounded)</span></label>
+        <input type="number" min="0" [(ngModel)]="maxSalary" />
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Professional Tax Amount (₹/month)</label>
+      <input type="number" min="0" [(ngModel)]="ptAmount" />
+    </div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Effective From</label>
+        <input type="date" [(ngModel)]="effectiveFrom" />
+      </div>
+      <div class="form-field">
+        <label>Effective To <span class="muted">(blank = open-ended)</span></label>
+        <input type="date" [(ngModel)]="effectiveTo" [min]="effectiveFrom" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">
+        @if (saving()) { <span class="btn-spinner"></span> }
+        {{ editingId() != null ? 'Save Changes' : 'Add Slab' }}
+      </button>
+    </div>
+  </div>
+}
+
+<div class="card" style="padding: 1.25rem;">
+  @if (loading()) {
+    <div class="skeleton" style="height: 200px;"></div>
+  } @else if (slabs().length === 0) {
+    <div class="empty-state">
+      No Professional Tax slabs configured yet. Add one above, or switch Payroll Settings back to Flat Amount mode if you don't need slab-based PT.
+    </div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>State</th><th>Salary Range</th><th>PT Amount</th><th>Effective From</th><th>Effective To</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (s of slabs(); track s.id) {
+            <tr>
+              <td>{{ s.state || 'Any' }}</td>
+              <td>₹{{ s.minSalary }} - {{ s.maxSalary != null ? ('₹' + s.maxSalary) : 'and above' }}</td>
+              <td>₹{{ s.ptAmount }}</td>
+              <td>{{ s.effectiveFrom }}</td>
+              <td>{{ s.effectiveTo || '-' }}</td>
+              <td>{{ s.status }}</td>
+              <td>
+                <div class="actions">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="openEditForm(s)" title="Edit"><i class="bi bi-pencil"></i></button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="remove(s)" title="Delete"><i class="bi bi-trash"></i></button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
