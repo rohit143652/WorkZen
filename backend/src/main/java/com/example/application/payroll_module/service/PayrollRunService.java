@@ -81,6 +81,7 @@ public class PayrollRunService {
     private final PayrollSettingsResolver payrollSettingsResolver;
     private final PayrollWorkingDaysResolver payrollWorkingDaysResolver;
     private final ProfessionalTaxSlabService professionalTaxSlabService;
+    private final com.example.application.employee_module.service.EmployeeMonthRosterService employeeMonthRoster;
     private final EmployeePayrollAdjustmentRepository payrollAdjustmentRepository;
     private final PayrollInputResolver payrollInputResolver;
     private final PayrollCalculationService payrollCalculationService;
@@ -102,6 +103,7 @@ public class PayrollRunService {
                               PayrollSettingsResolver payrollSettingsResolver,
                               PayrollWorkingDaysResolver payrollWorkingDaysResolver,
                               ProfessionalTaxSlabService professionalTaxSlabService,
+                              com.example.application.employee_module.service.EmployeeMonthRosterService employeeMonthRoster,
                               EmployeePayrollAdjustmentRepository payrollAdjustmentRepository,
                               PayrollInputResolver payrollInputResolver,
                               PayrollCalculationService payrollCalculationService,
@@ -122,6 +124,7 @@ public class PayrollRunService {
         this.payrollSettingsResolver = payrollSettingsResolver;
         this.payrollWorkingDaysResolver = payrollWorkingDaysResolver;
         this.professionalTaxSlabService = professionalTaxSlabService;
+        this.employeeMonthRoster = employeeMonthRoster;
         this.payrollAdjustmentRepository = payrollAdjustmentRepository;
         this.payrollInputResolver = payrollInputResolver;
         this.payrollCalculationService = payrollCalculationService;
@@ -209,7 +212,11 @@ public class PayrollRunService {
         PayrollSettings payrollSettings = payrollSettingsResolver.resolve(tenantId, run.getYear(), run.getMonth());
         int daysInMonth = payrollWorkingDaysResolver.resolve(payrollSettings, yearMonth);
 
-        List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        // Who belongs in THIS month's payroll (EmployeeMonthRosterService): joined by the end of the month,
+        // and not already gone by it. Joining mid-month is fine - they are included, and pay follows their
+        // attendance as before. The month someone LEAVES is excluded on purpose: Full & Final Settlement
+        // already pays that month's prorated salary, so including it here would pay the same month twice.
+        List<Employee> employees = employeeMonthRoster.employeesForMonth(tenantId, yearMonth);
         if (run.getSiteIds() != null && !run.getSiteIds().isBlank()) {
             // Site-wise payroll (Phase 4) - only employees currently assigned to one of this
             // run's selected sites. Uses the CURRENT active assignment (same simplification this
@@ -363,6 +370,18 @@ public class PayrollRunService {
             pre.setNote(in.getNote());
 
             payrollRunEmployeeRepository.save(pre);
+        }
+
+        // Re-calculation only UPDATES the rows of employees who qualify today, so a row written by an
+        // earlier calculation for someone who does not belong in this month (not yet joined, or already
+        // left by its end - e.g. a run made before these rules existed, or before a date was corrected)
+        // would otherwise live on forever. Deliberately limited to those two cases: anyone merely
+        // deactivated without an exit record keeps their existing row rather than losing it on a guess.
+        List<PayrollRunEmployee> existingRows = payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(run.getId());
+        if (!existingRows.isEmpty()) {
+            java.util.Set<Long> outsideThisMonth = employeeMonthRoster.employeeIdsOutsideEmploymentWindow(tenantId, yearMonth,
+                    existingRows.stream().map(PayrollRunEmployee::getEmployeeId).collect(java.util.stream.Collectors.toSet()));
+            existingRows.stream().filter(row -> outsideThisMonth.contains(row.getEmployeeId())).forEach(payrollRunEmployeeRepository::delete);
         }
 
         run.setStatus("CALCULATED");

@@ -43,8 +43,14 @@ public class EmployeeResponse {
     private String emergencyContactRelationship;
     private String emergencyContactMobile;
     private String onboardingStatus;
-    /** Only set right after an action that just attempted to send an invitation email (create with login enabled, enable-login, resend-invitation) - null everywhere else (list views, get-by-id), since this reflects a one-time delivery attempt, not a persisted property of the employee. true = the email send succeeded; false = it was attempted but failed (check EmailService logs, or use Resend Invitation); null = no invitation email was part of this particular action at all. */
-    private Boolean invitationEmailSent;
+    /**
+     * Delivery state of this employee's latest invitation email: PENDING (queued / being sent in
+     * the background), SENT, or FAILED (use Resend Invitation). Right after create / enable-login
+     * it is always PENDING - the email is sent AFTER the response, so the real outcome isn't known
+     * yet. On the single-employee details response it is the recorded outcome. Null in list views
+     * and for employees with no invitation.
+     */
+    private String invitationEmailStatus;
     private String aadharNumber;
     private String panNumber;
     private String uanNumber;
@@ -134,8 +140,8 @@ public class EmployeeResponse {
     public void setEmergencyContactMobile(String emergencyContactMobile) { this.emergencyContactMobile = emergencyContactMobile; }
     public String getOnboardingStatus() { return onboardingStatus; }
     public void setOnboardingStatus(String onboardingStatus) { this.onboardingStatus = onboardingStatus; }
-    public Boolean getInvitationEmailSent() { return invitationEmailSent; }
-    public void setInvitationEmailSent(Boolean invitationEmailSent) { this.invitationEmailSent = invitationEmailSent; }
+    public String getInvitationEmailStatus() { return invitationEmailStatus; }
+    public void setInvitationEmailStatus(String invitationEmailStatus) { this.invitationEmailStatus = invitationEmailStatus; }
     public String getAadharNumber() { return aadharNumber; }
     public void setAadharNumber(String aadharNumber) { this.aadharNumber = aadharNumber; }
     public String getPanNumber() { return panNumber; }

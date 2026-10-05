@@ -259,4 +259,15 @@ public class Employee {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
     public boolean hasLogin() { return user != null; }
+
+    /**
+     * True if this employee had joined on or before {@code date}. The "joined" half of the rule in
+     * EmployeeMonthRosterService, which every month-based report and payroll goes through, so an employee who joins in August is not in July's
+     * muster/report/payroll, while one who joins on any day of August (even the 31st) IS in
+     * August's. A missing joining date counts as joined: incomplete data must not make someone
+     * silently vanish from payroll and reports.
+     */
+    public boolean hasJoinedBy(java.time.LocalDate date) {
+        return joiningDate == null || !joiningDate.isAfter(date);
+    }
 }

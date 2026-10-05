@@ -47,6 +47,7 @@ class PayrollRunServiceTest {
     @Mock private PayrollRunRepository payrollRunRepository;
     @Mock private PayrollRunEmployeeRepository payrollRunEmployeeRepository;
     @Mock private EmployeeRepository employeeRepository;
+    @Mock private com.example.application.employee_module.service.EmployeeMonthRosterService employeeMonthRoster;
     @Mock private AttendanceRepository attendanceRepository;
     @Mock private EmployeeSiteAssignmentRepository siteAssignmentRepository;
     @Mock private SiteRepository siteRepository;
@@ -254,8 +255,7 @@ class PayrollRunServiceTest {
         employee.setFirstName("Test");
         employee.setLastName("Employee");
         employee.setStatus("ACTIVE");
-        when(employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(TENANT_ID, "ACTIVE"))
-                .thenReturn(List.of(employee));
+        when(employeeMonthRoster.employeesForMonth(TENANT_ID, java.time.YearMonth.of(2026, 8))).thenReturn(List.of(employee));
 
         when(attendanceRepository.findAllByClientCompanyIdAndAttendanceDateBetweenOrderByEmployeeIdAscAttendanceDateAsc(any(), any(), any()))
                 .thenReturn(List.of());
@@ -302,5 +302,111 @@ class PayrollRunServiceTest {
         existing.setPayrollRunId(RUN_ID);
         existing.setEmployeeId(200L);
         return existing;
+    }
+
+    // ===== who belongs in a month's payroll (EmployeeMonthRosterService decides; its rules are tested there) =====
+
+    private static final java.time.YearMonth JULY = java.time.YearMonth.of(2026, 7);
+
+    private PayrollRun julyRun() {
+        PayrollRun run = new PayrollRun();
+        run.setId(RUN_ID);
+        run.setClientCompanyId(TENANT_ID);
+        run.setYear(2026);
+        run.setMonth(7);
+        run.setStatus("DRAFT");
+        return run;
+    }
+
+    private static Employee employeeWithId(Long id, String code) {
+        Employee e = new Employee();
+        e.setId(id);
+        e.setEmployeeCode(code);
+        e.setFirstName("Emp");
+        e.setLastName(code);
+        e.setStatus("ACTIVE");
+        return e;
+    }
+
+    /** Stubs a July 2026 calculation in which the roster returns exactly {@code onTheRoster}. */
+    private void stubJulyCalculation(Employee onTheRoster) {
+        when(payrollRunRepository.findByIdAndClientCompanyId(RUN_ID, TENANT_ID)).thenReturn(Optional.of(julyRun()));
+        when(payrollRunRepository.save(any(PayrollRun.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(employeeMonthRoster.employeesForMonth(TENANT_ID, JULY)).thenReturn(List.of(onTheRoster));
+        when(attendanceRepository.findAllByClientCompanyIdAndAttendanceDateBetweenOrderByEmployeeIdAscAttendanceDateAsc(any(), any(), any()))
+                .thenReturn(List.of());
+        when(siteRepository.findAllByClientCompanyId(TENANT_ID)).thenReturn(List.of());
+        when(siteAssignmentRepository.findAllByClientCompanyIdAndStatus(TENANT_ID, "ACTIVE")).thenReturn(List.of());
+        when(payrollSettingsResolver.resolve(TENANT_ID, 2026, 7)).thenReturn(new PayrollSettings());
+        when(payrollWorkingDaysResolver.resolve(any(PayrollSettings.class), any(java.time.YearMonth.class))).thenReturn(31);
+        when(payrollAdjustmentRepository.findAllByClientCompanyIdAndYearAndMonth(TENANT_ID, 2026, 7)).thenReturn(List.of());
+
+        EmployeePayrollInputs inputs = new EmployeePayrollInputs();
+        inputs.setBasicSalary(BigDecimal.ZERO);
+        inputs.setDa(BigDecimal.ZERO);
+        inputs.setTotalGross(new BigDecimal("15000.00"));
+        inputs.setPaidLeaveDays(BigDecimal.ZERO);
+        inputs.setUnpaidLeaveDays(BigDecimal.ZERO);
+        inputs.setPayableDays(new BigDecimal("30"));
+        when(payrollInputResolver.resolveEmployeeInputs(eq(TENANT_ID), eq(onTheRoster), eq(2026), eq(7), any(), anyInt(), any(), any()))
+                .thenReturn(inputs);
+        PayrollCalculationResult result = new PayrollCalculationResult(
+                BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("15000.00"),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                new BigDecimal("15000.00"), BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("15000.00"));
+        when(payrollCalculationService.calculate(any())).thenReturn(result);
+        when(payrollRunEmployeeRepository.findByPayrollRunIdAndEmployeeId(eq(RUN_ID), eq(onTheRoster.getId()))).thenReturn(Optional.empty());
+        when(payrollRunEmployeeRepository.save(any(PayrollRunEmployee.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    /** Payroll processes exactly who the roster says belongs in the month - nobody else gets a row. */
+    @Test
+    void payrollIsCalculatedForExactlyTheEmployeesTheRosterReturnsForThatMonth() {
+        Employee onRoster = employeeWithId(200L, "EMP0001");
+        Employee notOnRoster = employeeWithId(201L, "EMP0002");   // e.g. joins in August, or left in July
+        stubJulyCalculation(onRoster);
+        when(payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(RUN_ID)).thenReturn(List.of());
+
+        service.calculateRun(RUN_ID, ACTOR_ID, null);
+
+        org.mockito.ArgumentCaptor<PayrollRunEmployee> saved = org.mockito.ArgumentCaptor.forClass(PayrollRunEmployee.class);
+        verify(payrollRunEmployeeRepository, times(1)).save(saved.capture());
+        assertEquals(200L, saved.getValue().getEmployeeId());
+        verify(payrollInputResolver, never()).resolveEmployeeInputs(any(), eq(notOnRoster), anyInt(), anyInt(), any(), anyInt(), any(), any());
+    }
+
+    /** A run calculated BEFORE these rules existed still holds a row for someone who does not belong in the month - recalculating must clear it. */
+    @Test
+    void recalculatingRemovesRowsTheRosterSaysDoNotBelongInThatMonth() {
+        Employee onRoster = employeeWithId(200L, "EMP0001");
+        stubJulyCalculation(onRoster);
+        PayrollRunEmployee staleRow = new PayrollRunEmployee();
+        staleRow.setPayrollRunId(RUN_ID);
+        staleRow.setEmployeeId(201L);
+        // First call is the cleanup's look at the existing rows; later calls (totals) see the run without it.
+        when(payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(RUN_ID)).thenReturn(List.of(staleRow), List.of());
+        when(employeeMonthRoster.employeeIdsOutsideEmploymentWindow(eq(TENANT_ID), eq(JULY), any())).thenReturn(java.util.Set.of(201L));
+
+        service.calculateRun(RUN_ID, ACTOR_ID, null);
+
+        verify(payrollRunEmployeeRepository).delete(staleRow);
+    }
+
+    /** The cleanup removes ONLY what the roster flags: anyone else's existing row (e.g. deactivated without an exit record) is left alone. */
+    @Test
+    void recalculatingKeepsEveryRowTheRosterDoesNotFlag() {
+        Employee onRoster = employeeWithId(200L, "EMP0001");
+        stubJulyCalculation(onRoster);
+        PayrollRunEmployee otherRow = new PayrollRunEmployee();
+        otherRow.setPayrollRunId(RUN_ID);
+        otherRow.setEmployeeId(205L);
+        when(payrollRunEmployeeRepository.findAllByPayrollRunIdOrderByEmployeeCodeAsc(RUN_ID)).thenReturn(List.of(otherRow), List.of());
+        when(employeeMonthRoster.employeeIdsOutsideEmploymentWindow(eq(TENANT_ID), eq(JULY), any())).thenReturn(java.util.Set.of());
+
+        service.calculateRun(RUN_ID, ACTOR_ID, null);
+
+        verify(payrollRunEmployeeRepository, never()).delete(any(PayrollRunEmployee.class));
     }
 }

@@ -61,6 +61,12 @@ export const routes: Routes = [
         loadChildren: () => import('./subscription_module/subscription-plan.routes').then(m => m.SUBSCRIPTION_PLAN_ROUTES)
       },
       {
+        path: 'mail-settings',
+        canActivate: [permissionGuard],
+        data: { permission: 'MAIL_SETTINGS_MANAGE' },
+        loadChildren: () => import('./mail_settings_module/mail-settings.routes').then(m => m.MAIL_SETTINGS_ROUTES)
+      },
+      {
         path: 'sites',
         canActivate: [permissionGuard],
         data: { permission: 'SITE_READ' },

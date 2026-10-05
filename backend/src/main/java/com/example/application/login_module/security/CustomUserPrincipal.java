@@ -16,6 +16,12 @@ import java.util.stream.Collectors;
  * Spring Security principal backed by the database User entity.
  * Authorities include both ROLE_x (for hasRole) and raw permission
  * names (for hasAuthority), all derived from the database.
+ *
+ * A user's effective permissions are the permissions of their roles UNION the additional
+ * permissions granted to them individually. That union lives ONLY here: getAuthorities() decides
+ * what the server enforces, getPermissionNames() is what login and /me send to the browser, and
+ * TenantContextService reads the same method for the "you cannot grant what you don't hold"
+ * ceiling - so all three always agree.
  */
 public class CustomUserPrincipal implements UserDetails {
 
@@ -40,6 +46,10 @@ public class CustomUserPrincipal implements UserDetails {
                 authorities.add(new SimpleGrantedAuthority(permission.getName()));
             }
         }
+        // Granted to this one user on top of their roles (see User.extraPermissions).
+        for (Permission permission : user.getExtraPermissions()) {
+            authorities.add(new SimpleGrantedAuthority(permission.getName()));
+        }
         return authorities;
     }
 
@@ -53,6 +63,9 @@ public class CustomUserPrincipal implements UserDetails {
             for (Permission permission : role.getPermissions()) {
                 permissions.add(permission.getName());
             }
+        }
+        for (Permission permission : user.getExtraPermissions()) {
+            permissions.add(permission.getName());
         }
         return permissions;
     }

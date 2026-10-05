@@ -92,10 +92,8 @@ public class EmployeeController {
                                                                   HttpServletRequest httpRequest) {
         EmployeeResponse created = employeeService.create(request, principal.getId(), httpRequest);
         String message = "Employee created successfully";
-        if (Boolean.TRUE.equals(created.getInvitationEmailSent())) {
-            message += ". Invitation email sent.";
-        } else if (Boolean.FALSE.equals(created.getInvitationEmailSent())) {
-            message += ", but the invitation email could NOT be sent - use Resend Invitation from the employee's page.";
+        if ("PENDING".equals(created.getInvitationEmailStatus())) {
+            message += ". The invitation email is being sent in the background - its status shows on the employee's page.";
         }
         return ResponseEntity.status(201).body(ApiResponse.success(message, created));
     }
@@ -156,10 +154,8 @@ public class EmployeeController {
                                                                        HttpServletRequest httpRequest) {
         EmployeeResponse updated = employeeService.enableLogin(id, request, principal.getId(), httpRequest);
         String message = "Login access enabled successfully";
-        if (Boolean.TRUE.equals(updated.getInvitationEmailSent())) {
-            message += ". Invitation email sent.";
-        } else if (Boolean.FALSE.equals(updated.getInvitationEmailSent())) {
-            message += ", but the invitation email could NOT be sent - use Resend Invitation from the employee's page.";
+        if ("PENDING".equals(updated.getInvitationEmailStatus())) {
+            message += ". The invitation email is being sent in the background - its status shows on the employee's page.";
         }
         return ResponseEntity.ok(ApiResponse.success(message, updated));
     }

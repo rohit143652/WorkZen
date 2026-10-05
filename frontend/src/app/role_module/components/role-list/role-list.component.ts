@@ -6,6 +6,7 @@ import { RoleOption } from '../../models/role.model';
 import { PermissionService } from '../../../permission_module/services/permission.service';
 import { PermissionOption } from '../../../permission_module/models/permission.model';
 import { groupPermissionsByCategory } from '../../../permission_module/utils/permission-category.util';
+import { isPermissionFeatureAvailable } from '../../../permission_module/utils/permission-feature.util';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { HasPermissionDirective } from '../../../shared/directives/has-permission.directive';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -28,22 +29,6 @@ export class RoleListComponent {
   readonly authState = inject(AuthStateService);
   readonly featureState = inject(FeatureStateService);
 
-  /**
-   * Company Feature Configuration (Super Admin, "Manage Features") is the upper-level control -
-   * a role holding ATTENDANCE_SELF_MARK is meaningless if the company itself has Employee Self
-   * Attendance switched off, so a permission here isn't even OFFERED as a checkbox while its
-   * feature is off (see isPermissionFeatureAvailable()) - not shown-but-disabled with an
-   * explanation, hidden outright, since there's nothing useful to do with it either way while the
-   * feature remains off. Multiple codes are AND'd: every one of them must be on for the
-   * permission to appear. */
-  private readonly PERMISSION_FEATURE_DEPENDENCIES: Record<string, string[]> = {
-    ATTENDANCE_SELF_MARK: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-    ATTENDANCE_CREATE: ['ATTENDANCE_MANAGEMENT'],
-    ATTENDANCE_CORRECTION_REQUEST: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-    ATTENDANCE_CORRECTION_REVIEW: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE'],
-    ATTENDANCE_RULES_MANAGE: ['ATTENDANCE_MANAGEMENT', 'EMPLOYEE_SELF_ATTENDANCE']
-  };
-
   readonly roles = signal<RoleOption[]>([]);
   readonly loading = signal(true);
   readonly showAddForm = signal(false);
@@ -59,11 +44,9 @@ export class RoleListComponent {
    */
   readonly selectablePermissions = signal<PermissionOption[]>([]);
 
-  /** False only for a permission whose dependent company feature(s) are currently OFF (see PERMISSION_FEATURE_DEPENDENCIES) - a permission with no such dependency is always available. AND logic across multiple codes: any one of them being off is enough to hide it. */
+  /** See permission-feature.util.ts - shared with the employee "additional permissions" editor so the two can never disagree. */
   private isPermissionFeatureAvailable(name: string): boolean {
-    const codes = this.PERMISSION_FEATURE_DEPENDENCIES[name];
-    if (!codes) return true;
-    return codes.every(code => this.featureState.isEnabled(code));
+    return isPermissionFeatureAvailable(name, code => this.featureState.isEnabled(code));
   }
 
   get groupedSelectablePermissions() {

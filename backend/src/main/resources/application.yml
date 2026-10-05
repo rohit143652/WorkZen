@@ -68,6 +68,12 @@ spring:
           auth: true
           starttls:
             enable: true
+          # JavaMail's defaults for ALL THREE are "wait forever" - one unreachable/slow SMTP host
+          # would otherwise hang a request (or a mail-sender thread) for minutes until the OS
+          # gives up. Bounded here; override with MAIL_*_TIMEOUT_MS if a slow relay needs more.
+          connectiontimeout: ${MAIL_CONNECT_TIMEOUT_MS:5000}
+          timeout: ${MAIL_READ_TIMEOUT_MS:10000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT_MS:10000}
 
 jwt:
   # No default on purpose - a missing JWT_SECRET must fail startup clearly, never silently sign

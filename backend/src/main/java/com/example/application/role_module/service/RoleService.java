@@ -190,7 +190,8 @@ public class RoleService {
         }
     }
 
-    private static final Set<String> UNRESTRICTED_PERMISSIONS = Set.of("PAYSLIP_SELF_VIEW");
+    /** Shared with EmployeeExtraPermissionService so a role and a single user are subject to the SAME "can't grant what you don't hold" exemptions. */
+    public static final Set<String> UNRESTRICTED_PERMISSIONS = Set.of("PAYSLIP_SELF_VIEW");
 
     private Set<Permission> resolvePermissionsWithCeiling(Set<Long> ids, boolean superAdmin) {
         if (ids == null || ids.isEmpty()) return new HashSet<>();

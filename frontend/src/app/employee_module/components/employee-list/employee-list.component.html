@@ -77,6 +77,9 @@
                 <div class="actions">
                   <a [routerLink]="['/employees', e.id]" class="btn-icon-sm" title="View"><i class="bi bi-eye"></i></a>
                   <a [routerLink]="['/employees', e.id, 'edit']" *appHasPermission="'EMPLOYEE_UPDATE'" class="btn-icon-sm btn-icon-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                  @if (canResendInvitation(e)) {
+                    <button type="button" *appHasPermission="'EMPLOYEE_ONBOARDING_MANAGE'" class="btn-icon-sm btn-icon-primary" title="Resend Invitation" [disabled]="resendingId() === e.id" (click)="resendInvitation(e)"><i class="bi bi-send"></i></button>
+                  }
                   @if (e.loginEnabled) {
                     <button type="button" *appHasPermission="'EMPLOYEE_DISABLE_LOGIN'" class="btn-icon-sm btn-icon-danger" title="Disable Login" (click)="toggleLogin(e)"><i class="bi bi-key"></i></button>
                   }

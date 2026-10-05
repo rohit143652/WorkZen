@@ -75,8 +75,12 @@ export interface EmployeeResponse {
   emergencyContactRelationship?: string;
   emergencyContactMobile?: string;
   onboardingStatus?: string;
-  /** Only set right after create/enable-login when a login was enabled without an admin-set password (an invitation email was just attempted) - true/false means sent/failed, undefined means no invitation email was part of this particular action. */
-  invitationEmailSent?: boolean;
+  /**
+   * Delivery state of the latest invitation email. Right after create / enable-login it is always
+   * 'PENDING' (the email is sent in the background AFTER the response). On the details view it is the
+   * recorded outcome: 'SENT', or 'FAILED' (use Resend Invitation). Undefined in list views.
+   */
+  invitationEmailStatus?: 'PENDING' | 'SENT' | 'FAILED';
   aadharNumber?: string;
   panNumber?: string;
   uanNumber?: string;
@@ -157,4 +161,25 @@ export interface SelfProfileUpdateRequest {
   bankName?: string;
   bankBranch?: string;
   photoData?: string;
+}
+
+/** One permission in the "additional permissions" editor. locked = currently granted, but the person editing doesn't hold it themselves, so they can neither add nor remove it. */
+export interface ExtraPermissionOption {
+  id: number;
+  name: string;
+  description: string | null;
+  locked: boolean;
+}
+
+/**
+ * An employee's access split into its two sources: what their role(s) give (read-only context),
+ * what was granted to THIS employee on top, and what the person editing may toggle.
+ */
+export interface ExtraPermissions {
+  employeeId: number;
+  username: string;
+  roleNames: string[];
+  rolePermissions: ExtraPermissionOption[];
+  extraPermissions: ExtraPermissionOption[];
+  grantable: ExtraPermissionOption[];
 }

@@ -59,6 +59,7 @@ class EmployeeOnboardingServiceTest {
     @Mock private com.example.application.common.email.EmailTemplateService emailTemplateService;
     @Mock private AuditService auditService;
     @Mock private TenantContextService tenantContext;
+    @Mock private com.example.application.common.email.AfterCommitExecutor afterCommitExecutor;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private EmployeeOnboardingService service;
@@ -69,11 +70,14 @@ class EmployeeOnboardingServiceTest {
     @BeforeEach
     void setUp() {
         service = new EmployeeOnboardingService(invitationRepository, employeeRepository, userRepository,
-                clientCompanyRepository, passwordEncoder, emailService, emailTemplateService, auditService, tenantContext);
+                clientCompanyRepository, passwordEncoder, emailService, emailTemplateService, auditService, tenantContext, afterCommitExecutor);
         ReflectionTestUtils.setField(service, "frontendBaseUrl", "http://localhost:4200");
         ReflectionTestUtils.setField(service, "invitationExpiryHours", 24L);
         ReflectionTestUtils.setField(service, "maxCodeAttempts", 5);
         ReflectionTestUtils.setField(service, "passwordMinLength", 8);
+        // A bare mock returns null, and Mockito's anyString() does NOT match null - so without this
+        // every verify(emailService).sendHtml(..., anyString(), anyString()) could never succeed.
+        lenient().when(emailTemplateService.render(anyString(), anyMap())).thenReturn("<html>rendered</html>");
 
         employee = new Employee();
         employee.setId(EMPLOYEE_ID);
@@ -87,6 +91,7 @@ class EmployeeOnboardingServiceTest {
         user = new User();
         user.setId(USER_ID);
         user.setActive(false);
+        user.setUsername("asha.patil");
     }
 
     private EmployeeOnboardingInvitation invitationWith(String status, LocalDateTime expiresAt, int attemptCount) {
@@ -215,7 +220,7 @@ class EmployeeOnboardingServiceTest {
         service.resendInvitation(EMPLOYEE_ID, 1L, null);
 
         assertEquals("SUPERSEDED", oldInvitation.getStatus());
-        verify(emailService, times(1)).sendHtml(eq("asha@example.com"), anyString(), anyString());
+        verify(emailService, times(1)).sendHtml(eq(TENANT_ID), eq("asha@example.com"), anyString(), anyString());
         verify(invitationRepository, atLeast(2)).save(any(EmployeeOnboardingInvitation.class));
     }
 
@@ -227,7 +232,7 @@ class EmployeeOnboardingServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> service.resendInvitation(EMPLOYEE_ID, 1L, null));
         verify(invitationRepository, never()).save(any());
-        verify(emailService, never()).sendHtml(anyString(), anyString(), anyString());
+        verify(emailService, never()).sendHtml(any(), anyString(), anyString(), anyString());
     }
 
     /** A LOCKED invitation (too many failed attempts) is refused even with the correct code. */
@@ -239,5 +244,105 @@ class EmployeeOnboardingServiceTest {
         BadRequestException ex = assertThrows(BadRequestException.class, () -> service.verifyCode(TOKEN, RAW_CODE));
         assertTrue(ex.getMessage().contains("Too many"));
         assertEquals("LOCKED", invitation.getStatus());
+    }
+
+    /** Saving must NOT wait on the mail server: the invitation is created and the email only QUEUED for after commit. */
+    @Test
+    void createInvitationQueuesTheEmailInsteadOfSendingItInsideTheRequest() {
+        String status = service.createInvitation(employee, user, 1L, null);
+
+        assertEquals("PENDING", status);
+        verify(emailService, never()).sendHtml(any(), anyString(), anyString(), anyString());
+        verify(afterCommitExecutor, times(1)).run(any(Runnable.class));
+        verify(invitationRepository, atLeast(1)).save(any(EmployeeOnboardingInvitation.class));
+    }
+
+    /** The employee needs the login name to sign in after setting a password - it must be in the email. */
+    @Test
+    void theInvitationEmailContainsTheUsername() {
+        service.createInvitation(employee, user, 1L, null);
+
+        verify(emailTemplateService).render(eq("employee-invitation"),
+                argThat((java.util.Map<String, String> vars) -> "asha.patil".equals(vars.get("username"))));
+    }
+
+    /** The queued task is what really sends, and it records SENT on the invitation. */
+    @Test
+    void theQueuedTaskSendsTheEmailAndRecordsSent() {
+        when(emailService.sendHtml(any(), anyString(), anyString(), anyString())).thenReturn(true);
+        service.createInvitation(employee, user, 1L, null);
+        org.mockito.ArgumentCaptor<Runnable> task = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(afterCommitExecutor).run(task.capture());
+
+        task.getValue().run();
+
+        verify(emailService, times(1)).sendHtml(eq(TENANT_ID), eq("asha@example.com"), anyString(), anyString());
+        verify(invitationRepository).updateEmailStatus(any(), eq("SENT"), any());
+    }
+
+    /** A failed background send must be RECORDED as FAILED - the admin can only act on it if it is visible. */
+    @Test
+    void aFailedBackgroundSendIsRecordedAsFailedNotLost() {
+        when(emailService.sendHtml(any(), anyString(), anyString(), anyString())).thenReturn(false);
+        service.createInvitation(employee, user, 1L, null);
+        org.mockito.ArgumentCaptor<Runnable> task = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(afterCommitExecutor).run(task.capture());
+
+        task.getValue().run();
+
+        verify(invitationRepository).updateEmailStatus(any(), eq("FAILED"), isNull());
+    }
+
+    /** Even an unexpected exception in the mail thread must end as FAILED, never leave the row PENDING forever. */
+    @Test
+    void anUnexpectedErrorInTheMailThreadIsStillRecordedAsFailed() {
+        when(emailService.sendHtml(any(), anyString(), anyString(), anyString())).thenThrow(new IllegalStateException("boom"));
+        service.createInvitation(employee, user, 1L, null);
+        org.mockito.ArgumentCaptor<Runnable> task = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(afterCommitExecutor).run(task.capture());
+
+        assertDoesNotThrow(() -> task.getValue().run());
+
+        verify(invitationRepository).updateEmailStatus(any(), eq("FAILED"), isNull());
+    }
+
+    /** Resend is an explicit admin click: it WAITS for the mail server and reports the real outcome, never queues. */
+    @Test
+    void resendWaitsForTheMailServerAndReportsTheRealOutcome() {
+        when(tenantContext.requireCurrentTenantId()).thenReturn(TENANT_ID);
+        when(employeeRepository.findByIdAndClientCompanyId(EMPLOYEE_ID, TENANT_ID)).thenReturn(Optional.of(employee));
+        employee.setUser(user);
+        when(emailService.sendHtml(any(), anyString(), anyString(), anyString())).thenReturn(true);
+
+        assertTrue(service.resendInvitation(EMPLOYEE_ID, 1L, null));
+        verify(afterCommitExecutor, never()).run(any(Runnable.class));
+    }
+
+    /** PENDING for over 5 minutes means the mail thread never finished (e.g. app restarted) - report FAILED so the admin resends. */
+    @Test
+    void anInvitationStuckPendingForOverFiveMinutesIsReportedAsFailed() {
+        EmployeeOnboardingInvitation inv = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 0);
+        inv.setEmailStatus("PENDING");
+        when(invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(EMPLOYEE_ID)).thenReturn(Optional.of(inv));
+
+        inv.setCreatedAt(LocalDateTime.now().minusMinutes(6));
+        assertEquals("FAILED", service.latestEmailStatus(EMPLOYEE_ID));
+
+        inv.setCreatedAt(LocalDateTime.now().minusSeconds(20));
+        assertEquals("PENDING", service.latestEmailStatus(EMPLOYEE_ID));
+    }
+
+    /** Resend would only confuse someone who already activated (and regress their onboarding status) - refused. */
+    @Test
+    void resendIsRefusedForAnEmployeeWhoHasAlreadyActivatedTheirAccount() {
+        user.setActive(true);
+        employee.setUser(user);
+        when(tenantContext.requireCurrentTenantId()).thenReturn(TENANT_ID);
+        when(employeeRepository.findByIdAndClientCompanyId(EMPLOYEE_ID, TENANT_ID)).thenReturn(Optional.of(employee));
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> service.resendInvitation(EMPLOYEE_ID, 1L, null));
+
+        assertTrue(ex.getMessage().contains("already activated"));
+        verify(emailService, never()).sendHtml(any(), anyString(), anyString(), anyString());
     }
 }

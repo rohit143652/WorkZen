@@ -80,6 +80,7 @@ public class MonthlyAttendanceReportService {
     private final com.example.application.payroll_module.service.PayrollWorkingDaysResolver payrollWorkingDaysResolver;
     private final com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository;
     private final com.example.application.attendance_module.service.AttendanceRuleConfigService attendanceRuleConfigService;
+    private final com.example.application.employee_module.service.EmployeeMonthRosterService employeeMonthRoster;
 
     public MonthlyAttendanceReportService(EmployeeRepository employeeRepository,
                                            AttendanceRepository attendanceRepository,
@@ -93,7 +94,8 @@ public class MonthlyAttendanceReportService {
                                            com.example.application.payroll_module.service.PayrollSettingsResolver payrollSettingsResolver,
                                            com.example.application.payroll_module.service.PayrollWorkingDaysResolver payrollWorkingDaysResolver,
                                            com.example.application.client_company_module.repository.ClientCompanyRepository clientCompanyRepository,
-                                           com.example.application.attendance_module.service.AttendanceRuleConfigService attendanceRuleConfigService) {
+                                           com.example.application.attendance_module.service.AttendanceRuleConfigService attendanceRuleConfigService,
+                                           com.example.application.employee_module.service.EmployeeMonthRosterService employeeMonthRoster) {
         this.employeeRepository = employeeRepository;
         this.attendanceRepository = attendanceRepository;
         this.siteAssignmentRepository = siteAssignmentRepository;
@@ -107,6 +109,7 @@ public class MonthlyAttendanceReportService {
         this.payrollWorkingDaysResolver = payrollWorkingDaysResolver;
         this.clientCompanyRepository = clientCompanyRepository;
         this.attendanceRuleConfigService = attendanceRuleConfigService;
+        this.employeeMonthRoster = employeeMonthRoster;
     }
 
     /** Read-only: previewEmployeeInputs() below never writes to Leave, Salary Structure, or Payroll data. */
@@ -129,7 +132,7 @@ public class MonthlyAttendanceReportService {
         // the two would silently disagree.
         int daysInMonth = payrollWorkingDaysResolver.resolve(payrollSettingsResolver.resolve(tenantId, year, month), yearMonth);
 
-        List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        List<Employee> employees = employeeMonthRoster.employeesForMonth(tenantId, yearMonth);   // joined by this month's end, and not yet gone by it
 
         Map<Long, List<Attendance>> attendanceByEmployee = attendanceRepository
                 .findAllByClientCompanyIdAndAttendanceDateBetweenOrderByEmployeeIdAscAttendanceDateAsc(tenantId, monthStart, monthEnd)
@@ -318,7 +321,7 @@ public class MonthlyAttendanceReportService {
         LocalDate monthEnd = yearMonth.atEndOfMonth();
         int daysInMonth = yearMonth.lengthOfMonth(); // The muster book always shows every calendar day as its own column, regardless of the company's payroll working-days-basis setting - that setting affects payroll MATH, not how many day-columns a muster book has.
 
-        List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        List<Employee> employees = employeeMonthRoster.employeesForMonth(tenantId, yearMonth);   // joined by this month's end, and not yet gone by it
 
         Map<Long, EmployeeSiteAssignment> currentSiteByEmployee = new HashMap<>();
         for (EmployeeSiteAssignment a : siteAssignmentRepository.findAllByClientCompanyIdAndStatus(tenantId, "ACTIVE")) {

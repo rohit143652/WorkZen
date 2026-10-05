@@ -2,7 +2,10 @@ package com.example.application.login_module.entity;
 
 import com.example.application.role_module.entity.Role;
 import jakarta.persistence.*;
+import com.example.application.permission_module.entity.Permission;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -80,6 +83,21 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
+    /**
+     * Permissions granted to THIS user on top of what their roles give (V124). Strictly additive.
+     * Loaded eagerly, because the user is loaded on EVERY request to build their authorities - but
+     * with FetchMode.SELECT (its own small query) rather than another JOIN: the roles->permissions
+     * chain above already joins ~100 rows per user, and a second joined collection would multiply
+     * that by the number of extras on every single request.
+     */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SELECT)
+    @JoinTable(
+            name = "user_permissions",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id"))
+    private Set<Permission> extraPermissions = new HashSet<>();
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getClientCompanyId() { return clientCompanyId; }
@@ -110,4 +128,6 @@ public class User {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }
+    public Set<Permission> getExtraPermissions() { return extraPermissions; }
+    public void setExtraPermissions(Set<Permission> extraPermissions) { this.extraPermissions = extraPermissions; }
 }

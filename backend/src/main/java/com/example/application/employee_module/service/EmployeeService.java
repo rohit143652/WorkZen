@@ -43,6 +43,10 @@ import java.util.stream.Collectors;
 @Service
 public class EmployeeService {
 
+    /** See createLoginUser(): only for the unusable placeholder password of a not-yet-activated account. */
+    private static final org.springframework.security.crypto.password.PasswordEncoder PLACEHOLDER_PASSWORD_ENCODER =
+            new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(4);
+
     private static final String EMPLOYEE_CODE_PREFIX = "EMP";
 
     private final EmployeeRepository employeeRepository;
@@ -146,7 +150,13 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public EmployeeResponse findById(Long id) {
-        return toResponse(getEntity(id));
+        Employee employee = getEntity(id);
+        EmployeeResponse response = toResponse(employee);
+        // Only for the single-employee view, never the list: it's one extra query per employee.
+        if (employee.hasLogin()) {
+            response.setInvitationEmailStatus(onboardingService.latestEmailStatus(employee.getId()));
+        }
+        return response;
     }
 
     /** Read-only preview of the code create() would auto-assign right now - lets the Add form show/disable it upfront rather than after saving. */
@@ -243,7 +253,7 @@ public class EmployeeService {
 
         Employee saved = employeeRepository.save(employee);
         auditService.log(actorId, "EMPLOYEE_CREATED", "Created employee " + saved.getEmployeeCode(), httpRequest);
-        Boolean invitationEmailSent = null;
+        String invitationEmailStatus = null;
         if (saved.hasLogin()) {
             auditService.log(actorId, "LOGIN_ENABLED",
                     "Login account created for employee " + saved.getEmployeeCode(), httpRequest);
@@ -251,7 +261,7 @@ public class EmployeeService {
             // set their own - see EmployeeOnboardingService for the full invitation lifecycle.
             boolean adminSetPassword = request.getLoginAccess().getPassword() != null && !request.getLoginAccess().getPassword().isBlank();
             if (!adminSetPassword) {
-                invitationEmailSent = onboardingService.createInvitation(saved, saved.getUser(), actorId, httpRequest);
+                invitationEmailStatus = onboardingService.createInvitation(saved, saved.getUser(), actorId, httpRequest);
             }
         }
 
@@ -264,7 +274,7 @@ public class EmployeeService {
         }
 
         EmployeeResponse response = toResponse(saved);
-        response.setInvitationEmailSent(invitationEmailSent);
+        response.setInvitationEmailStatus(invitationEmailStatus);
         return response;
     }
 
@@ -449,7 +459,7 @@ public class EmployeeService {
         if (!"ACTIVE".equals(employee.getStatus())) {
             throw new BadRequestException("Cannot enable login for an inactive employee");
         }
-        Boolean invitationEmailSent = null;
+        String invitationEmailStatus = null;
 
         if (employee.hasLogin()) {
             User user = employee.getUser();
@@ -489,14 +499,14 @@ public class EmployeeService {
             if (!adminSetPassword) {
                 // Self-onboarding path (spec section 37: "Create Login for Existing Employee" -
                 // Enable Login -> invitation, not an admin-set password), same flow create() uses.
-                invitationEmailSent = onboardingService.createInvitation(employee, user, actorId, httpRequest);
+                invitationEmailStatus = onboardingService.createInvitation(employee, user, actorId, httpRequest);
             }
         }
 
         Employee saved = employeeRepository.save(employee);
         auditService.log(actorId, "LOGIN_ENABLED", "Login enabled for employee " + saved.getEmployeeCode(), httpRequest);
         EmployeeResponse response = toResponse(saved);
-        response.setInvitationEmailSent(invitationEmailSent);
+        response.setInvitationEmailStatus(invitationEmailStatus);
         return response;
     }
 
@@ -562,7 +572,8 @@ public class EmployeeService {
                 "temporaryPassword", tempPassword,
                 "loginUrl", frontendBaseUrl + "/login"
         ));
-        boolean emailSent = emailService.sendHtml(employee.getEmail(), "Your password has been reset - " + companyName, html);
+        // Sent from this employee's OWN company's sender, not a platform-wide one.
+        boolean emailSent = emailService.sendHtml(employee.getClientCompanyId(), employee.getEmail(), "Your password has been reset - " + companyName, html);
 
         return new com.example.application.employee_module.dto.PasswordResetResult(tempPassword, emailSent);
     }
@@ -635,7 +646,11 @@ public class EmployeeService {
             // INACTIVE (login blocked entirely) until EmployeeOnboardingService.setPassword()
             // flips it active once the employee has verified their invitation and chosen a
             // real password of their own.
-            user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID() + java.util.UUID.randomUUID().toString()));
+            // Cost 4 on purpose, NOT the app's cost-12 encoder: this value is two random UUIDs that
+            // nobody ever knows or types, so hash strength protects nothing here (an attacker would
+            // still have to guess ~240 bits). Cost 12 would burn ~300 ms of every "save employee" request for
+            // a password that can never be used. Real, human-chosen passwords still use cost 12.
+            user.setPassword(PLACEHOLDER_PASSWORD_ENCODER.encode(java.util.UUID.randomUUID() + java.util.UUID.randomUUID().toString()));
             user.setActive(false);
             user.setMustChangePassword(true);
         }

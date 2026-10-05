@@ -20,6 +20,7 @@ import { EmployeeSalaryStructureResponse } from '../../../salary_structure_modul
 import { SalaryStructureResponse } from '../../../salary_structure_module/models/salary-structure.model';
 import { AuthStateService } from '../../../core/services/auth-state.service';
 import { EmployeePaidLeaveComponent } from '../../../leave_module/components/employee-paid-leave/employee-paid-leave.component';
+import { EmployeeExtraPermissionsComponent } from '../employee-extra-permissions/employee-extra-permissions.component';
 import { EmployeeAdvancesComponent } from '../../../advance_module/components/employee-advances/employee-advances.component';
 import { PayrollService } from '../../../payroll_module/services/payroll.service';
 import { extractBlobErrorMessage } from '../../../shared/utils/blob-error.util';
@@ -27,7 +28,7 @@ import { extractBlobErrorMessage } from '../../../shared/utils/blob-error.util';
 @Component({
   selector: 'app-employee-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, HasPermissionDirective, EmployeePaidLeaveComponent, EmployeeAdvancesComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, StatusBadgeComponent, HasPermissionDirective, EmployeePaidLeaveComponent, EmployeeAdvancesComponent, EmployeeExtraPermissionsComponent],
   templateUrl: './employee-details.component.html',
   styleUrl: './employee-details.component.css'
 })

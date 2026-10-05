@@ -1,0 +1,15 @@
+-- ============================================================
+-- V123: Store the SMTP password as saved (no encryption key)
+--
+-- V121/V122 stored the password AES-encrypted, which required an APP_ENCRYPTION_KEY environment
+-- variable on the server. By product decision that requirement is dropped: the username and password
+-- now live in this table as entered, and are read straight from it when an email is sent.
+--
+-- This only renames the column so its name no longer claims to hold ciphertext. A row written by
+-- the earlier encrypted version (value starting "v1:") cannot be used without that key, so the
+-- service reports it as "re-enter the password" rather than sending the ciphertext as a password.
+--
+-- The column holds a plain-text secret. Keep database access and backups restricted, and prefer a
+-- revocable app-specific password (e.g. a Gmail App Password) over a mailbox's main password.
+-- ============================================================
+ALTER TABLE mail_settings CHANGE COLUMN password_encrypted password VARCHAR(1024) NOT NULL;

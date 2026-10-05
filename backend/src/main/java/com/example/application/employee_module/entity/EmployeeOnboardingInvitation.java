@@ -56,6 +56,13 @@ public class EmployeeOnboardingInvitation {
     @Column(name = "resent_at")
     private LocalDateTime resentAt;
 
+    /** PENDING while the background mail-sender is still working on it, then SENT or FAILED. A brand-new invitation always starts PENDING; rows that pre-date V120 default to SENT in the database. */
+    @Column(name = "email_status", nullable = false, length = 20)
+    private String emailStatus = "PENDING";
+
+    @Column(name = "email_sent_at")
+    private LocalDateTime emailSentAt;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getClientCompanyId() { return clientCompanyId; }
@@ -84,4 +91,8 @@ public class EmployeeOnboardingInvitation {
     public void setResentAt(LocalDateTime resentAt) { this.resentAt = resentAt; }
 
     public boolean isExpired() { return LocalDateTime.now().isAfter(expiresAt); }
+    public String getEmailStatus() { return emailStatus; }
+    public void setEmailStatus(String emailStatus) { this.emailStatus = emailStatus; }
+    public LocalDateTime getEmailSentAt() { return emailSentAt; }
+    public void setEmailSentAt(LocalDateTime emailSentAt) { this.emailSentAt = emailSentAt; }
 }

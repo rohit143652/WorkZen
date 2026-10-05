@@ -51,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     children: [
       { label: 'Client Companies', path: '/clients', icon: 'building', permission: 'CLIENT_COMPANY_READ' },
       { label: 'Subscription Plans', path: '/subscription-plans', icon: 'credit-card', permission: 'SUBSCRIPTION_PLAN_READ' },
+      { label: 'Email Settings', path: '/mail-settings', icon: 'envelope', permission: 'MAIL_SETTINGS_MANAGE' },
       { label: 'Sites', path: '/sites', icon: 'geo-alt', permission: 'SITE_READ' },
       { label: 'Departments & Designations', path: '/org-settings', icon: 'diagram-3', permission: 'DEPARTMENT_READ' }
     ]
@@ -226,11 +227,12 @@ export class AppShellComponent {
   /** SUPER_ADMIN is the SaaS platform owner, not a tenant operator - this app's whole
       Organization/Workforce/Attendance/Payroll/Advances/User-Management/Roles/Audit-Logs surface
       is tenant-operational and belongs to Client Admin (and other in-company roles), never to
-      the platform owner. Super Admin's own job is exactly three things: manage client companies,
-      manage subscription plans, and manage the permission catalog itself - nothing else should
+      the platform owner. Super Admin's own job is exactly four things: manage client companies,
+      manage subscription plans, set up each company's outgoing email sender (Email Settings),
+      and manage the permission catalog itself - nothing else should
       ever appear in their sidebar, even though SUPER_ADMIN technically holds every permission
       (the catch-all grant every migration uses) and would otherwise see everything. */
-  private static readonly SUPER_ADMIN_ALLOWED_PATHS = ['/dashboard', '/clients', '/subscription-plans', '/permissions'];
+  private static readonly SUPER_ADMIN_ALLOWED_PATHS = ['/dashboard', '/clients', '/subscription-plans', '/mail-settings', '/permissions'];
 
   isVisible(item: NavLeaf): boolean {
     if (this.authState.hasRole('SUPER_ADMIN') && !AppShellComponent.SUPER_ADMIN_ALLOWED_PATHS.includes(item.path)) {

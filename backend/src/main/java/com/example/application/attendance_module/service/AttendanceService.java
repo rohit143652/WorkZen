@@ -348,6 +348,11 @@ public class AttendanceService {
         List<Employee> activeEmployees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
         int marked = 0;
         for (Employee employee : activeEmployees) {
+            // A holiday that falls BEFORE someone joined was not theirs - marking them PRESENT on it would
+            // create attendance (and payable days) from before they worked here.
+            if (!employee.hasJoinedBy(date)) {
+                continue;
+            }
             try {
                 markOne(tenantId, employee.getId(), date, "PRESENT", remarks, actorId);
                 marked++;

@@ -1,0 +1,131 @@
+<div class="page-header">
+  <div>
+    <h1>Email Settings</h1>
+    <p class="muted">Choose which email address each client company sends from. Every email for a company (employee invitations, password resets) goes out from <strong>that company's own sender</strong>. A company without one uses the platform default.</p>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="skeleton" style="height: 240px;"></div>
+}
+
+@if (overview(); as ov) {
+
+  <!-- Who sends as whom -->
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Company</th><th>Emails are sent from</th><th>Using</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (row of [ov.platform].concat(ov.companies); track row.clientCompanyId) {
+            <tr [style.background]="selected()?.id === row.clientCompanyId && selected() ? 'var(--row-selected, rgba(37,99,235,0.07))' : ''">
+              <td>
+                @if (row.clientCompanyId == null) { <strong>Platform default</strong> <span class="muted">(for companies with no sender of their own)</span> }
+                @else { {{ row.companyName }} }
+              </td>
+              <td>
+                {{ row.effectiveFromAddress || '-' }}
+                @if (!row.usable) { <span class="badge badge-danger" [title]="row.problem || ''">Not working</span> }
+              </td>
+              <td><span class="badge" [ngClass]="sourceBadge(row.effectiveSource)">{{ sourceLabel(row.effectiveSource) }}</span></td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" (click)="edit(row)">
+                  {{ row.hasOwnSettings ? 'Edit' : 'Set up' }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Editor for the chosen company / the platform default -->
+  @if (selected(); as sel) {
+    @if (settings(); as s) {
+      <div class="card" style="padding: 1.25rem; margin-bottom: 1rem; max-width: 640px;">
+        <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+          <div class="section-title" style="margin-top: 0;">
+            {{ sel.id == null ? 'Platform default sender' : 'Sender for ' + sel.name }}
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="closeEditor()" title="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+        @if (!s.hasStoredSettings && sel.id != null) {
+          <p class="muted" style="margin-top: 0;">{{ sel.name }} has no sender of its own yet, so its emails currently go out from <strong>{{ s.effectiveFromAddress || '-' }}</strong>. Fill this in to give it its own.</p>
+        }
+        @if (!s.usable) {
+          <p style="margin: 0 0 0.9rem; padding: 0.7rem 0.9rem; border-radius: 6px; background: var(--danger-bg, #fde8e8); color: var(--danger-color, #b42318);">
+            <i class="bi bi-exclamation-octagon-fill"></i> Email cannot be sent for this right now: {{ s.problem }}
+          </p>
+        }
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Mail server</label>
+            <input type="text" [(ngModel)]="host" placeholder="smtp.gmail.com" autocomplete="off" />
+          </div>
+          <div class="form-field">
+            <label>Port</label>
+            <input type="number" min="1" max="65535" [(ngModel)]="port" placeholder="587" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Username <span class="muted">(for Gmail: the full email address)</span></label>
+          <input type="text" [(ngModel)]="username" autocomplete="off" />
+        </div>
+        <div class="form-field">
+          <label>From address <span class="muted">(what the recipient sees - normally the same as the username)</span></label>
+          <input type="email" [(ngModel)]="fromAddress" autocomplete="off" />
+        </div>
+        <div class="form-field">
+          <label>Password</label>
+          <input type="password" [(ngModel)]="password" autocomplete="new-password"
+                 [placeholder]="s.passwordSet ? '•••••••••••• (saved - leave blank to keep it)' : 'Gmail: the 16-letter App Password'" />
+          <small class="muted">Never shown again after saving. For Gmail, spaces in the App Password are removed for you.</small>
+        </div>
+        <div class="toggle-row" style="margin-bottom: 1rem;">
+          <label class="toggle-switch"><input type="checkbox" [(ngModel)]="enabled" /><span class="toggle-slider"></span></label>
+          <span class="toggle-label">Use this sender <span class="muted">(off = ignore it and fall back)</span></span>
+        </div>
+        <div class="form-actions">
+          @if (s.hasStoredSettings) {
+            <button type="button" class="btn btn-secondary" (click)="remove()"><i class="bi bi-trash"></i> Delete this sender</button>
+          }
+          <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">
+            @if (saving()) { <span class="btn-spinner"></span> }
+            {{ s.hasStoredSettings ? 'Save changes' : 'Save' }}
+          </button>
+        </div>
+        @if (s.updatedAt) {
+          <p class="muted" style="margin: 0.75rem 0 0; font-size: 0.82rem;">Last saved {{ s.updatedAt | date: 'medium' }}</p>
+        }
+      </div>
+
+      <div class="card" style="padding: 1.25rem; max-width: 640px;">
+        <div class="section-title" style="margin-top: 0;">Send a test email</div>
+        <p class="muted">Sent exactly the way {{ sel.id == null ? 'a platform-default' : sel.name + "'s" }} real emails go out - so save first, then test. If it fails, the reason is shown here (no need to read server logs).</p>
+        <div class="form-field">
+          <label>Send the test to</label>
+          <input type="email" [(ngModel)]="testTo" placeholder="you@example.com" autocomplete="off" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" [disabled]="testing()" (click)="sendTest()">
+            @if (testing()) { <span class="btn-spinner"></span> } @else { <i class="bi bi-send"></i> }
+            {{ testing() ? 'Sending...' : 'Send test email' }}
+          </button>
+        </div>
+        @if (testResult(); as r) {
+          <p style="margin: 0.9rem 0 0; padding: 0.7rem 0.9rem; border-radius: 6px;"
+             [style.background]="r.sent ? 'var(--success-bg, #e7f6ec)' : 'var(--danger-bg, #fde8e8)'"
+             [style.color]="r.sent ? 'var(--success-color, #067647)' : 'var(--danger-color, #b42318)'">
+            <i class="bi" [class.bi-check-circle-fill]="r.sent" [class.bi-x-octagon-fill]="!r.sent"></i> {{ r.message }}
+          </p>
+        }
+      </div>
+    } @else {
+      <div class="skeleton" style="height: 200px; max-width: 640px;"></div>
+    }
+  }
+}

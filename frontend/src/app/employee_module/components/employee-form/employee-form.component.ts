@@ -406,10 +406,8 @@ export class EmployeeFormComponent {
       this.employeeService.create(payload).subscribe({
         next: created => {
           this.saving.set(false);
-          if (created.invitationEmailSent === true) {
-            this.toast.success('Employee created successfully. Invitation email sent.');
-          } else if (created.invitationEmailSent === false) {
-            this.toast.warning('Employee created, but the invitation email could NOT be sent - use Resend Invitation from the employee\'s page.');
+          if (created.invitationEmailStatus === 'PENDING') {
+            this.toast.success('Employee created. The invitation email is being sent in the background - open the employee to see its status.');
           } else {
             this.toast.success('Employee created successfully.');
           }
@@ -555,10 +553,8 @@ export class EmployeeFormComponent {
     this.savingLogin.set(true);
     this.employeeService.enableLogin(id, payload).subscribe({
       next: emp => {
-        if (emp.invitationEmailSent === true) {
-          this.toast.success('Login access enabled. Invitation email sent.');
-        } else if (emp.invitationEmailSent === false) {
-          this.toast.warning('Login access enabled, but the invitation email could NOT be sent - use Resend Invitation from the employee\'s page.');
+        if (emp.invitationEmailStatus === 'PENDING') {
+          this.toast.success('Login access enabled. The invitation email is being sent in the background - check its status on this page.');
         } else {
           this.toast.success('Login access enabled successfully.');
         }

@@ -25,6 +25,8 @@ export class EmployeeListComponent {
   readonly loading = signal(true);
   readonly error = signal(false);
   readonly totalElements = signal(0);
+  /** Id of the employee whose invitation is being resent right now - disables just that row's button. */
+  readonly resendingId = signal<number | null>(null);
   readonly page = signal(0);
   readonly pageSize = 10;
 
@@ -92,6 +94,36 @@ export class EmployeeListComponent {
 
   totalPages(): number {
     return Math.max(1, Math.ceil(this.totalElements() / this.pageSize));
+  }
+
+  /**
+   * An invitation is only outstanding while the account has NOT been activated yet: the employee has
+   * a login (username) whose user is still inactive, and onboarding hasn't moved past invited. For
+   * anyone who already activated, "Reset Password" is the right tool and the backend refuses a resend.
+   */
+  canResendInvitation(e: EmployeeResponse): boolean {
+    return !!e.username && !e.userActive && (e.onboardingStatus === 'INVITED' || e.onboardingStatus === 'NOT_STARTED');
+  }
+
+  async resendInvitation(e: EmployeeResponse): Promise<void> {
+    const ok = await this.confirmDialog.ask({
+      title: 'Resend invitation?',
+      message: `Send a new invitation email to ${e.firstName} ${e.lastName} (${e.email})? Any earlier invitation link will stop working.`,
+      confirmLabel: 'Resend'
+    });
+    if (!ok) return;
+    this.resendingId.set(e.id);
+    this.employeeService.resendInvitation(e.id).subscribe({
+      next: sent => {
+        this.resendingId.set(null);
+        if (sent) {
+          this.toast.success(`Invitation sent to ${e.email}.`);
+        } else {
+          this.toast.warning(`The invitation was regenerated, but the email to ${e.email} could NOT be sent - please check the address.`);
+        }
+      },
+      error: err => { this.resendingId.set(null); this.toast.error(err.error?.message ?? 'Unable to resend the invitation.'); }
+    });
   }
 
   async toggleLogin(employee: EmployeeResponse): Promise<void> {

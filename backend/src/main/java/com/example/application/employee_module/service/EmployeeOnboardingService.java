@@ -58,7 +58,9 @@ public class EmployeeOnboardingService {
     private final com.example.application.common.email.EmailTemplateService emailTemplateService;
     private final AuditService auditService;
     private final com.example.application.common.tenant.TenantContextService tenantContext;
+    private final com.example.application.common.email.AfterCommitExecutor afterCommitExecutor;
     private final SecureRandom secureRandom = new SecureRandom();
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(EmployeeOnboardingService.class);
 
     @Value("${onboarding.frontend-base-url}")
     private String frontendBaseUrl;
@@ -77,7 +79,8 @@ public class EmployeeOnboardingService {
                                       ClientCompanyRepository clientCompanyRepository, PasswordEncoder passwordEncoder,
                                       EmailService emailService, com.example.application.common.email.EmailTemplateService emailTemplateService,
                                       AuditService auditService,
-                                      com.example.application.common.tenant.TenantContextService tenantContext) {
+                                      com.example.application.common.tenant.TenantContextService tenantContext,
+                                      com.example.application.common.email.AfterCommitExecutor afterCommitExecutor) {
         this.invitationRepository = invitationRepository;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
@@ -87,6 +90,7 @@ public class EmployeeOnboardingService {
         this.emailTemplateService = emailTemplateService;
         this.auditService = auditService;
         this.tenantContext = tenantContext;
+        this.afterCommitExecutor = afterCommitExecutor;
     }
 
     /**
@@ -97,8 +101,28 @@ public class EmployeeOnboardingService {
      * simultaneously valid invitation - resending genuinely invalidates the old one rather than
      * leaving two working links.
      */
+    /** Email delivery states recorded on the invitation row (see V120). */
+    public static final String EMAIL_PENDING = "PENDING";
+    public static final String EMAIL_SENT = "SENT";
+    public static final String EMAIL_FAILED = "FAILED";
+
+    /**
+     * The email is NOT sent inside this call. It is handed to a background thread that only runs
+     * after this transaction has committed (see AfterCommitExecutor), so saving an employee no
+     * longer waits on the mail server (an SMTP round-trip is typically 1-4 s, far more when the
+     * server is slow) and no longer keeps the database transaction open meanwhile.
+     *
+     * Returns EMAIL_PENDING. The real outcome (SENT / FAILED) is written to the invitation row by
+     * the background thread and shown on the employee's details page. For an explicit admin
+     * action that should wait for a definite answer, use resendInvitation() instead.
+     */
     @Transactional
-    public boolean createInvitation(Employee employee, User user, Long actorId, HttpServletRequest httpRequest) {
+    public String createInvitation(Employee employee, User user, Long actorId, HttpServletRequest httpRequest) {
+        return issueInvitation(employee, user, actorId, httpRequest, true);
+    }
+
+    private String issueInvitation(Employee employee, User user, Long actorId, HttpServletRequest httpRequest,
+                                   boolean sendInBackground) {
         invitationRepository.findAllByEmployeeIdAndStatus(employee.getId(), "PENDING")
                 .forEach(existing -> {
                     existing.setStatus("SUPERSEDED");
@@ -121,18 +145,68 @@ public class EmployeeOnboardingService {
         employee.setOnboardingStatus("INVITED");
         employeeRepository.save(employee);
 
-        boolean emailSent = sendInvitationEmail(employee, token, code);
+        // Built here, inside the transaction (it reads the company name), but SENT later. The
+        // plain token and code exist only in this in-memory message - only their hashes are stored.
+        OutgoingEmail mail = composeInvitationEmail(employee, user, token, code);
 
-        // The email's actual success/failure is recorded here (viewable on the Audit Logs page)
-        // specifically because it was previously only ever visible in the backend's own console
-        // output - an admin had no practical way to check whether an invitation really went out.
+        String emailStatus;
+        if (sendInBackground) {
+            Long invitationId = invitation.getId();
+            afterCommitExecutor.run(() -> deliverInBackground(invitationId, mail));
+            emailStatus = EMAIL_PENDING;
+        } else {
+            boolean sent = emailService.sendHtml(mail.clientCompanyId(), mail.to(), mail.subject(), mail.html());
+            emailStatus = sent ? EMAIL_SENT : EMAIL_FAILED;
+            // Set on the managed entity (flushed with this transaction) rather than a bulk UPDATE:
+            // resendInvitation() re-loads and re-saves this same row right after, and a bulk update
+            // would be overwritten by that save's stale in-memory copy.
+            invitation.setEmailStatus(emailStatus);
+            invitation.setEmailSentAt(sent ? LocalDateTime.now() : null);
+        }
+
         auditService.log(actorId, "ONBOARDING_INVITATION_SENT",
-                "Sent onboarding invitation to employee " + employee.getEmployeeCode()
-                        + (emailSent ? "" : " - EMAIL FAILED TO SEND, please use Resend Invitation"), httpRequest);
-        return emailSent;
+                "Created onboarding invitation for employee " + employee.getEmployeeCode()
+                        + (EMAIL_PENDING.equals(emailStatus) ? " - email queued for sending"
+                        : EMAIL_FAILED.equals(emailStatus) ? " - EMAIL FAILED TO SEND, please use Resend Invitation" : ""),
+                httpRequest);
+        return emailStatus;
     }
 
-    /** Admin action - invalidates any existing invitation and sends a completely new one. Reuses createInvitation()'s own supersede logic, so there is never a stale still-working link left behind. Returns whether the email actually sent - previously discarded, leaving the admin no way to know a "resend" had silently failed to deliver. */
+    /** Runs on the mail thread, after commit. Never throws - an unrecorded failure would leave the admin staring at "Sending..." forever. */
+    private void deliverInBackground(Long invitationId, OutgoingEmail mail) {
+        boolean sent = false;
+        try {
+            sent = emailService.sendHtml(mail.clientCompanyId(), mail.to(), mail.subject(), mail.html());
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while sending the invitation email for invitation {}", invitationId, e);
+        }
+        try {
+            invitationRepository.updateEmailStatus(invitationId, sent ? EMAIL_SENT : EMAIL_FAILED,
+                    sent ? LocalDateTime.now() : null);
+        } catch (RuntimeException e) {
+            log.error("Invitation {} email was {}, but recording that status failed", invitationId,
+                    sent ? "SENT" : "NOT sent", e);
+        }
+    }
+
+    /**
+     * Email status of this employee's most recent invitation, for the details page. A row still
+     * PENDING after 5 minutes is reported as FAILED: a send takes seconds, so that only happens if
+     * the app stopped before the mail thread finished - treating it as "not delivered" tells the
+     * admin to resend instead of showing "Sending..." indefinitely.
+     */
+    @Transactional(readOnly = true)
+    public String latestEmailStatus(Long employeeId) {
+        return invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(employeeId)
+                .map(i -> {
+                    boolean stuck = EMAIL_PENDING.equals(i.getEmailStatus()) && i.getCreatedAt() != null
+                            && i.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(5));
+                    return stuck ? EMAIL_FAILED : i.getEmailStatus();
+                })
+                .orElse(null);
+    }
+
+    /** Admin action - invalidates any existing invitation and sends a completely new one. Reuses the same supersede logic as createInvitation(), so there is never a stale still-working link left behind. Unlike createInvitation() this WAITS for the mail server and returns whether the email actually sent - the admin clicked a button for exactly this and wants a definite answer. */
     @Transactional
     public boolean resendInvitation(Long employeeId, Long actorId, HttpServletRequest httpRequest) {
         Long tenantId = tenantContext.requireCurrentTenantId();
@@ -141,10 +215,16 @@ public class EmployeeOnboardingService {
         if (!employee.hasLogin()) {
             throw new BadRequestException("This employee does not have a login account - use Enable Login first.");
         }
-        boolean emailSent = createInvitation(employee, employee.getUser(), actorId, httpRequest);
+        if (employee.getUser().isActive()) {
+            // A resend supersedes the old link and sends a fresh activation link. For someone who
+            // has ALREADY activated, that would only confuse them (and push their onboarding status
+            // back to INVITED) - a forgotten password is what Reset Password is for.
+            throw new BadRequestException("This employee has already activated their account - use Reset Password instead.");
+        }
+        String emailStatus = issueInvitation(employee, employee.getUser(), actorId, httpRequest, false);
         invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(employeeId)
                 .ifPresent(inv -> { inv.setResentAt(LocalDateTime.now()); invitationRepository.save(inv); });
-        return emailSent;
+        return EMAIL_SENT.equals(emailStatus);
     }
 
     /** Public (unauthenticated) - the onboarding landing page's first call. Exposes only what's needed to greet the employee safely: their name, the company name, and whether the link is already expired/used. Never exposes the employee id, user id, or anything else. */
@@ -251,7 +331,10 @@ public class EmployeeOnboardingService {
                 .orElseThrow(() -> new BadRequestException("This invitation link is invalid or no longer active."));
     }
 
-    private boolean sendInvitationEmail(Employee employee, String token, String code) {
+    /** A fully-built email, ready to send - subject and HTML already rendered. */
+    private record OutgoingEmail(Long clientCompanyId, String to, String subject, String html) {}
+
+    private OutgoingEmail composeInvitationEmail(Employee employee, User user, String token, String code) {
         ClientCompany company = clientCompanyRepository.findById(employee.getClientCompanyId()).orElse(null);
         String companyName = company != null ? company.getCompanyName() : "your company";
         String link = frontendBaseUrl + "/employee-onboarding/" + token;
@@ -261,12 +344,18 @@ public class EmployeeOnboardingService {
                 "companyName", companyName,
                 "employeeName", employeeName,
                 "employeeCode", employee.getEmployeeCode(),
+                // The login name is not a secret (the password never goes in an email), and the
+                // employee needs it to log in once they have set their password. Map.of rejects
+                // null values, hence the fallback.
+                "username", user.getUsername() != null ? user.getUsername() : "",
                 "link", link,
                 "code", code,
                 "expiryHours", String.valueOf(invitationExpiryHours)
         ));
 
-        return emailService.sendHtml(employee.getEmail(), "Activate your account - " + companyName, html);
+        // The company is carried with the message so the mail thread (which runs later, with no request
+        // context) still sends from THIS company's own sender.
+        return new OutgoingEmail(employee.getClientCompanyId(), employee.getEmail(), "Activate your account - " + companyName, html);
     }
 
     private static String escapeHtml(String s) {

@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PageResult } from '../../core/models/page.model';
-import { AssignRoleRequest, EmployeeBulkImportResult, EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EnableLoginRequest, ProfileCompletion, SelfProfileUpdateRequest } from '../models/employee.model';
+import { AssignRoleRequest, EmployeeBulkImportResult, ExtraPermissions, EmployeeRequest, EmployeeResponse, EmployeeUpdateRequest, EnableLoginRequest, ProfileCompletion, SelfProfileUpdateRequest } from '../models/employee.model';
 
 interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 
@@ -99,6 +99,16 @@ export class EmployeeService {
     return this.http
       .post<ApiEnvelope<EmployeeBulkImportResult>>(`${this.baseUrl}/bulk-import`, formData)
       .pipe(map(e => e.data));
+  }
+
+  /** An employee's access split into role vs. additional, plus what the current admin may toggle. Needs USER_PERMISSION_MANAGE. */
+  getExtraPermissions(employeeId: number): Observable<ExtraPermissions> {
+    return this.http.get<ApiEnvelope<ExtraPermissions>>(`${this.baseUrl}/${employeeId}/extra-permissions`).pipe(map(e => e.data));
+  }
+
+  /** Replaces the COMPLETE set of additional permissions (not a delta). The server keeps anything the admin isn't allowed to touch. */
+  saveExtraPermissions(employeeId: number, permissionIds: number[]): Observable<ExtraPermissions> {
+    return this.http.put<ApiEnvelope<ExtraPermissions>>(`${this.baseUrl}/${employeeId}/extra-permissions`, { permissionIds }).pipe(map(e => e.data));
   }
 
   /** Admin/HR action - invalidates any existing invitation for this employee and sends a fresh one (see backend EmployeeOnboardingService.resendInvitation()). */

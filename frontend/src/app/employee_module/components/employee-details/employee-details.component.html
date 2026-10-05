@@ -177,7 +177,17 @@
             </dd>
             <dt>Onboarding Status</dt>
             <dd>{{ emp.onboardingStatus?.replace('_', ' ') || 'Not Started' }}</dd>
-            @if (emp.onboardingStatus === 'INVITED' && authState.hasPermission('EMPLOYEE_ONBOARDING_MANAGE')) {
+            @if (emp.onboardingStatus === 'INVITED' && emp.invitationEmailStatus) {
+              <dt>Invitation Email</dt>
+              <dd>
+                @switch (emp.invitationEmailStatus) {
+                  @case ('PENDING') { <app-status-badge label="Sending... (refresh to update)" kind="warning"></app-status-badge> }
+                  @case ('SENT') { <app-status-badge label="Sent" kind="success"></app-status-badge> }
+                  @case ('FAILED') { <app-status-badge label="Not delivered - use Resend Invitation" kind="danger"></app-status-badge> }
+                }
+              </dd>
+            }
+            @if (emp.username && !emp.userActive && (emp.onboardingStatus === 'INVITED' || emp.onboardingStatus === 'NOT_STARTED') && authState.hasPermission('EMPLOYEE_ONBOARDING_MANAGE')) {
               <dt></dt>
               <dd>
                 <button type="button" class="btn btn-secondary btn-sm" [disabled]="resendingInvitation()" (click)="resendInvitation()">
@@ -327,6 +337,12 @@
       <div class="detail-card-full" *appHasPermission="'ADVANCE_READ'">
         <app-employee-advances [employeeId]="emp.id"></app-employee-advances>
       </div>
+      <!-- Same role, but this one person needs a bit more. Only for an employee who has a login, and only for admins allowed to hand out access. -->
+      @if (emp.username && authState.hasPermission('USER_PERMISSION_MANAGE')) {
+        <div class="detail-card-full">
+          <app-employee-extra-permissions [employeeId]="emp.id"></app-employee-extra-permissions>
+        </div>
+      }
 
       @if (authState.hasPermission('PAYROLL_RUN_READ')) {
         <div class="card" style="padding: 1.25rem;">
