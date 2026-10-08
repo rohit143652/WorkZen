@@ -1,44 +1,21 @@
-# ============================================================
-# Secrets / local environment - NEVER commit real credentials.
-# .env.example is intentionally NOT ignored (see the negation below) - it
-# must stay tracked since it documents required variables with placeholders.
-# ============================================================
+# ---- JVM crash files (a crashed Java process writes these into the folder it was started from) ----
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+# ---- build output / dependencies ----
+target/
+node_modules/
+.angular/
+dist/
+
+# ---- secrets: real settings never go into the repository (the .env.example template does) ----
 .env
-.env.*
 !.env.example
-!.env.*.example
 
-# Local-only Spring profile files, if you ever create one for secrets that
-# shouldn't be committed (application-dev.yml/application-prod.yml ARE
-# tracked on purpose - they contain no secrets, only non-sensitive config).
-application-local.yml
-application-local.yaml
-application-local.properties
-
-# ============================================================
-# Backend (Maven / Java)
-# ============================================================
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
-*.class
-*.log
-*.jar
-!.mvn/wrapper/maven-wrapper.jar
-
-# ============================================================
-# Frontend (Angular / Node)
-# ============================================================
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/
-frontend/*.log
-npm-debug.log*
-
-# ============================================================
-# IDE / OS
-# ============================================================
+# ---- editors / OS ----
 .idea/
-*.iml
 .vscode/
+*.iml
 .DS_Store
 Thumbs.db

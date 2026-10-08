@@ -1,8 +1,7 @@
 export const environment = {
   production: true,
-  // Backend is deployed on its own server at this IP:port - a relative '/api' path here would
-  // resolve against wherever the frontend itself is hosted, which has no backend behind it,
-  // causing every API call to fail. Must be the backend's full URL instead. If the backend's
-  // address ever changes again, update it here to match exactly.
-  apiUrl: 'http://15.207.88.193:8080/api'
+  // Relative on purpose: the page and the API are served from the SAME address (Nginx forwards /api to the backend on
+  // :8080), so no IP or domain is baked into the build - changing the server's address or name never needs a rebuild.
+  // The Android app is the one exception: see environment.apk.ts.
+  apiUrl: '/api'
 };

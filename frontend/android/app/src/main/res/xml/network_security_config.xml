@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Android blocks plain HTTP (cleartext) network calls by default since API 28 - the backend at
-  15.207.88.193:8080 is plain HTTP (no TLS certificate), so without this, every API call from
-  the packaged app would fail with a cleartext-traffic-blocked error, even though the exact same
-  code works fine from a regular web browser.
+  Android blocks plain HTTP (cleartext) network calls by default since API 28. The backend is plain HTTP (no TLS
+  certificate), so without this every API call from the packaged app would fail with a cleartext-traffic-blocked error,
+  even though the exact same code works from a normal web browser.
 
-  This allows cleartext ONLY for that one specific IP, rather than turning it on for the whole
-  app (android:usesCleartextTraffic="true" in the manifest would do that, but is far broader
-  than necessary and a worse security posture for no real benefit here).
+  This allows cleartext ONLY for the one server address below, not for the whole app (android:usesCleartextTraffic="true"
+  in the manifest would do that, but is far broader than necessary).
 
-  If the backend ever moves to a proper domain with HTTPS, this file should be removed and
-  environment.prod.ts's apiUrl switched back to https:// - there would be nothing left needing
-  a cleartext exception at that point.
+  SERVER_HOST is a placeholder on purpose: the APK steps in the Production Deployment Guide replace it (here and in
+  src/environments/environment.apk.ts) with the real server address before building.
+
+  If the backend ever gets a proper domain with HTTPS, remove this file's domain-config and point
+  environment.apk.ts at https:// - nothing then needs a cleartext exception.
 -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">15.207.88.193</domain>
+        <domain includeSubdomains="false">SERVER_HOST</domain>
     </domain-config>
 </network-security-config>

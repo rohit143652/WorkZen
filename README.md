@@ -194,7 +194,7 @@ npm install
 npm start        # ng serve, http://localhost:4200
 ```
 
-`src/environments/environment.ts` points at `http://localhost:8080/api` for local dev.
+`src/environments/environment.ts` uses the relative `/api`; `ng serve` forwards it to `http://127.0.0.1:8080` through `proxy.conf.json`, so run the backend on port 8080 (change the target in that file if you use another port).
 
 ---
 

@@ -18,7 +18,7 @@ const config: CapacitorConfig = {
     // does NOT break secure-context-only APIs like camera/geolocation.
     //
     // If the backend ever moves to a real domain with a proper HTTPS certificate, switch this
-    // back to 'https' and update environment.prod.ts's apiUrl to https:// at the same time.
+    // back to 'https' and update environment.apk.ts's apiUrl to https:// at the same time.
     androidScheme: 'http'
   }
 };
