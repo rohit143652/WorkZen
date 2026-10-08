@@ -1,5 +1,5 @@
 # ============================================================
-# WORKZEN backend - multi-stage Dockerfile
+# KarmicHR backend - multi-stage Dockerfile
 #
 # Stage 1 (build): uses a Maven+JDK image to compile and package the jar.
 # Stage 2 (runtime): copies ONLY the built jar into a slim JRE-only image -
@@ -28,9 +28,9 @@ RUN mvn -B clean package -DskipTests
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Matches pom.xml's <finalName>workzen</finalName> (fixed, no version suffix) - this stays
+# Matches pom.xml's <finalName>karmichr</finalName> (fixed, no version suffix) - this stays
 # correct even if <version> in pom.xml changes later, since the built jar name doesn't depend on it.
-COPY --from=build /app/target/workzen.jar app.jar
+COPY --from=build /app/target/karmichr.jar app.jar
 
 EXPOSE 8080
 
@@ -40,5 +40,5 @@ EXPOSE 8080
 #     -e DB_URL=jdbc:mysql://<host>:3306/workforce_auth?useSSL=false&serverTimezone=UTC \
 #     -e DB_USERNAME=... -e DB_PASSWORD=... -e JWT_SECRET=... \
 #     -e SPRING_PROFILES_ACTIVE=prod \
-#     workzen-backend
+#     karmichr-backend
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -1,5 +1,6 @@
 package com.example.application.employee_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.client_company_module.entity.ClientCompany;
 import com.example.application.client_company_module.repository.ClientCompanyRepository;
@@ -138,7 +139,7 @@ public class EmployeeOnboardingService {
         invitation.setUserId(user.getId());
         invitation.setTokenHash(sha256(token));
         invitation.setVerificationCodeHash(passwordEncoder.encode(code));
-        invitation.setExpiresAt(LocalDateTime.now().plusHours(invitationExpiryHours));
+        invitation.setExpiresAt(AppTime.now().plusHours(invitationExpiryHours));
         invitation.setCreatedBy(actorId);
         invitationRepository.save(invitation);
 
@@ -161,7 +162,7 @@ public class EmployeeOnboardingService {
             // resendInvitation() re-loads and re-saves this same row right after, and a bulk update
             // would be overwritten by that save's stale in-memory copy.
             invitation.setEmailStatus(emailStatus);
-            invitation.setEmailSentAt(sent ? LocalDateTime.now() : null);
+            invitation.setEmailSentAt(sent ? AppTime.now() : null);
         }
 
         auditService.log(actorId, "ONBOARDING_INVITATION_SENT",
@@ -182,7 +183,7 @@ public class EmployeeOnboardingService {
         }
         try {
             invitationRepository.updateEmailStatus(invitationId, sent ? EMAIL_SENT : EMAIL_FAILED,
-                    sent ? LocalDateTime.now() : null);
+                    sent ? AppTime.now() : null);
         } catch (RuntimeException e) {
             log.error("Invitation {} email was {}, but recording that status failed", invitationId,
                     sent ? "SENT" : "NOT sent", e);
@@ -200,7 +201,7 @@ public class EmployeeOnboardingService {
         return invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(employeeId)
                 .map(i -> {
                     boolean stuck = EMAIL_PENDING.equals(i.getEmailStatus()) && i.getCreatedAt() != null
-                            && i.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(5));
+                            && i.getCreatedAt().isBefore(AppTime.now().minusMinutes(5));
                     return stuck ? EMAIL_FAILED : i.getEmailStatus();
                 })
                 .orElse(null);
@@ -223,7 +224,7 @@ public class EmployeeOnboardingService {
         }
         String emailStatus = issueInvitation(employee, employee.getUser(), actorId, httpRequest, false);
         invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(employeeId)
-                .ifPresent(inv -> { inv.setResentAt(LocalDateTime.now()); invitationRepository.save(inv); });
+                .ifPresent(inv -> { inv.setResentAt(AppTime.now()); invitationRepository.save(inv); });
         return EMAIL_SENT.equals(emailStatus);
     }
 
@@ -269,14 +270,14 @@ public class EmployeeOnboardingService {
         User user = userRepository.findById(invitation.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation is no longer valid."));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setPasswordChangedAt(AppTime.now());
         user.setMustChangePassword(false);
         user.setActive(true);
         user.setFailedLoginAttempts(0);
         userRepository.save(user);
 
         invitation.setStatus("USED");
-        invitation.setUsedAt(LocalDateTime.now());
+        invitation.setUsedAt(AppTime.now());
         invitationRepository.save(invitation);
 
         Employee employee = employeeRepository.findById(invitation.getEmployeeId())

@@ -1,5 +1,6 @@
 package com.example.application.employee_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -48,7 +49,7 @@ public class EmployeeOnboardingInvitation {
     private int attemptCount = 0;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = AppTime.now();
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -90,7 +91,7 @@ public class EmployeeOnboardingInvitation {
     public LocalDateTime getResentAt() { return resentAt; }
     public void setResentAt(LocalDateTime resentAt) { this.resentAt = resentAt; }
 
-    public boolean isExpired() { return LocalDateTime.now().isAfter(expiresAt); }
+    public boolean isExpired() { return AppTime.now().isAfter(expiresAt); }
     public String getEmailStatus() { return emailStatus; }
     public void setEmailStatus(String emailStatus) { this.emailStatus = emailStatus; }
     public LocalDateTime getEmailSentAt() { return emailSentAt; }

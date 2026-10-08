@@ -1,5 +1,6 @@
 package com.example.application.holiday_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,7 +29,7 @@ public class Holiday {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = AppTime.now();
     }
 
     public Long getId() { return id; }

@@ -1,5 +1,6 @@
 package com.example.application.login_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.common.exception.InvalidTokenException;
 import com.example.application.config.JwtConfig;
 import com.example.application.login_module.entity.RefreshToken;
@@ -27,7 +28,7 @@ public class RefreshTokenService {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
         refreshToken.setToken(UUID.randomUUID().toString() + "-" + UUID.randomUUID());
-        refreshToken.setExpiryDate(LocalDateTime.now().plusSeconds(jwtConfig.getRefreshTokenExpiration() / 1000));
+        refreshToken.setExpiryDate(AppTime.now().plusSeconds(jwtConfig.getRefreshTokenExpiration() / 1000));
         refreshToken.setRevoked(false);
         return refreshTokenRepository.save(refreshToken);
     }
@@ -40,7 +41,7 @@ public class RefreshTokenService {
         if (refreshToken.isRevoked()) {
             throw new InvalidTokenException("Refresh token has been revoked");
         }
-        if (refreshToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if (refreshToken.getExpiryDate().isBefore(AppTime.now())) {
             throw new InvalidTokenException("Refresh token has expired");
         }
         User user = refreshToken.getUser();

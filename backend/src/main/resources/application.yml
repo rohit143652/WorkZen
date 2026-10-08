@@ -6,7 +6,7 @@ spring:
       max-file-size: 5MB
       max-request-size: 5MB
   application:
-    name: workzen
+    name: karmichr
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
@@ -29,7 +29,7 @@ spring:
       connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT:20000}
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT:300000}
       max-lifetime: ${DB_POOL_MAX_LIFETIME:1500000}
-      pool-name: WorkzenHikariPool
+      pool-name: KarmicHRHikariPool
 
   jpa:
     hibernate:
@@ -38,6 +38,9 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        # Loads lazy/eager associations for up to 50 owners per query instead of one query EACH. Without it, a page
+        # of employees fires roughly 4+ extra queries per row (user -> roles -> role permissions -> extra permissions).
+        default_batch_fetch_size: 50
         jdbc:
           time_zone: UTC
           # Batches multiple INSERT/UPDATE statements into fewer round-trips to the DB - most
@@ -85,6 +88,12 @@ jwt:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  # The business time zone: what "today"/"now" mean to the application (see AppTime). Servers default to UTC,
+  # which is 5h30m behind India. Also read directly from the APP_TIMEZONE environment variable by AppTime.
+  timezone: ${APP_TIMEZONE:Asia/Kolkata}
+  # Safety net for Flyway migration V109, which wipes payroll/attendance/leave history (see DestructiveMigrationGuard).
+  # Leave false. Only set true, once, if you really intend to run that wipe over a database that already has data.
+  allow-destructive-reset-migration: ${ALLOW_DESTRUCTIVE_RESET:false}
   cookie:
     secure: ${COOKIE_SECURE:true}
     same-site: ${COOKIE_SAME_SITE:Strict}

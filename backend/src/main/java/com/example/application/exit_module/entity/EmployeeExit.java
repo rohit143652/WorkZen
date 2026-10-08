@@ -1,5 +1,6 @@
 package com.example.application.exit_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,7 +34,7 @@ public class EmployeeExit {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = AppTime.now();
     }
 
     public Long getId() { return id; }

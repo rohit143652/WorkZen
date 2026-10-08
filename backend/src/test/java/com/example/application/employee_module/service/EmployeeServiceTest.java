@@ -1,5 +1,6 @@
 package com.example.application.employee_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.tenant.TenantContextService;
 import com.example.application.department_module.service.DepartmentService;
@@ -88,7 +89,7 @@ class EmployeeServiceTest {
         request.setLastName("Kulkarni");
         request.setEmail("neha@example.com");
         request.setMobileNumber("9876543210");
-        request.setJoiningDate(LocalDate.now());
+        request.setJoiningDate(AppTime.today());
         request.setAadharNumber("123412341234");
         request.setPanNumber("ABCDE1234F");
         return request;

@@ -1,5 +1,6 @@
 package com.example.application.mail_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -48,10 +49,10 @@ public class MailSettings {
     private Long updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt = AppTime.now();
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = AppTime.now();
 
     public Long getId() { return id; }
     public Long getClientCompanyId() { return clientCompanyId; }

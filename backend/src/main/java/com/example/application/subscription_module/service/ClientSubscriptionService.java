@@ -1,5 +1,6 @@
 package com.example.application.subscription_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.ResourceNotFoundException;
@@ -222,7 +223,7 @@ public class ClientSubscriptionService {
         response.setTotalCompanies(clientCompanyRepository.count());
         response.setActiveCompanies(clientCompanyRepository.countByStatus("ACTIVE"));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
         LocalDate windowEnd = today.plusDays(EXPIRING_SOON_WINDOW_DAYS);
         List<ClientSubscription> expiring = subscriptionRepository
                 .findAllByEndDateBetweenAndStatusNotInOrderByEndDateAsc(today, windowEnd, List.of("EXPIRED", "SUSPENDED", "CANCELLED"));
@@ -333,7 +334,7 @@ public class ClientSubscriptionService {
         r.setBillingCycle(s.getBillingCycle());
         r.setStartDate(s.getStartDate());
         r.setEndDate(s.getEndDate());
-        r.setDaysRemaining(s.getEndDate() != null ? Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), s.getEndDate())) : null);
+        r.setDaysRemaining(s.getEndDate() != null ? Math.max(0, ChronoUnit.DAYS.between(AppTime.today(), s.getEndDate())) : null);
         r.setStatus(s.getStatus());
         r.setEmployeeLimitOverride(s.getEmployeeLimitOverride());
         r.setEffectiveEmployeeLimit(s.getEmployeeLimitOverride() != null ? s.getEmployeeLimitOverride() : plan.getEmployeeLimit());

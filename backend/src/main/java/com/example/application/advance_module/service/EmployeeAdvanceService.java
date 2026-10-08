@@ -1,5 +1,6 @@
 package com.example.application.advance_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.advance_module.dto.AdvanceGrantRequest;
 import com.example.application.advance_module.dto.AdvanceDashboardSummaryResponse;
 import com.example.application.advance_module.dto.AdvanceRecoveryAmountRequest;
@@ -129,7 +130,7 @@ public class EmployeeAdvanceService {
                 .map(a -> outstandingFrom(a, transactionsByAdvanceId.getOrDefault(a.getId(), List.of())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
         BigDecimal currentMonthRecovery = transactionsByAdvanceId.values().stream()
                 .flatMap(List::stream)
                 .filter(t -> t.getYear() == today.getYear() && t.getMonth() == today.getMonthValue())
@@ -231,7 +232,7 @@ public class EmployeeAdvanceService {
             throw new BadRequestException("Settlement amount (" + amount + ") cannot exceed the outstanding amount (" + outstanding + ")");
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
         AdvanceRecoveryTransaction txn = new AdvanceRecoveryTransaction();
         txn.setClientCompanyId(tenantId);
         txn.setEmployeeId(employeeId);

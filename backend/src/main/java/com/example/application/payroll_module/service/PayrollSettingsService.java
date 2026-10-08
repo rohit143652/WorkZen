@@ -1,5 +1,6 @@
 package com.example.application.payroll_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.ResourceNotFoundException;
@@ -50,13 +51,13 @@ public class PayrollSettingsService {
     @Transactional(readOnly = true)
     public PayrollSettingsResponse getForCurrentTenant() {
         Long tenantId = tenantContext.requireCurrentTenantId();
-        return toResponse(settingsResolver.resolve(tenantId, LocalDate.now().getYear(), LocalDate.now().getMonthValue()));
+        return toResponse(settingsResolver.resolve(tenantId, AppTime.today().getYear(), AppTime.today().getMonthValue()));
     }
 
     /** Used internally by PayrollRunService for month-accurate resolution - see PayrollSettingsResolver.resolve(). Kept here only as a documented delegation point so callers don't need to know the resolver exists separately. */
     @Transactional(readOnly = true)
     public PayrollSettings getEntityOrDefault(Long tenantId) {
-        return settingsResolver.resolve(tenantId, LocalDate.now().getYear(), LocalDate.now().getMonthValue());
+        return settingsResolver.resolve(tenantId, AppTime.today().getYear(), AppTime.today().getMonthValue());
     }
 
     /** Full configuration timeline for this tenant, newest first - for the Settings History screen (spec section 8/30). */
@@ -172,7 +173,7 @@ public class PayrollSettingsService {
         if (!"ACTIVE".equals(settings.getStatus())) {
             throw new BadRequestException("This configuration is already cancelled");
         }
-        if (!settings.getEffectiveFrom().isAfter(LocalDate.now())) {
+        if (!settings.getEffectiveFrom().isAfter(AppTime.today())) {
             throw new BadRequestException("Only a not-yet-effective (future) configuration can be " + action
                     + " - this one is already effective and may already be used by payroll");
         }

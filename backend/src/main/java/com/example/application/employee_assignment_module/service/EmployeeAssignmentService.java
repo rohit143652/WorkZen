@@ -1,5 +1,6 @@
 package com.example.application.employee_assignment_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.TenantAccessDeniedException;
@@ -242,7 +243,7 @@ public class EmployeeAssignmentService {
         EmployeeSiteAssignment assignment = getEntity(id);
         assignment.setStatus("ENDED");
         if (assignment.getEndDate() == null) {
-            assignment.setEndDate(LocalDate.now());
+            assignment.setEndDate(AppTime.today());
         }
         assignment.setUpdatedBy(actorId);
         EmployeeSiteAssignment saved = assignmentRepository.save(assignment);
@@ -270,7 +271,7 @@ public class EmployeeAssignmentService {
         if (active.isEmpty()) {
             return 0;
         }
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
         for (EmployeeSiteAssignment assignment : active) {
             assignment.setStatus("ENDED");
             if (assignment.getEndDate() == null) {
@@ -310,7 +311,7 @@ public class EmployeeAssignmentService {
                 continue;
             }
             assignment.setStatus("ENDED");
-            assignment.setEndDate(LocalDate.now());
+            assignment.setEndDate(AppTime.today());
             assignment.setUpdatedBy(actorId);
             assignmentRepository.save(assignment);
             endedCount++;

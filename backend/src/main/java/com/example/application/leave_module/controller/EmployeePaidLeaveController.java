@@ -1,5 +1,6 @@
 package com.example.application.leave_module.controller;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.common.response.ApiResponse;
 import com.example.application.leave_module.dto.EmployeePaidLeaveBalanceResponse;
 import com.example.application.leave_module.dto.ExtraPaidLeaveRequest;
@@ -36,7 +37,7 @@ public class EmployeePaidLeaveController {
     @GetMapping
     public ResponseEntity<ApiResponse<EmployeePaidLeaveBalanceResponse>> getCurrentBalance(@PathVariable Long employeeId) {
         return ResponseEntity.ok(ApiResponse.success("OK",
-                paidLeaveService.getEmployeeLeaveBalance(employeeId, LocalDate.now())));
+                paidLeaveService.getEmployeeLeaveBalance(employeeId, AppTime.today())));
     }
 
     @GetMapping("/history")

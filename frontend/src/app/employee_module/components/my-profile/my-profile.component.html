@@ -1,9 +1,22 @@
 <div class="page-header">
   <div>
     <h1>My Profile</h1>
-    <p class="muted">Update your personal, address, emergency contact, and bank details.</p>
+    <p class="muted">{{ isEmployee ? 'Update your personal, address, emergency contact, and bank details.' : 'Your account details and password.' }}</p>
   </div>
 </div>
+
+@if (authState.currentUser(); as user) {
+  <div class="card" style="padding: 1.25rem; margin-bottom: 1rem;">
+    <div style="font-weight: 600; font-size: 1.05rem;">{{ displayName }}</div>
+    <div class="muted" style="font-size: 0.85rem; margin-top: 0.2rem;">{{ user.email }}</div>
+    <div class="muted" style="font-size: 0.85rem; margin-top: 0.2rem;">
+      Username: <strong>{{ user.username }}</strong>
+      @if (user.roles.length) { &nbsp;·&nbsp; Role: <strong>{{ user.roles[0] }}</strong> }
+    </div>
+  </div>
+}
+
+<app-change-password-card></app-change-password-card>
 
 @if (loading()) {
   <div class="card" style="padding: 2rem;"><div class="skeleton" style="height: 120px;"></div></div>

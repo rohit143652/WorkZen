@@ -1,5 +1,6 @@
 package com.example.application.employee_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
@@ -474,7 +475,7 @@ public class EmployeeService {
                     throw new BadRequestException("Password must be at least 8 characters");
                 }
                 user.setPassword(passwordEncoder.encode(request.getPassword()));
-                user.setPasswordChangedAt(LocalDateTime.now());
+                user.setPasswordChangedAt(AppTime.now());
             }
             if (request.getRoleId() != null) {
                 user.setRoles(new HashSet<>(List.of(resolveRole(request.getRoleId()))));
@@ -551,7 +552,7 @@ public class EmployeeService {
         String tempPassword = SecurePasswordGenerator.generate();
         user.setPassword(passwordEncoder.encode(tempPassword));
         user.setMustChangePassword(true);
-        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setPasswordChangedAt(AppTime.now());
         userRepository.save(user);
         refreshTokenService.revokeAllForUser(user);
 

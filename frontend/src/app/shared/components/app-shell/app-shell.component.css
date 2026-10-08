@@ -44,10 +44,10 @@
 .brand-name {
   flex: 1;
 }
-/* Two-tone wordmark on the dark sidebar background - same WORK/ZEN split used on the login
-   page and the mobile topbar, just re-tinted (white / light blue) so it reads clearly here. */
-.brand-name-work { color: #ffffff; }
-.brand-name-zen { color: #7cc4ff; }
+/* Two-tone name on the dark sidebar: "Karmic" white, "HR" in a light teal-green that echoes the logo's blue-to-green HR.
+   (The logo's own wordmark is dark blue and would vanish on this dark bar, so here the name is live text beside the icon tile.) */
+.brand-name-first { color: #ffffff; }
+.brand-name-second { color: #2dd4bf; }
 
 .brand-mark {
   width: 34px;
@@ -306,7 +306,7 @@
   color: var(--text-color);
 }
 
-/* The sidebar already shows the WORKZEN brand at all times on desktop, so the topbar doesn't
+/* The sidebar already shows the KarmicHR brand at all times on desktop, so the topbar doesn't
    repeat it there - this row only becomes visible on mobile/tablet (see media query below),
    where the sidebar is a hidden drawer and the topbar is the only place the brand can show. */
 .topbar-brand {
@@ -315,13 +315,12 @@
   gap: 0.55rem;
 }
 
-.topbar-brand-name {
-  font-weight: 800;
-  font-size: 1rem;
-  letter-spacing: -0.01em;
+/* The logo's own wordmark (dark blue + blue-to-green HR) - fine here because the top bar is light. */
+.topbar-brand-img {
+  display: block;
+  height: 20px;
+  width: auto;
 }
-.brand-name-dark-work { color: var(--text-color); }
-.brand-name-dark-zen { color: var(--primary-color); }
 
 .topbar-right {
   margin-left: auto;

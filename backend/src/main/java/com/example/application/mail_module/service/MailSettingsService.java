@@ -1,5 +1,6 @@
 package com.example.application.mail_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.client_company_module.entity.ClientCompany;
 import com.example.application.client_company_module.repository.ClientCompanyRepository;
@@ -218,7 +219,7 @@ public class MailSettingsService {
             settings.setPassword(newPassword);
         }
         settings.setUpdatedBy(actorId);
-        settings.setUpdatedAt(LocalDateTime.now());
+        settings.setUpdatedAt(AppTime.now());
         repository.save(settings);
 
         // Describes what changed - and deliberately never contains the password.

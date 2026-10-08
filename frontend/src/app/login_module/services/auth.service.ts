@@ -26,7 +26,7 @@ interface RefreshData {
 
 /** Key under which the native app persists its refresh token (see AuthService javadoc-style
     comments below for why this only applies to the packaged app, never the web version). */
-const NATIVE_REFRESH_TOKEN_KEY = 'workzen_refresh_token';
+const NATIVE_REFRESH_TOKEN_KEY = 'karmichr_refresh_token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -105,9 +105,9 @@ export class AuthService {
     );
   }
 
-  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+  changePassword(currentPassword: string, newPassword: string, confirmPassword?: string): Observable<void> {
     return this.http
-      .post<ApiEnvelope<void>>(`${this.baseUrl}/change-password`, { currentPassword, newPassword })
+      .post<ApiEnvelope<void>>(`${this.baseUrl}/change-password`, { currentPassword, newPassword, confirmPassword })
       .pipe(
         map(() => void 0),
         // Backend revokes all refresh tokens on password change, so the

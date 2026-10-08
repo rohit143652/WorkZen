@@ -99,7 +99,7 @@ public class MailSettingsController {
                     default -> "the server environment variables (MAIL_*)";
                 },
                 "sender", cfg.fromAddress() == null ? "" : cfg.fromAddress()));
-        SendResult result = emailService.send(clientCompanyId, to, "WORKZEN - email settings test (" + scopeName + ")", html);
+        SendResult result = emailService.send(clientCompanyId, to, "KarmicHR - email settings test (" + scopeName + ")", html);
         MailTestResponse body = result.sent()
                 ? new MailTestResponse(true, "Test email sent to " + to + " from " + cfg.fromAddress() + ". Check the inbox (and the Spam folder).")
                 : new MailTestResponse(false, result.failureReason());

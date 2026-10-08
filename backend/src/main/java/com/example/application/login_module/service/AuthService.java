@@ -1,5 +1,6 @@
 package com.example.application.login_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.AccountLockedException;
 import com.example.application.common.exception.BadRequestException;
@@ -72,7 +73,7 @@ public class AuthService {
             User authenticatedUser = principal.getUser();
 
             authenticatedUser.setFailedLoginAttempts(0);
-            authenticatedUser.setLastLoginAt(LocalDateTime.now());
+            authenticatedUser.setLastLoginAt(AppTime.now());
             userRepository.save(authenticatedUser);
 
             loginAttemptService.record(request.getUsername(), httpRequest, true);
@@ -145,6 +146,9 @@ public class AuthService {
 
     @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request, HttpServletRequest httpRequest) {
+        if (request.getConfirmPassword() != null && !request.getConfirmPassword().equals(request.getNewPassword())) {
+            throw new BadRequestException("New password and confirm password do not match");
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
@@ -156,7 +160,7 @@ public class AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setPasswordChangedAt(AppTime.now());
         user.setMustChangePassword(false);
         userRepository.save(user);
 

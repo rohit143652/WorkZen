@@ -17,8 +17,8 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("WORKZEN API")
-                        .description("WORKZEN HRMS - Authentication, Employees, Attendance, Payroll, and every other module's REST API. "
+                        .title("KarmicHR API")
+                        .description("KarmicHR HRMS - Authentication, Employees, Attendance, Payroll, and every other module's REST API. "
                                 + "Click \"Authorize\" below and paste a JWT (from POST /api/auth/login's response) to test any endpoint that needs a login.")
                         .version("1.0.0"))
                 .addSecurityItem(new SecurityRequirement().addList(SCHEME_NAME))

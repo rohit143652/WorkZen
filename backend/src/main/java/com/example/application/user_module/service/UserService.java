@@ -1,5 +1,6 @@
 package com.example.application.user_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.DuplicateResourceException;
@@ -150,7 +151,7 @@ public class UserService {
         String tempPassword = com.example.application.common.util.SecurePasswordGenerator.generate();
         user.setPassword(passwordEncoder.encode(tempPassword));
         user.setMustChangePassword(true);
-        user.setPasswordChangedAt(java.time.LocalDateTime.now());
+        user.setPasswordChangedAt(AppTime.now());
         userRepository.save(user);
         refreshTokenService.revokeAllForUser(user);
         auditService.log(actorId, "PASSWORD_RESET", "Temporary password issued for user " + user.getUsername(), httpRequest);
@@ -173,7 +174,7 @@ public class UserService {
         User user = getEntity(id);
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setMustChangePassword(true);
-        user.setPasswordChangedAt(java.time.LocalDateTime.now());
+        user.setPasswordChangedAt(AppTime.now());
         userRepository.save(user);
         refreshTokenService.revokeAllForUser(user);
         auditService.log(actorId, "PASSWORD_SET_BY_ADMIN", "Password set by admin for user " + user.getUsername(), httpRequest);

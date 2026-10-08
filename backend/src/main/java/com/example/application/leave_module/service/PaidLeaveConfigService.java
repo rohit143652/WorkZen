@@ -1,5 +1,6 @@
 package com.example.application.leave_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.ResourceNotFoundException;
@@ -50,13 +51,13 @@ public class PaidLeaveConfigService {
     @Transactional(readOnly = true)
     public PaidLeaveConfigResponse getForCurrentTenant() {
         Long tenantId = tenantContext.requireCurrentTenantId();
-        return toResponse(leavePolicyResolver.resolve(tenantId, LocalDate.now().getYear(), LocalDate.now().getMonthValue()));
+        return toResponse(leavePolicyResolver.resolve(tenantId, AppTime.today().getYear(), AppTime.today().getMonthValue()));
     }
 
     /** Used internally by EmployeePaidLeaveService's callers that don't already hold the resolver - kept as a documented delegation point. */
     @Transactional(readOnly = true)
     public PaidLeaveConfiguration getEntityOrDefault(Long tenantId) {
-        return leavePolicyResolver.resolve(tenantId, LocalDate.now().getYear(), LocalDate.now().getMonthValue());
+        return leavePolicyResolver.resolve(tenantId, AppTime.today().getYear(), AppTime.today().getMonthValue());
     }
 
     /** Full policy timeline for this tenant, newest first - for the Leave Policy History screen (spec section 32/33). */
@@ -166,7 +167,7 @@ public class PaidLeaveConfigService {
         if (!"ACTIVE".equals(config.getStatus())) {
             throw new BadRequestException("This policy is already cancelled");
         }
-        if (!config.getEffectiveFrom().isAfter(LocalDate.now())) {
+        if (!config.getEffectiveFrom().isAfter(AppTime.today())) {
             throw new BadRequestException("Only a not-yet-effective (future) policy can be " + action
                     + " - this one is already effective and may already be used by leave balances");
         }

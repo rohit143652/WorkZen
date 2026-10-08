@@ -6,9 +6,18 @@ spring:
 
 app:
   cookie:
-    secure: true
+    # true unless COOKIE_SECURE=false: a Secure cookie is only kept by browsers over HTTPS, so a deployment still on
+    # plain http:// must set COOKIE_SECURE=false or every page reload will log the user out (move to HTTPS when you can).
+    secure: ${COOKIE_SECURE:true}
     same-site: Strict
 
+# The interactive API documentation lists every endpoint and request shape - useful while developing, but there is
+# no reason to publish it on a production server.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 server:
   error:
     include-message: never

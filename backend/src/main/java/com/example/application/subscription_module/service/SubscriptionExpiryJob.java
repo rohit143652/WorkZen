@@ -1,5 +1,6 @@
 package com.example.application.subscription_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.subscription_module.entity.ClientSubscription;
 import com.example.application.subscription_module.entity.SubscriptionHistory;
@@ -42,10 +43,10 @@ public class SubscriptionExpiryJob {
     }
 
     /** Runs once daily at 00:15 server time - late enough past midnight that "endDate < today" unambiguously means the day has fully passed everywhere the app cares about. */
-    @Scheduled(cron = "0 15 0 * * *")
+    @Scheduled(cron = "0 15 0 * * *", zone = "${app.timezone:Asia/Kolkata}")
     @Transactional
     public void expireOverdueSubscriptions() {
-        List<ClientSubscription> overdue = subscriptionRepository.findAllByEndDateBeforeAndStatusNotIn(LocalDate.now(), SKIP_STATUSES);
+        List<ClientSubscription> overdue = subscriptionRepository.findAllByEndDateBeforeAndStatusNotIn(AppTime.today(), SKIP_STATUSES);
         for (ClientSubscription subscription : overdue) {
             String previousStatus = subscription.getStatus();
             subscription.setStatus("EXPIRED");

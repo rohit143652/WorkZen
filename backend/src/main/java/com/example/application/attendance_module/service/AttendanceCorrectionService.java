@@ -1,5 +1,6 @@
 package com.example.application.attendance_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.attendance_module.dto.CorrectionRequestCreateRequest;
 import com.example.application.attendance_module.dto.CorrectionRequestResponse;
 import com.example.application.attendance_module.dto.CorrectionReviewRequest;
@@ -172,7 +173,7 @@ public class AttendanceCorrectionService {
 
         correction.setStatus(AttendanceCorrectionRequest.STATUS_APPROVED);
         correction.setReviewedBy(actorId);
-        correction.setReviewedAt(LocalDateTime.now());
+        correction.setReviewedAt(AppTime.now());
         correction.setReviewRemarks(request.getRemarks());
         AttendanceCorrectionRequest saved = correctionRepository.save(correction);
 
@@ -193,7 +194,7 @@ public class AttendanceCorrectionService {
 
         correction.setStatus(AttendanceCorrectionRequest.STATUS_REJECTED);
         correction.setReviewedBy(actorId);
-        correction.setReviewedAt(LocalDateTime.now());
+        correction.setReviewedAt(AppTime.now());
         correction.setReviewRemarks(request.getRemarks());
         AttendanceCorrectionRequest saved = correctionRepository.save(correction);
 

@@ -1,5 +1,6 @@
 package com.example.application.site_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.DuplicateResourceException;
 import com.example.application.common.exception.TenantAccessDeniedException;
@@ -131,7 +132,7 @@ public class SiteService {
                     saved.getId(), saved.getClientCompanyId(), "ACTIVE");
             for (var assignment : activeAssignments) {
                 assignment.setStatus("ENDED");
-                assignment.setEndDate(java.time.LocalDate.now());
+                assignment.setEndDate(AppTime.today());
                 assignment.setUpdatedBy(actorId);
                 assignmentRepository.save(assignment);
             }

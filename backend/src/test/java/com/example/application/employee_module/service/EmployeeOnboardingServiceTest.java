@@ -1,5 +1,6 @@
 package com.example.application.employee_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.client_company_module.entity.ClientCompany;
 import com.example.application.client_company_module.repository.ClientCompanyRepository;
@@ -118,7 +119,7 @@ class EmployeeOnboardingServiceTest {
     /** SCENARIO 3: a valid, non-expired invitation returns safe employee/company info. */
     @Test
     void validateTokenReturnsEmployeeAndCompanyInfoForAValidInvitation() {
-        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 0);
+        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", AppTime.now().plusHours(20), 0);
         when(invitationRepository.findAllByTokenHash(anyString())).thenReturn(List.of(invitation));
         when(employeeRepository.findById(EMPLOYEE_ID)).thenReturn(Optional.of(employee));
         ClientCompany company = new ClientCompany();
@@ -137,7 +138,7 @@ class EmployeeOnboardingServiceTest {
     /** SCENARIO 4: wrong verification code is rejected and does not set a password. */
     @Test
     void verifyCodeRejectsWrongCode() {
-        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 0);
+        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", AppTime.now().plusHours(20), 0);
         when(invitationRepository.findAllByTokenHash(anyString())).thenReturn(List.of(invitation));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> service.verifyCode(TOKEN, "000000"));
@@ -151,7 +152,7 @@ class EmployeeOnboardingServiceTest {
     /** SCENARIO 5: correct code lets the employee set their own password successfully. */
     @Test
     void setPasswordSucceedsWithCorrectCodeAndActivatesTheAccount() {
-        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 0);
+        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", AppTime.now().plusHours(20), 0);
         when(invitationRepository.findAllByTokenHash(anyString())).thenReturn(List.of(invitation));
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(employeeRepository.findById(EMPLOYEE_ID)).thenReturn(Optional.of(employee));
@@ -175,7 +176,7 @@ class EmployeeOnboardingServiceTest {
     /** SCENARIO 6: an already-USED invitation can never be reused, even with the right code. */
     @Test
     void setPasswordRejectsAnAlreadyUsedInvitation() {
-        EmployeeOnboardingInvitation invitation = invitationWith("USED", LocalDateTime.now().plusHours(20), 0);
+        EmployeeOnboardingInvitation invitation = invitationWith("USED", AppTime.now().plusHours(20), 0);
         when(invitationRepository.findAllByTokenHash(anyString())).thenReturn(List.of(invitation));
 
         OnboardingSetPasswordRequest request = new OnboardingSetPasswordRequest();
@@ -191,7 +192,7 @@ class EmployeeOnboardingServiceTest {
     /** SCENARIO 7: an expired invitation cannot be used to set a password, and gets marked EXPIRED. */
     @Test
     void setPasswordRejectsAnExpiredInvitation() {
-        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", LocalDateTime.now().minusHours(1), 0);
+        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", AppTime.now().minusHours(1), 0);
         when(invitationRepository.findAllByTokenHash(anyString())).thenReturn(List.of(invitation));
 
         OnboardingSetPasswordRequest request = new OnboardingSetPasswordRequest();
@@ -209,7 +210,7 @@ class EmployeeOnboardingServiceTest {
     /** SCENARIO 8: resending supersedes the old invitation and issues a fresh one - the old one stops working. */
     @Test
     void resendInvitationSupersedesThePreviousOneAndSendsANewEmail() {
-        EmployeeOnboardingInvitation oldInvitation = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 2);
+        EmployeeOnboardingInvitation oldInvitation = invitationWith("PENDING", AppTime.now().plusHours(20), 2);
         when(tenantContext.requireCurrentTenantId()).thenReturn(TENANT_ID);
         when(employeeRepository.findByIdAndClientCompanyId(EMPLOYEE_ID, TENANT_ID)).thenReturn(Optional.of(employee));
         employee.setUser(user);
@@ -238,7 +239,7 @@ class EmployeeOnboardingServiceTest {
     /** A LOCKED invitation (too many failed attempts) is refused even with the correct code. */
     @Test
     void verifyCodeRejectsALockedInvitationEvenWithCorrectCode() {
-        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 5);
+        EmployeeOnboardingInvitation invitation = invitationWith("PENDING", AppTime.now().plusHours(20), 5);
         when(invitationRepository.findAllByTokenHash(anyString())).thenReturn(List.of(invitation));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> service.verifyCode(TOKEN, RAW_CODE));
@@ -321,14 +322,14 @@ class EmployeeOnboardingServiceTest {
     /** PENDING for over 5 minutes means the mail thread never finished (e.g. app restarted) - report FAILED so the admin resends. */
     @Test
     void anInvitationStuckPendingForOverFiveMinutesIsReportedAsFailed() {
-        EmployeeOnboardingInvitation inv = invitationWith("PENDING", LocalDateTime.now().plusHours(20), 0);
+        EmployeeOnboardingInvitation inv = invitationWith("PENDING", AppTime.now().plusHours(20), 0);
         inv.setEmailStatus("PENDING");
         when(invitationRepository.findFirstByEmployeeIdOrderByCreatedAtDesc(EMPLOYEE_ID)).thenReturn(Optional.of(inv));
 
-        inv.setCreatedAt(LocalDateTime.now().minusMinutes(6));
+        inv.setCreatedAt(AppTime.now().minusMinutes(6));
         assertEquals("FAILED", service.latestEmailStatus(EMPLOYEE_ID));
 
-        inv.setCreatedAt(LocalDateTime.now().minusSeconds(20));
+        inv.setCreatedAt(AppTime.now().minusSeconds(20));
         assertEquals("PENDING", service.latestEmailStatus(EMPLOYEE_ID));
     }
 

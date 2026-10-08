@@ -12,15 +12,25 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>workzen</artifactId>
+    <artifactId>karmichr</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>workzen</name>
-    <description>WORKZEN - Workforce, Payroll, Attendance, Leave and Advance management</description>
+    <name>KarmicHR</name>
+    <description>KarmicHR - Workforce, Payroll, Attendance, Leave and Advance management</description>
 
     <properties>
         <java.version>21</java.version>
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.6.0</springdoc.version>
+        <!--
+            If a JVM ever crashes it writes hs_err_pid<pid>.log (the crash report) and replay_pid<pid>.log (a replay file
+            for JDK engineers, only written when the JIT compiler itself crashed) into whatever folder it was started from -
+            the project folder, in practice. These options send the crash report to target/ instead (git-ignored, removed
+            by `mvn clean`) and skip the replay file. Relative path on purpose: an absolute one would break on a path with
+            spaces. `argLine` is picked up automatically by the test JVMs; the second property by `mvn spring-boot:run`
+            (pass your own -Dspring-boot.run.jvmArguments=... and it simply replaces this one).
+        -->
+        <argLine>-XX:ErrorFile=target/hs_err_pid%p.log -XX:-DumpReplayDataOnError</argLine>
+        <spring-boot.run.jvmArguments>-XX:ErrorFile=target/hs_err_pid%p.log -XX:-DumpReplayDataOnError</spring-boot.run.jvmArguments>
     </properties>
 
     <dependencies>
@@ -149,7 +159,9 @@
     </dependencies>
 
     <build>
-        <finalName>workzen</finalName>
+        <!-- Fixed jar name (no version suffix): the Dockerfile, the systemd unit (deploy/karmichr-backend.service) and
+             the guides all run exactly target/karmichr.jar. -->
+        <finalName>karmichr</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

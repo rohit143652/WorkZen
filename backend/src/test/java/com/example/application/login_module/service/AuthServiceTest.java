@@ -126,4 +126,77 @@ class AuthServiceTest {
         assertThrows(AccountLockedException.class, () -> authService.login(request, httpServletRequest));
         verifyNoInteractions(authenticationManager);
     }
+
+    // ===================== change password (My Profile) =====================
+
+    private com.example.application.login_module.dto.ChangePasswordRequest changeRequest(String current, String next, String confirm) {
+        com.example.application.login_module.dto.ChangePasswordRequest r = new com.example.application.login_module.dto.ChangePasswordRequest();
+        r.setCurrentPassword(current);
+        r.setNewPassword(next);
+        r.setConfirmPassword(confirm);
+        return r;
+    }
+
+    @org.junit.jupiter.api.Test
+    void changingThePasswordWithTheCorrectCurrentOneSavesItClearsTheForcedChangeAndEndsEverySession() {
+        user.setMustChangePassword(true);
+        org.mockito.Mockito.when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        org.mockito.Mockito.when(passwordEncoder.matches("oldPass123", "hashed")).thenReturn(true);
+        org.mockito.Mockito.when(passwordEncoder.matches("newPass456", "hashed")).thenReturn(false);
+        org.mockito.Mockito.when(passwordEncoder.encode("newPass456")).thenReturn("new-hash");
+
+        authService.changePassword(1L, changeRequest("oldPass123", "newPass456", "newPass456"), httpServletRequest);
+
+        org.junit.jupiter.api.Assertions.assertEquals("new-hash", user.getPassword());
+        org.junit.jupiter.api.Assertions.assertFalse(user.isMustChangePassword());
+        org.mockito.Mockito.verify(refreshTokenService).revokeAllForUser(user);
+        org.mockito.Mockito.verify(auditService).log(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq("PASSWORD_CHANGED"),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @org.junit.jupiter.api.Test
+    void aWrongCurrentPasswordIsRejectedAndNothingChanges() {
+        org.mockito.Mockito.when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        org.mockito.Mockito.when(passwordEncoder.matches("wrongOne", "hashed")).thenReturn(false);
+
+        com.example.application.common.exception.BadRequestException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                com.example.application.common.exception.BadRequestException.class,
+                () -> authService.changePassword(1L, changeRequest("wrongOne", "newPass456", "newPass456"), httpServletRequest));
+
+        org.junit.jupiter.api.Assertions.assertEquals("Current password is incorrect", ex.getMessage());
+        org.junit.jupiter.api.Assertions.assertEquals("hashed", user.getPassword());
+        org.mockito.Mockito.verify(refreshTokenService, org.mockito.Mockito.never()).revokeAllForUser(org.mockito.ArgumentMatchers.any());
+    }
+
+    @org.junit.jupiter.api.Test
+    void theNewPasswordMustDifferFromTheCurrentOne() {
+        org.mockito.Mockito.when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        org.mockito.Mockito.when(passwordEncoder.matches("samePass123", "hashed")).thenReturn(true);
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.example.application.common.exception.BadRequestException.class,
+                () -> authService.changePassword(1L, changeRequest("samePass123", "samePass123", "samePass123"), httpServletRequest));
+        org.junit.jupiter.api.Assertions.assertEquals("hashed", user.getPassword());
+    }
+
+    @org.junit.jupiter.api.Test
+    void aConfirmPasswordThatDoesNotMatchIsRejectedByTheServerToo() {
+        com.example.application.common.exception.BadRequestException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                com.example.application.common.exception.BadRequestException.class,
+                () -> authService.changePassword(1L, changeRequest("oldPass123", "newPass456", "newPass457"), httpServletRequest));
+
+        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("do not match"));
+        org.mockito.Mockito.verifyNoInteractions(userRepository);   // rejected before anything is even looked up
+    }
+
+    @org.junit.jupiter.api.Test
+    void callersThatDoNotSendAConfirmPasswordStillWork() {
+        org.mockito.Mockito.when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        org.mockito.Mockito.when(passwordEncoder.matches("oldPass123", "hashed")).thenReturn(true);
+        org.mockito.Mockito.when(passwordEncoder.matches("newPass456", "hashed")).thenReturn(false);
+        org.mockito.Mockito.when(passwordEncoder.encode("newPass456")).thenReturn("new-hash");
+
+        authService.changePassword(1L, changeRequest("oldPass123", "newPass456", null), httpServletRequest);
+
+        org.junit.jupiter.api.Assertions.assertEquals("new-hash", user.getPassword());
+    }
 }

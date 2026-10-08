@@ -4,12 +4,33 @@ import com.example.application.attendance_module.entity.Attendance;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
+
+    // ---- selfie images: kept OFF the Attendance entity on purpose (see Attendance.checkInSelfiePresent) ----
+
+    /** Written right after the row exists (flushAutomatically makes sure the INSERT has happened first). */
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE attendance SET check_in_selfie_data = :data WHERE id = :id", nativeQuery = true)
+    int saveCheckInSelfie(@Param("id") Long id, @Param("data") String data);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "UPDATE attendance SET check_out_selfie_data = :data WHERE id = :id", nativeQuery = true)
+    int saveCheckOutSelfie(@Param("id") Long id, @Param("data") String data);
+
+    /** Scoped to the company in SQL as well, so a selfie can never be fetched across companies even by a mistaken id. */
+    @Query(value = "SELECT check_in_selfie_data FROM attendance WHERE id = :id AND client_company_id = :tenantId", nativeQuery = true)
+    String findCheckInSelfie(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
+    @Query(value = "SELECT check_out_selfie_data FROM attendance WHERE id = :id AND client_company_id = :tenantId", nativeQuery = true)
+    String findCheckOutSelfie(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
     Optional<Attendance> findByIdAndClientCompanyId(Long id, Long clientCompanyId);
 

@@ -1,5 +1,6 @@
 package com.example.application.leave_request_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,7 +30,7 @@ public class LeaveRequest {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = AppTime.now();
     }
 
     public Long getId() { return id; }

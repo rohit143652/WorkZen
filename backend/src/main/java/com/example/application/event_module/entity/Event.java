@@ -1,5 +1,6 @@
 package com.example.application.event_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -37,14 +38,14 @@ public class Event {
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = AppTime.now();
         if (createdAt == null) createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = AppTime.now();
     }
 
     public Long getId() { return id; }

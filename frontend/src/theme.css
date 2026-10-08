@@ -7,7 +7,7 @@
    every screen without touching individual component templates.
    ============================================================ */
 :root {
-  /* Brand / primary actions - the WORKZEN logo's blue */
+  /* Brand / primary actions - the KarmicHR blue */
   --primary-color: #1565c0;
   --primary-color-hover: #0d47a1;
   --primary-color-soft: #e3f2fd;
@@ -23,7 +23,7 @@
   --muted-color: #64748b;
   --border-color: #e2e8f0;
 
-  /* Success/accent - the WORKZEN logo's green */
+  /* Success/accent - the KarmicHR green */
   --success-color: #2e7d32;
   --success-bg: #eaf7ec;
   --warning-color: #b45309;

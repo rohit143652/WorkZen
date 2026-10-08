@@ -5,6 +5,8 @@ import { EmployeeService } from '../../services/employee.service';
 import { EmployeeAssignmentService } from '../../../employee_assignment_module/services/employee-assignment.service';
 import { ProfileCompletion } from '../../models/employee.model';
 import { ToastService } from '../../../shared/services/toast.service';
+import { AuthStateService } from '../../../core/services/auth-state.service';
+import { ChangePasswordCardComponent } from '../../../login_module/components/change-password-card/change-password-card.component';
 
 /** Human-readable labels for the section codes the backend returns (see EmployeeProfileCompletionService). */
 const SECTION_LABELS: Record<string, string> = {
@@ -18,20 +20,26 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 /**
- * "My Profile" - every logged-in employee's own profile completion % and the fields they're
- * allowed to edit about themselves (spec sections 23-25: EMPLOYEE_EDITABLE only - there is no
- * field here for department/designation/salary/PF-ESI-PT/joining date, all admin-only).
+ * "My Profile" - open to EVERY signed-in account. Everyone sees their account details and can change their
+ * password; a working employee additionally sees their own profile completion % and the fields they're allowed
+ * to edit about themselves (spec sections 23-25: EMPLOYEE_EDITABLE only - there is no field here for
+ * department/designation/salary/PF-ESI-PT/joining date, all admin-only). An account with no employee record
+ * (Super Admin, Client Admin, ...) simply doesn't load or show the employee sections.
  */
 @Component({
   selector: 'app-my-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ChangePasswordCardComponent],
   templateUrl: './my-profile.component.html'
 })
 export class MyProfileComponent {
   private readonly employeeService = inject(EmployeeService);
   private readonly assignmentService = inject(EmployeeAssignmentService);
   private readonly toast = inject(ToastService);
+  readonly authState = inject(AuthStateService);
+
+  /** A working employee (has an employee record and is not a Client Admin) - the only accounts the personal-details sections apply to. */
+  readonly isEmployee = !!this.authState.currentUser()?.employeeCode && !this.authState.hasRole('CLIENT_ADMIN');
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -56,7 +64,18 @@ export class MyProfileComponent {
   bankName = '';
   bankBranch = '';
 
+  get displayName(): string {
+    const user = this.authState.currentUser();
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    return name || user?.username || '';
+  }
+
   constructor() {
+    if (!this.isEmployee) {
+      // No employee record behind this login, so there is nothing to load (the calls would only fail with errors).
+      this.loading.set(false);
+      return;
+    }
     this.loadCompletion();
     this.employeeService.getMyProfile().subscribe({
       next: emp => {

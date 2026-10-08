@@ -1,5 +1,6 @@
 package com.example.application.exit_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.advance_module.service.EmployeeAdvanceService;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
@@ -142,7 +143,7 @@ public class ExitService {
         exit.setOutstandingAdvanceDeduction(settlement.outstandingAdvance());
         exit.setNetSettlementAmount(settlement.netAmount());
         exit.setStatus("SETTLED");
-        exit.setSettledAt(java.time.LocalDateTime.now());
+        exit.setSettledAt(AppTime.now());
         exit.setSettledBy(actorId);
         EmployeeExit saved = exitRepository.save(exit);
 

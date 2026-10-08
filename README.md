@@ -1,3 +1,10 @@
+<p align="center"><img src="branding/karmichr-logo-full.png" alt="KarmicHR - Where People &amp; Performance Grow Together." width="280" /></p>
+
+**KarmicHR** — Where People &amp; Performance Grow Together.
+(Logos, ready to use with a transparent background, are in [`branding/`](branding/).)
+
+---
+
 # Workforce Auth — Authentication, JWT, RBAC & Permission-Based Access Control
 
 A modular, production-oriented authentication and authorization module built with
@@ -111,8 +118,18 @@ See `backend/.env.example`. Required:
 | `JWT_ACCESS_EXPIRATION` | Access token TTL, ms | `900000` (15 min) |
 | `JWT_REFRESH_EXPIRATION` | Refresh token TTL, ms | `604800000` (7 days) |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins | `http://localhost:4200` |
-| `COOKIE_SECURE` | `true` in production (HTTPS only) | `true` |
+| `COOKIE_SECURE` | `true` in production (HTTPS only). Set `false` ONLY while the site is still on plain `http://` - browsers don't keep a Secure cookie over http, so every reload would log users out. Move to HTTPS and set it back to `true`. | `true` |
 | `COOKIE_SAME_SITE` | `Strict` recommended | `Strict` |
+| `APP_TIMEZONE` | The business time zone for "today"/"now" (default `Asia/Kolkata`). Servers default to UTC, 5h30m behind India. | `Asia/Kolkata` |
+| `ALLOW_DESTRUCTIVE_RESET` | Leave `false`. Lets migration V109 (which wipes data) run over a database that already holds data. | `false` |
+
+> **Security notes**
+> - `super_admin` and the sample company's `client_admin` are created with the password `admin123` (migrations V4/V17).
+>   Migration V125 forces a change at next login for any account still on that password - but change it yourself now.
+> - **Never point the app at a database older than version 109, or restore a pre-109 backup, if it holds real data.**
+>   Migration V109 deletes all payroll/attendance/leave/advance history and overwrites employees' personal and bank
+>   details with dummy values. The app now refuses to start in that situation (unless `ALLOW_DESTRUCTIVE_RESET=true`).
+> - In production the interactive API documentation (`/swagger-ui.html`, `/v3/api-docs`) is switched off.
 
 **Never commit a populated `.env`** - `.gitignore` excludes `.env` (and any `.env.*` variant) while
 still tracking `.env.example`. None of `DB_USERNAME`, `DB_PASSWORD`, or `JWT_SECRET` have a default
@@ -1319,3 +1336,19 @@ Site).
 - [x] Frontend Angular signal/ngModel binding audited app-wide: `[(ngModel)]` never targets a signal directly (caught and fixed one instance in the Assignment Board)
 - [ ] **Not verified by an actual compiler run** — see the honesty note at the top. Run
       `mvn clean verify` and `npm run build` before deploying.
+
+## Troubleshooting: `hs_err_pid*.log` and `replay_pid*.log` files appearing in the project folder
+
+These are not part of the application. A **Java process crashed** (the JVM itself, not an exception in our code):
+`hs_err_pid<pid>.log` is its crash report, and `replay_pid<pid>.log` is extra data for JDK engineers that is written
+only when the JIT compiler thread was what crashed. One pair per crashed process, written into the folder that
+process was started from. Several pairs within a couple of minutes means several JVMs crashed one after another -
+worth investigating rather than just deleting.
+
+- **Delete them** (PowerShell, in the folder where you see them): `Get-ChildItem -File -Include hs_err_pid*.log,replay_pid*.log | Remove-Item`
+- **They are now sent to `backend/target/`** (removed by `mvn clean`, ignored by git) and replay files are no longer
+  written - see `backend/.mvn/jvm.config` and `argLine` in `pom.xml`. The crash report is still kept, deliberately.
+- **Find the cause:** open one `hs_err_pid*.log` and read its first ~40 lines: `Get-Content hs_err_pid<pid>.log -TotalCount 40`.
+  Look for `Out of Memory Error` / `insufficient memory` (the machine ran out of RAM or virtual memory: close other
+  heavy programs, raise the Windows page file, do not run several `mvn`/`ng serve`/IDE builds at once), or a
+  `Problematic frame` inside `libjvm`/`C2 Compiler` (a JDK bug: update to the latest Java 21 patch release).

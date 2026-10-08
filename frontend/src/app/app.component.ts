@@ -41,7 +41,7 @@ export class AppComponent implements OnInit {
   private setupWebBackTrap(): void {
     const sealDashboard = () => {
       if (this.router.url === DASHBOARD_URL) {
-        history.pushState({ workzenDashboardFloor: true }, '', location.href);
+        history.pushState({ karmicDashboardFloor: true }, '', location.href);
       }
     };
 

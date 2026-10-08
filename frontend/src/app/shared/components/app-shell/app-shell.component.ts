@@ -140,8 +140,11 @@ export class AppShellComponent {
   private readonly featureState = inject(FeatureStateService);
   private readonly employeeService = inject(EmployeeService);
 
-  /** CLIENT_ADMIN is a company-management account, not a working employee, so "My Profile" (which is about an employee's own personal/onboarding profile) has no meaningful content for them - hidden regardless of whether they happen to have an employeeCode. */
-  readonly showMyProfile = () => !!this.authState.currentUser()?.employeeCode && !this.authState.hasRole('CLIENT_ADMIN');
+  /** Everyone signed in gets "My Profile": every account - employee, Client Admin, Super Admin, anyone - needs its account details and Change Password. (Only the employee-specific sections inside it are limited to working employees.) */
+  readonly showMyProfile = () => !!this.authState.currentUser();
+
+  /** True only for a working employee (has an employee record, is not a Client Admin): the personal-details sections and the "profile incomplete" dot are for them alone. */
+  private readonly hasEmployeeProfile = () => !!this.authState.currentUser()?.employeeCode && !this.authState.hasRole('CLIENT_ADMIN');
 
   /** Small dot shown on "My Profile" when the mandatory profile fields aren't complete yet - a distinct signal from the link's own (always-neutral) color. */
   readonly profileIncomplete = signal(false);
@@ -173,7 +176,7 @@ export class AppShellComponent {
   readonly dashboardItem = DASHBOARD_ITEM;
 
   constructor() {
-    if (this.showMyProfile()) {
+    if (this.hasEmployeeProfile()) {
       this.employeeService.getMyProfileCompletion().subscribe({
         next: c => this.profileIncomplete.set(!c.mandatoryComplete),
         error: () => { /* Non-fatal - the dot just doesn't show if this fails. */ }

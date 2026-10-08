@@ -72,12 +72,19 @@ public class Attendance {
     @Column(name = "check_out_time")
     private LocalDateTime checkOutTime;
 
-    /** Base64 data-URI, same convention as Employee.photoData - see V114 migration for why this is stored directly rather than in external file storage. Null unless the company's AttendanceRuleConfig requires it for that action (or the employee provided one even when not required). */
-    @Column(name = "check_in_selfie_data", columnDefinition = "LONGTEXT")
-    private String checkInSelfieData;
+    /**
+     * Whether a selfie was captured for check-in / check-out. The selfie itself is a large base64 data-URI
+     * (roughly 40-80 KB) kept in the check_in_selfie_data / check_out_selfie_data columns (see V114) but
+     * deliberately NOT mapped on this entity: every query that loads Attendance rows - a month's muster, the
+     * monthly report, a payroll run - would otherwise pull every selfie of every employee into memory just to
+     * read a status. The images are written and read directly by AttendanceRepository (saveCheckInSelfie,
+     * findCheckInSelfie, ...); these flags are all the screens need ("show a view-photo button").
+     */
+    @Column(name = "check_in_selfie_present", nullable = false)
+    private boolean checkInSelfiePresent;
 
-    @Column(name = "check_out_selfie_data", columnDefinition = "LONGTEXT")
-    private String checkOutSelfieData;
+    @Column(name = "check_out_selfie_present", nullable = false)
+    private boolean checkOutSelfiePresent;
 
     @Column(name = "gross_work_minutes")
     private Integer grossWorkMinutes;
@@ -174,10 +181,10 @@ public class Attendance {
     public void setCheckInTime(LocalDateTime checkInTime) { this.checkInTime = checkInTime; }
     public LocalDateTime getCheckOutTime() { return checkOutTime; }
     public void setCheckOutTime(LocalDateTime checkOutTime) { this.checkOutTime = checkOutTime; }
-    public String getCheckInSelfieData() { return checkInSelfieData; }
-    public void setCheckInSelfieData(String checkInSelfieData) { this.checkInSelfieData = checkInSelfieData; }
-    public String getCheckOutSelfieData() { return checkOutSelfieData; }
-    public void setCheckOutSelfieData(String checkOutSelfieData) { this.checkOutSelfieData = checkOutSelfieData; }
+    public boolean isCheckInSelfiePresent() { return checkInSelfiePresent; }
+    public void setCheckInSelfiePresent(boolean checkInSelfiePresent) { this.checkInSelfiePresent = checkInSelfiePresent; }
+    public boolean isCheckOutSelfiePresent() { return checkOutSelfiePresent; }
+    public void setCheckOutSelfiePresent(boolean checkOutSelfiePresent) { this.checkOutSelfiePresent = checkOutSelfiePresent; }
     public Integer getGrossWorkMinutes() { return grossWorkMinutes; }
     public void setGrossWorkMinutes(Integer grossWorkMinutes) { this.grossWorkMinutes = grossWorkMinutes; }
     public Integer getBreakMinutes() { return breakMinutes; }

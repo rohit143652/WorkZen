@@ -1,0 +1,38 @@
+# systemd unit for the KarmicHR backend on a Linux server.
+#
+# Why this exists: environment variables typed into a terminal (export / $env:) disappear when
+# that terminal closes. Here they live in ONE file that systemd loads every time the service
+# starts - so after a reboot, a crash, or a new SSH session nothing has to be set again.
+#
+# Install (adjust paths/user to your server):
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin karmichr
+#   sudo mkdir -p /opt/karmichr /etc/karmichr
+#   sudo cp target/karmichr.jar /opt/karmichr/ && sudo chown -R karmichr:karmichr /opt/karmichr
+#   sudo cp .env.example /etc/karmichr/backend.env      # then edit with your REAL values
+#   sudo chown root:root /etc/karmichr/backend.env && sudo chmod 600 /etc/karmichr/backend.env
+#   sudo cp deploy/karmichr-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now karmichr-backend
+#
+# Change a value later:  edit /etc/karmichr/backend.env, then  sudo systemctl restart karmichr-backend
+# Watch the logs:        sudo journalctl -u karmichr-backend -f
+
+[Unit]
+Description=KarmicHR backend (Spring Boot)
+# Drop mysql.service if the database is on another host (e.g. AWS RDS).
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+User=karmichr
+WorkingDirectory=/opt/karmichr
+# KEY=value lines, no "export", no quotes needed. Read by systemd as root BEFORE it drops to the
+# karmichr user, so the file can stay root-only (600) and the app user never needs to read it directly.
+EnvironmentFile=/etc/karmichr/backend.env
+ExecStart=/usr/bin/java -jar /opt/karmichr/karmichr.jar
+Restart=on-failure
+RestartSec=5
+# Exit code 143 is a normal stop signal for a JVM, not a failure.
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

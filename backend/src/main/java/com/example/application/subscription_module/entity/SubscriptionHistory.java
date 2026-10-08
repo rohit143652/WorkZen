@@ -1,5 +1,6 @@
 package com.example.application.subscription_module.entity;
 
+import com.example.application.common.time.AppTime;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -41,7 +42,7 @@ public class SubscriptionHistory {
     private String newStatus;
 
     @Column(name = "change_date", nullable = false)
-    private LocalDateTime changeDate = LocalDateTime.now();
+    private LocalDateTime changeDate = AppTime.now();
 
     @Column(length = 255)
     private String reason;

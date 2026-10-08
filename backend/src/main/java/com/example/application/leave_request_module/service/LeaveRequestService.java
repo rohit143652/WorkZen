@@ -1,5 +1,6 @@
 package com.example.application.leave_request_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.attendance_module.service.AttendanceService;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
@@ -140,7 +141,7 @@ public class LeaveRequestService {
         leaveRequest.setStatus("APPROVED");
         leaveRequest.setSelfRequested(false);
         leaveRequest.setReviewedBy(actorId);
-        leaveRequest.setReviewedAt(LocalDateTime.now());
+        leaveRequest.setReviewedAt(AppTime.now());
         leaveRequest.setCreatedBy(actorId);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
@@ -159,7 +160,7 @@ public class LeaveRequestService {
 
         leaveRequest.setStatus("APPROVED");
         leaveRequest.setReviewedBy(actorId);
-        leaveRequest.setReviewedAt(LocalDateTime.now());
+        leaveRequest.setReviewedAt(AppTime.now());
         leaveRequest.setReviewNote(request != null ? request.getReviewNote() : null);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
@@ -175,7 +176,7 @@ public class LeaveRequestService {
 
         leaveRequest.setStatus("REJECTED");
         leaveRequest.setReviewedBy(actorId);
-        leaveRequest.setReviewedAt(LocalDateTime.now());
+        leaveRequest.setReviewedAt(AppTime.now());
         leaveRequest.setReviewNote(request != null ? request.getReviewNote() : null);
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 

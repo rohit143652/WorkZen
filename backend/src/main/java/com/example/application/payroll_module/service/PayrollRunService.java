@@ -1,5 +1,6 @@
 package com.example.application.payroll_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.attendance_module.entity.Attendance;
 import com.example.application.attendance_module.repository.AttendanceRepository;
 import com.example.application.audit_module.service.AuditService;
@@ -385,7 +386,7 @@ public class PayrollRunService {
         }
 
         run.setStatus("CALCULATED");
-        run.setCalculatedAt(LocalDateTime.now());
+        run.setCalculatedAt(AppTime.now());
         run.setCalculatedBy(actorId);
         PayrollRun saved = payrollRunRepository.save(run);
 
@@ -422,7 +423,7 @@ public class PayrollRunService {
         }
 
         run.setStatus("APPROVED");
-        run.setApprovedAt(LocalDateTime.now());
+        run.setApprovedAt(AppTime.now());
         run.setApprovedBy(actorId);
         PayrollRun saved = payrollRunRepository.save(run);
         auditService.log(actorId, "PAYROLL_RUN_APPROVED", "Approved payroll run for " + monthLabel(run.getYear(), run.getMonth()), httpRequest);
@@ -435,7 +436,7 @@ public class PayrollRunService {
         PayrollRun run = getRunForTenant(tenantId, runId);
         statusTransitionService.assertPayable(run.getStatus());
         run.setStatus("PAID");
-        run.setPaidAt(LocalDateTime.now());
+        run.setPaidAt(AppTime.now());
         run.setPaidBy(actorId);
         PayrollRun saved = payrollRunRepository.save(run);
         auditService.log(actorId, "PAYROLL_RUN_PAID", "Marked payroll run for " + monthLabel(run.getYear(), run.getMonth()) + " as paid", httpRequest);
@@ -452,7 +453,7 @@ public class PayrollRunService {
             throw new BadRequestException("A cancellation reason is required");
         }
         run.setStatus("CANCELLED");
-        run.setCancelledAt(LocalDateTime.now());
+        run.setCancelledAt(AppTime.now());
         run.setCancelledBy(actorId);
         run.setCancellationReason(cancellationReason);
         PayrollRun saved = payrollRunRepository.save(run);
@@ -481,7 +482,7 @@ public class PayrollRunService {
         // permanent record that this run WAS approved once, by whom; reopenedAt/reopenedBy/
         // reopenReason record the separate, later reopen event alongside that, not instead of it.
         run.setStatus("CALCULATED");
-        run.setReopenedAt(LocalDateTime.now());
+        run.setReopenedAt(AppTime.now());
         run.setReopenedBy(actorId);
         run.setReopenReason(reopenReason);
         PayrollRun saved = payrollRunRepository.save(run);

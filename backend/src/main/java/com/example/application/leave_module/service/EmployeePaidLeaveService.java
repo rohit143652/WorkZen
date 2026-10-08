@@ -1,5 +1,6 @@
 package com.example.application.leave_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
 import com.example.application.common.exception.TenantAccessDeniedException;
@@ -131,7 +132,7 @@ public class EmployeePaidLeaveService {
     @Transactional
     public List<EmployeeLeaveSummaryResponse> listAllEmployeeBalances() {
         Long tenantId = tenantContext.requireCurrentTenantId();
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
         List<Employee> employees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
         return employees.stream().map(e -> {
             EmployeePaidLeaveBalance balance = resolveMonth(tenantId, e.getId(), today.getYear(), today.getMonthValue());

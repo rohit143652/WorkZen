@@ -1,4 +1,4 @@
-# WORKZEN - Production Server (15.207.88.193) + APK - संपूर्ण मार्गदर्शक
+# KarmicHR - Production Server (15.207.88.193) + APK - संपूर्ण मार्गदर्शक
 
 Code मधले आवश्यक बदल **आधीच केलेले आहेत** (खाली "आधीच झालेलं" section मध्ये बघा). इथून पुढे फक्त deployment/build च्या पायऱ्या आहेत, त्या तुमच्याच server आणि laptop वर कराव्या लागतील.
 
@@ -51,7 +51,7 @@ cd workforce-auth/backend
 ```bash
 mvn clean package -DskipTests
 ```
-यामुळे `target/workzen.jar` तयार होईल.
+यामुळे `target/karmichr.jar` तयार होईल.
 
 ### Step 6 — Environment Variables सेट करा
 ```bash
@@ -67,7 +67,7 @@ export CORS_ALLOWED_ORIGINS="http://15.207.88.193"
 
 ### Step 7 — Backend सुरू करा
 ```bash
-java -jar target/workzen.jar
+java -jar target/karmichr.jar
 ```
 Startup logs मध्ये हे दिसेल की नाही ते बघा:
 ```
@@ -76,7 +76,7 @@ Started Application in ... seconds
 
 **कायमस्वरूपी चालू ठेवण्यासाठी** (SSH बंद केलं तरी चालू राहावं म्हणून), `nohup` किंवा `systemd service` वापरा:
 ```bash
-nohup java -jar target/workzen.jar > app.log 2>&1 &
+nohup java -jar target/karmichr.jar > app.log 2>&1 &
 ```
 
 ### Step 8 — Server च्या Firewall मध्ये Port 8080 उघडा
@@ -150,7 +150,7 @@ frontend\android\app\build\outputs\apk\debug\app-debug.apk
 | App उघडतं, पण Login button दाबल्यावर काहीच होत नाही | Backend पोहोचत नाहीये | भाग 1 चा Step 9 परत तपासा — Port 8080 उघडा आहे का |
 | "Network Error" येतो | Backend बंद आहे, किंवा Firewall port block करतोय | Server वर `java -jar` अजून चालू आहे का बघा |
 | Phone च्या Wi-Fi/Data शी काही संबंध | Phone आणि 15.207.88.193 दोघांनाही Internet द्वारे एकमेकांशी बोलता आलं पाहिजे — दोघेही same local network वर असायची गरज नाही, जोपर्यंत Server public IP वर उघडा आहे |
-| GPS Attendance काम करत नाही | Phone Settings → Apps → WORKZEN → Permissions → Location चालू करा |
+| GPS Attendance काम करत नाही | Phone Settings → Apps → KarmicHR → Permissions → Location चालू करा |
 
 ---
 

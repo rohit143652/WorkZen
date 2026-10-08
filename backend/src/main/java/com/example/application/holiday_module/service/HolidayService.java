@@ -1,5 +1,6 @@
 package com.example.application.holiday_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.attendance_module.service.AttendanceService;
 import com.example.application.audit_module.service.AuditService;
 import com.example.application.common.exception.BadRequestException;
@@ -64,7 +65,7 @@ public class HolidayService {
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new BadRequestException("End date cannot be before start date.");
         }
-        if (request.getStartDate().isBefore(LocalDate.now())) {
+        if (request.getStartDate().isBefore(AppTime.today())) {
             throw new BadRequestException("Cannot add a holiday for a date in the past - existing holidays on past dates can still be viewed, but new ones can only be added from today onward.");
         }
         long spanDays = java.time.temporal.ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1;

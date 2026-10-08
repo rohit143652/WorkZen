@@ -1,5 +1,6 @@
 package com.example.application.attendance_module.service;
 
+import com.example.application.common.time.AppTime;
 import com.example.application.attendance_module.dto.*;
 import com.example.application.attendance_module.entity.Attendance;
 import com.example.application.attendance_module.entity.AttendanceRuleConfig;
@@ -44,6 +45,8 @@ import java.util.Set;
  */
 @Service
 public class AttendanceService {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AttendanceService.class);
 
     private static final List<String> VALID_STATUSES = List.of("PRESENT", "ABSENT", "HALF_DAY", "ON_LEAVE");
 
@@ -135,7 +138,7 @@ public class AttendanceService {
         Long tenantId = tenantContext.requireCurrentTenantId();
         Employee employee = employeeRepository.findByUserId(userId)
                 .orElseThrow(() -> new BadRequestException("No employee profile is linked to this login."));
-        return attendanceRepository.findByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employee.getId(), LocalDate.now())
+        return attendanceRepository.findByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employee.getId(), AppTime.today())
                 .map(this::toResponse)
                 .orElse(null);
     }
@@ -157,7 +160,7 @@ public class AttendanceService {
         Employee employee = employeeRepository.findByUserId(userId)
                 .orElseThrow(() -> new BadRequestException("No employee profile is linked to this login."));
 
-        Attendance saved = markOne(tenantId, employee.getId(), LocalDate.now(), "PRESENT",
+        Attendance saved = markOne(tenantId, employee.getId(), AppTime.today(), "PRESENT",
                 "Self-marked", actorId, latitude, longitude, null, null, null);
 
         auditService.log(actorId, "ATTENDANCE_SELF_MARKED",
@@ -187,7 +190,10 @@ public class AttendanceService {
                         "no active site assignment - attendance can only be marked for currently assigned employees"));
 
         AttendanceRuleConfig config = ruleConfigService.getOrCreateForCurrentTenant();
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
+        if (employee.getJoiningDate() != null && today.isBefore(employee.getJoiningDate())) {
+            throw new BadRequestException("You can check in only from your joining date (" + employee.getJoiningDate() + ").");
+        }
         if (ruleEngine.isWeeklyOff(config, today)) {
             throw new BadRequestException("Today is a configured weekly off - check-in is not required.");
         }
@@ -223,17 +229,21 @@ public class AttendanceService {
             attendance.setAttendanceDate(today);
             attendance.setMarkedBy(actorId);
         }
-        attendance.setCheckInTime(LocalDateTime.now());
+        attendance.setCheckInTime(AppTime.now());
         attendance.setWorkMode(request.getWorkMode() != null ? request.getWorkMode() : "OFFICE");
         attendance.setAttendanceSource("SELF");
         attendance.setStatus("WORKING");
         attendance.setMarkedLatitude(request.getLatitude());
         attendance.setMarkedLongitude(request.getLongitude());
-        if (request.getSelfieData() != null && !request.getSelfieData().isBlank()) {
-            attendance.setCheckInSelfieData(request.getSelfieData());
-        }
+        // The selfie itself (a large base64 string) is written straight to its column once the row exists, and is
+        // never loaded again except by "view this selfie" - see Attendance.checkInSelfiePresent for why.
+        String checkInSelfie = (request.getSelfieData() != null && !request.getSelfieData().isBlank()) ? request.getSelfieData() : null;
+        attendance.setCheckInSelfiePresent(checkInSelfie != null);
 
         Attendance saved = attendanceRepository.save(attendance);
+        if (checkInSelfie != null) {
+            attendanceRepository.saveCheckInSelfie(saved.getId(), checkInSelfie);
+        }
         auditService.log(actorId, "CHECK_IN",
                 employee.getEmployeeCode() + " checked in at " + saved.getCheckInTime(), httpRequest);
         return toResponse(saved);
@@ -254,7 +264,7 @@ public class AttendanceService {
                 .orElseThrow(() -> new BadRequestException("No employee profile is linked to this login."));
 
         Attendance attendance = attendanceRepository
-                .findByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employee.getId(), LocalDate.now())
+                .findByClientCompanyIdAndEmployeeIdAndAttendanceDate(tenantId, employee.getId(), AppTime.today())
                 .orElseThrow(() -> new BadRequestException("You have not checked in today yet."));
 
         if (attendance.getCheckInTime() == null) {
@@ -264,7 +274,7 @@ public class AttendanceService {
             throw new DuplicateResourceException("Already checked out for today at " + attendance.getCheckOutTime().toLocalTime());
         }
 
-        LocalDateTime checkOutTime = LocalDateTime.now();
+        LocalDateTime checkOutTime = AppTime.now();
         if (!checkOutTime.isAfter(attendance.getCheckInTime())) {
             throw new BadRequestException("Check-out time cannot be before check-in time.");
         }
@@ -278,8 +288,9 @@ public class AttendanceService {
         attendance.setCheckOutTime(checkOutTime);
         attendance.setCheckOutLatitude(request.getLatitude());
         attendance.setCheckOutLongitude(request.getLongitude());
-        if (request.getSelfieData() != null && !request.getSelfieData().isBlank()) {
-            attendance.setCheckOutSelfieData(request.getSelfieData());
+        String checkOutSelfie = (request.getSelfieData() != null && !request.getSelfieData().isBlank()) ? request.getSelfieData() : null;
+        if (checkOutSelfie != null) {
+            attendance.setCheckOutSelfiePresent(true);
         }
         attendance.setGrossWorkMinutes(result.grossWorkMinutes);
         attendance.setBreakMinutes(result.breakMinutes);
@@ -291,6 +302,9 @@ public class AttendanceService {
         attendance.setStatus(result.status);
 
         Attendance saved = attendanceRepository.save(attendance);
+        if (checkOutSelfie != null) {
+            attendanceRepository.saveCheckOutSelfie(saved.getId(), checkOutSelfie);
+        }
         auditService.log(actorId, "CHECK_OUT",
                 employee.getEmployeeCode() + " checked out at " + checkOutTime + " - net " + result.netWorkMinutes
                         + "m, status " + result.status, httpRequest);
@@ -356,8 +370,13 @@ public class AttendanceService {
             try {
                 markOne(tenantId, employee.getId(), date, "PRESENT", remarks, actorId);
                 marked++;
-            } catch (RuntimeException alreadyMarkedOrNoAssignment) {
-                // Expected/benign for a bulk holiday sweep - just skip this employee.
+            } catch (BadRequestException | DuplicateResourceException expectedSkip) {
+                // Expected for a bulk holiday sweep (already marked, or no active site assignment) - skip this employee.
+                log.debug("Holiday sweep skipped employee {} on {}: {}", employee.getId(), date, expectedSkip.getMessage());
+            } catch (RuntimeException unexpected) {
+                // Anything else is a real problem (e.g. a database error). Still skip so the sweep completes for
+                // everyone else, but never silently - this employee did NOT get the holiday marked.
+                log.warn("Holiday sweep FAILED for employee {} on {}: {}", employee.getId(), date, unexpected.toString());
             }
         }
         return marked;
@@ -426,6 +445,9 @@ public class AttendanceService {
 
         Employee employee = employeeRepository.findByIdAndClientCompanyId(employeeId, tenantId)
                 .orElseThrow(() -> new TenantAccessDeniedException("Employee does not belong to the current tenant"));
+        if (employee.getJoiningDate() != null && date.isBefore(employee.getJoiningDate())) {
+            throw new BadRequestException("Attendance cannot be marked for " + date + " - the employee joined on " + employee.getJoiningDate() + ".");
+        }
 
         EmployeeSiteAssignment currentAssignment = assignmentRepository
                 .findFirstByEmployeeIdAndClientCompanyIdAndStatusOrderByStartDateDesc(employee.getId(), tenantId, "ACTIVE")
@@ -692,13 +714,15 @@ public class AttendanceService {
         // a direct API call from still returning this data.
         featureAccessService.requireEnabledForCurrentTenant(FeatureCode.ATTENDANCE_MANAGEMENT, "Attendance Management");
         featureAccessService.requireEnabledForCurrentTenant(FeatureCode.EMPLOYEE_SELF_ATTENDANCE, "Employee Self Attendance");
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppTime.today();
 
         // Global Site Context - never trusts the requested siteIds directly, resolved through
         // the same central authorization check every other site-filterable endpoint uses.
         List<Long> validatedSiteIds = siteAccessService.resolveRequestedSiteIdsOrBadRequest(tenantId, siteIds);
 
-        List<Employee> activeEmployees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE");
+        // Someone whose joining date is still in the future is not "absent today" - they haven't started.
+        List<Employee> activeEmployees = employeeRepository.findAllByClientCompanyIdAndStatusOrderByEmployeeCodeAsc(tenantId, "ACTIVE")
+                .stream().filter(candidate -> candidate.hasJoinedBy(today)).toList();
         if (!validatedSiteIds.isEmpty()) {
             Set<Long> siteIdSet = new HashSet<>(validatedSiteIds);
             Set<Long> eligibleEmployeeIds = new HashSet<>();
@@ -774,7 +798,8 @@ public class AttendanceService {
         if (!isOwnRecord && !tenantContext.currentPermissionNames().contains("ATTENDANCE_READ")) {
             throw new org.springframework.security.access.AccessDeniedException("Not authorized to view this attendance photo.");
         }
-        return checkOut ? attendance.getCheckOutSelfieData() : attendance.getCheckInSelfieData();
+        return checkOut ? attendanceRepository.findCheckOutSelfie(attendance.getId(), tenantId)
+                        : attendanceRepository.findCheckInSelfie(attendance.getId(), tenantId);
     }
 
     private AttendanceResponse toResponse(Attendance a) {
@@ -815,8 +840,8 @@ public class AttendanceService {
         r.setLateMinutes(a.getLateMinutes());
         r.setEarlyExit(a.isEarlyExit());
         r.setEarlyExitMinutes(a.getEarlyExitMinutes());
-        r.setHasCheckInSelfie(a.getCheckInSelfieData() != null && !a.getCheckInSelfieData().isBlank());
-        r.setHasCheckOutSelfie(a.getCheckOutSelfieData() != null && !a.getCheckOutSelfieData().isBlank());
+        r.setHasCheckInSelfie(a.isCheckInSelfiePresent());
+        r.setHasCheckOutSelfie(a.isCheckOutSelfiePresent());
         r.setCreatedByRole(a.getCreatedByRole());
         r.setModifiedByRole(a.getModifiedByRole());
         r.setModificationReason(a.getModificationReason());

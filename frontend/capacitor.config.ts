@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.workzen.app',
-  appName: 'WORKZEN',
+  appId: 'com.karmichr.app',
+  appName: 'KarmicHR',
   // The new Angular "application" builder (used by this project) outputs to a "browser"
   // subfolder even without SSR enabled - this MUST point there, not just dist/<project>, or
   // Capacitor will bundle an empty/wrong folder into the APK.
